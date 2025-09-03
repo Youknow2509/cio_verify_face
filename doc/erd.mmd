@@ -1,0 +1,96 @@
+---
+title: Mô hình Quan hệ Thực thể (ERD) - Hệ thống Chấm công
+---
+erDiagram
+    Companies {
+        uuid company_id PK "ID Công ty"
+        string name "Tên công ty"
+        string address "Địa chỉ"
+    }
+
+    CompaniesSecret {
+        uuid company_secret_id PK "ID Bí mật công ty"
+        uuid company_id FK "ID Công ty"
+        string salt "Salt hash"
+        string secret_hash "Mat khau duy nhat"
+    }
+
+    Users {
+        uuid user_id PK "ID Người dùng"
+        string email "Email (đăng nhập)"
+        string salt "Salt hash password"
+        string password_hash "Mật khẩu mã hóa"
+        string full_name "Họ và tên"
+        int  role "Vai trò (SYSTEM_ADMIN - 0, COMPANY_ADMIN - 1, EMPLOYEE - 2)"
+    }
+
+    Devices {
+        uuid device_id PK "ID Thiết bị"
+        uuid location_id FK "ID Địa điểm"
+        uuid company_id FK "ID Công ty"
+        string address "Địa chỉ"
+        string name "Tên thiết bị"
+        string status "Trạng thái"
+        string token "Token thiết bị"
+        uuid company_secret_id FK "ID Bí mật công ty"
+    }
+
+    Employees {
+        uuid employee_id PK "ID Nguoi dung"
+        uuid company_id FK "ID Công ty"
+        string employee_code "Mã nhân viên"
+    }
+
+    FaceData {
+        uuid face_id PK "ID Dữ liệu khuôn mặt"
+        uuid employee_id FK "ID Nhân viên"
+        blob face_embedding "Vector khuôn mặt"
+    }
+
+    WorkShifts {
+        uuid shift_id PK "ID Ca làm việc"
+        uuid company_id FK "ID Công ty"
+        string name "Tên ca"
+        time start_time "Giờ bắt đầu"
+        time end_time "Giờ kết thúc"
+    }
+
+    AttendanceRecords {
+        uuid record_id PK "ID Bản ghi"
+        uuid employee_id FK "ID Nhân viên"
+        uuid device_id FK "ID Thiết bị"
+        datetime timestamp "Thời gian chấm công"
+        int record_type "Loại (CHECK_IN 0 | CHECK_OUT 1)"
+        string metadate "Media record"
+    }
+
+    DailyAttendanceSummary {
+        uuid summary_id PK "ID Tổng hợp"
+        uuid employee_id FK "ID Nhân viên"
+        uuid shift_id FK "ID Ca làm việc"
+        date work_date "Ngày làm việc"
+        datetime check_in_time "Giờ vào thực tế"
+        datetime check_out_time "Giờ ra thực tế"
+        int total_hours "Tổng giờ làm việc (phút)"
+        int overtime_hours "Giờ làm thêm (phút)"
+        int status "Trạng thái (PRESENT-0, LATE-1, EARLY_LEAVE-2, ABSENT-3)"
+        datetime created_at "Thời gian tạo"
+        datetime updated_at "Thời gian cập nhật"
+    }
+
+    %% Mô tả các mối quan hệ
+    Companies ||--o{ Employees : "có một hoặc nhiều"
+    Companies ||--o{ WorkShifts : "có một hoặc nhiều"
+    Companies ||--o{ Devices : "Một công ty có nhiều thiết bị"
+    Companies ||--o{ CompaniesSecret : "Một nhiều"
+    
+    Users ||--o| Employees : "có thể là"
+    
+    Employees ||--|| FaceData : "một - một"
+    Employees ||--o{ AttendanceRecords : "có nhiều"
+    
+    Devices ||--o{ AttendanceRecords : "ghi nhận nhiều"
+    Devices ||--|| CompaniesSecret : "Một thiết bị một khoá"
+
+    Employees ||--o{ DailyAttendanceSummary : "có nhiều"
+    WorkShifts ||--o{ DailyAttendanceSummary : "áp dụng cho nhiều"
