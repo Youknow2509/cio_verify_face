@@ -1,0 +1,87 @@
+sequenceDiagram
+    participant Admin as Company Admin
+    participant LB as Load Balancer
+    participant Gateway as API Gateway
+    participant Auth as Auth Service
+    participant Analytics as Analytics Service
+    participant Cache as Redis Cache
+    participant TimeSeries as ScyllaDB
+    participant DB as PostgreSQL
+    participant Storage as File Storage
+    participant ReportEngine as Report Engine
+
+    Admin->>+LB: GET /api/v1/reports/export?format=xlsx&type=monthly&month=2024-01
+    Note over Admin,LB: Authorization: Bearer {admin_token}
+    
+    LB->>+Gateway: Forward request
+    Gateway->>+Auth: Validate admin token
+    Auth->>Auth: Extract company_id from token
+    Auth-->>-Gateway: Admin authorized
+    
+    Gateway->>+Analytics: GET /api/v1/reports/export
+    Note over Gateway,Analytics: {company_id, format, type, month, filters}
+    
+    Analytics->>+Cache: GET export_job:{company_id}:{month}:{format}
+    Note over Analytics,Cache: Check if export already in progress
+    Cache-->>-Analytics: Job status or not found
+    
+    alt Export already in progress
+        Analytics-->>Gateway: 202 Accepted - Export in progress, check status
+    else No existing export
+        Analytics->>+Cache: SET export_job:{company_id}:{month}:{format} = "processing"
+        Note over Analytics,Cache: TTL: 30 minutes
+        Cache-->>-Analytics: Job status set
+        
+        par Fetch attendance data
+            Analytics->>+TimeSeries: Query monthly attendance records
+            Note over Analytics,TimeSeries: Optimized time-range query
+            Note over Analytics,TimeSeries: Aggregated by employee, date
+            TimeSeries-->>-Analytics: Monthly attendance data
+        and Fetch employee information
+            Analytics->>+DB: Get employee details for company
+            Note over Analytics,DB: Names, departments, positions
+            DB-->>-Analytics: Employee information
+        and Get shift schedules
+            Analytics->>+DB: Get shift assignments for month
+            Note over Analytics,DB: Expected vs actual work hours
+            DB-->>-Analytics: Schedule data
+        end
+        
+        Analytics->>+ReportEngine: Generate export file
+        Note over Analytics,ReportEngine: Process data based on format
+        
+        alt Excel format (xlsx)
+            ReportEngine->>ReportEngine: Create Excel workbook
+            Note over ReportEngine: Multiple sheets: Summary, Daily, Employee Details
+            ReportEngine->>ReportEngine: Add charts and formatting
+        else PDF format
+            ReportEngine->>ReportEngine: Generate PDF report
+            Note over ReportEngine: Professional layout with company branding
+        else CSV format  
+            ReportEngine->>ReportEngine: Create CSV files
+            Note over ReportEngine: Separate files for different data types
+        end
+        
+        ReportEngine-->>-Analytics: Generated file content
+        
+        Analytics->>+Storage: Store export file
+        Note over Analytics,Storage: Temporary storage with expiration
+        Note over Analytics,Storage: Path: /exports/{company_id}/{report_id}
+        Storage-->>-Analytics: File stored with download URL
+        
+        Analytics->>+Cache: UPDATE export_job status = "completed"
+        Note over Analytics,Cache: Include download URL and expiration
+        Cache-->>-Analytics: Job status updated
+        
+        Analytics-->>-Gateway: 200 OK with download URL
+    end
+    
+    Gateway-->>-LB: Response
+    LB-->>-Admin: Export result with download link
+    
+    Note over Admin,Storage: Export optimizations for large datasets:
+    Note over Admin,Storage: 1. Async report generation for large companies
+    Note over Admin,Storage: 2. Chunked data processing to prevent timeouts
+    Note over Admin,Storage: 3. Compressed file formats for faster downloads
+    Note over Admin,Storage: 4. CDN distribution for export files
+    Note over Admin,Storage: 5. Automatic cleanup of expired exports

@@ -1,0 +1,77 @@
+sequenceDiagram
+    participant SysAdmin as System Admin
+    participant LB as Load Balancer
+    participant Gateway as API Gateway
+    parameter Auth as Auth Service
+    participant Admin as Admin Service
+    participant DB as PostgreSQL
+    participant Cache as Redis Cache
+    participant Queue as Message Queue
+    participant Billing as Billing Service
+
+    SysAdmin->>+LB: PUT /api/v1/admin/companies/{id}/lock
+    Note over SysAdmin,LB: Authorization: Bearer {system_admin_token}
+    Note over SysAdmin,LB: {reason, lock_duration, notify_admin}
+    
+    LB->>+Gateway: Forward request
+    Gateway->>+Auth: Validate system admin token
+    Auth->>Auth: Check system admin permissions
+    Auth-->>-Gateway: System admin authorized
+    
+    Gateway->>+Admin: PUT /api/v1/admin/companies/{id}/lock
+    
+    Admin->>+DB: BEGIN TRANSACTION
+    DB-->>-Admin: Transaction started
+    
+    Admin->>+DB: SELECT company details
+    Note over Admin,DB: Verify company exists and current status
+    DB-->>-Admin: Company information
+    
+    alt Company not found
+        Admin->>DB: ROLLBACK TRANSACTION
+        Admin-->>Gateway: 404 Not Found - Company not found
+    else Company found
+        Admin->>+DB: UPDATE companies SET status='locked', locked_at=NOW()
+        Note over Admin,DB: Add lock reason and duration
+        DB-->>-Admin: Company locked
+        
+        Admin->>+DB: INSERT INTO admin_audit_log
+        Note over Admin,DB: Log admin action with details
+        DB-->>-Admin: Audit logged
+        
+        Admin->>+DB: COMMIT TRANSACTION
+        DB-->>-Admin: Transaction committed
+        
+        par Clear company caches
+            Admin->>+Cache: DELETE company_profile:{company_id}
+            Cache-->>-Admin: Cache cleared
+            Admin->>+Cache: DELETE company_users:{company_id}:*
+            Cache-->>-Admin: User caches cleared
+        and Disable company services
+            Admin->>+Queue: Publish CompanyLocked event
+            Note over Admin,Queue: Trigger service deactivation
+            Queue-->>-Admin: Event published
+        and Suspend billing
+            Admin->>+Billing: Suspend company billing
+            Note over Admin,Billing: Pause subscription charges
+            Billing-->>-Admin: Billing suspended
+        and Notify company admin
+            opt Notify admin enabled
+                Admin->>+Queue: Publish CompanyLockNotification event
+                Note over Admin,Queue: Send email notification
+                Queue-->>-Admin: Notification queued
+            end
+        end
+        
+        Admin-->>-Gateway: 200 OK - Company locked successfully
+    end
+    
+    Gateway-->>-LB: Response
+    LB-->>-SysAdmin: Company lock result
+    
+    Note over SysAdmin,DB: System administration optimizations:
+    Note over SysAdmin,DB: 1. Bulk company operations
+    Note over SysAdmin,DB: 2. Automated compliance monitoring
+    Note over SysAdmin,DB: 3. Company health dashboards
+    Note over SysAdmin,DB: 4. Audit trail with full history
+    Note over SysAdmin,DB: 5. Emergency unlock procedures

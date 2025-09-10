@@ -1,0 +1,77 @@
+sequenceDiagram
+    participant Device as Attendance Device
+    participant LB as Load Balancer
+    participant Gateway as API Gateway
+    participant Auth as Auth Service
+    participant Attendance as Attendance Service
+    participant FaceVerify as Face Verification
+    participant Identity as Identity Service
+    participant Cache as Redis Cache
+    participant TimeSeries as ScyllaDB
+    participant Queue as Kafka
+    participant WS as WebSocket Service
+
+    Device->>+LB: POST /api/v1/attendance/check-out
+    Note over Device,LB: {face_image, device_id, timestamp, location?}
+    
+    LB->>+Gateway: Forward request
+    Gateway->>+Auth: Validate device token
+    Auth-->>-Gateway: Device authorized
+    
+    Gateway->>+Attendance: POST /api/v1/attendance/check-out
+    
+    Attendance->>+Cache: Check rate limit & last check-in
+    Note over Attendance,Cache: Verify employee has checked in today
+    Cache-->>-Attendance: Last check-in status
+    
+    Attendance->>+FaceVerify: Process face image
+    FaceVerify->>FaceVerify: Face verification pipeline
+    FaceVerify-->>-Attendance: Face embedding vector
+    
+    Attendance->>+Identity: Find matching employee
+    Identity->>Identity: Face matching with company scope
+    Identity-->>-Attendance: Employee identified: {user_id, confidence}
+    
+    alt No matching employee
+        Attendance-->>Gateway: 401 Unauthorized - Unknown person
+    else Employee identified
+        Attendance->>+TimeSeries: Check latest check-in record
+        Note over Attendance,TimeSeries: Verify employee checked in today
+        TimeSeries-->>-Attendance: Last check-in record
+        
+        alt No check-in found today
+            Attendance-->>Gateway: 400 Bad Request - Must check-in first
+        else Valid check-in exists
+            par Record check-out
+                Attendance->>+TimeSeries: INSERT check-out record
+                Note over Attendance,TimeSeries: Link to check-in record
+                TimeSeries-->>-Attendance: Check-out recorded
+            and Calculate work duration
+                Attendance->>Attendance: Calculate total work time
+                Note over Attendance: Duration = check_out - check_in
+            and Update cache
+                Attendance->>+Cache: Update employee status
+                Note over Attendance,Cache: Mark as checked out
+                Cache-->>-Attendance: Status updated
+            and Publish events
+                Attendance->>+Queue: Publish AttendanceCheckout event
+                Note over Attendance,Queue: For reporting & payroll
+                Queue-->>-Attendance: Event published
+            and Notify device
+                Attendance->>+WS: Send success notification
+                Note over Attendance,WS: Show work duration & goodbye
+                WS-->>-Attendance: Notification sent
+            end
+            
+            Attendance-->>-Gateway: 200 OK - Check-out successful
+        end
+    end
+    
+    Gateway-->>-LB: Response
+    LB-->>-Device: Check-out result
+    
+    Note over Device,TimeSeries: Check-out optimizations:
+    Note over Device,TimeSeries: 1. Automatic break time calculation
+    Note over Device,TimeSeries: 2. Overtime detection and alerts
+    Note over Device,TimeSeries: 3. Shift validation against schedules
+    Note over Device,TimeSeries: 4. Real-time work hour tracking
