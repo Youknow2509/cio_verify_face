@@ -1,0 +1,98 @@
+flowchart TD
+    %% Client Layer
+    subgraph ClientLayer["Client Layer"]
+        direction LR
+        WebApp["Web App (Admin)<br/>(Quản trị hệ thống, Báo cáo)"]
+        DeviceApp["Device App (IoT)<br/>(Máy chấm công tại văn phòng)"]
+    end
+
+    %% Gateway Layer
+    subgraph GatewayLayer["Gateway & Load Balancer"]
+        direction TB
+        APIGateway["API Gateway<br/>(Định tuyến HTTP/S, bảo vệ API)"]
+        WSGateway["WebSocket Gateway<br/>(Kênh thông báo thời gian thực)"]
+    end
+
+    %% Microservices Layer
+    subgraph MicroservicesLayer["Microservices Layer"]
+        direction TB
+        AuthSvc["Auth Service<br/>- Xác thực user/device<br/>- Cấp phát/làm mới Token"]
+        IdentitySvc["Identity & Org Service<br/>- Quản lý công ty, user, nhân viên<br/>- Dữ liệu khuôn mặt (vector)"]
+        DeviceSvc["Device Management Service<br/>- Quản lý thiết bị chấm công"]
+        WorkforceSvc["Workforce Service<br/>- Quản lý ca làm việc, lịch trình"]
+        AttendanceSvc["Attendance Service<br/>- Tiếp nhận request chấm công<br/>- Đẩy event vào Kafka"]
+        AnalyticsSvc["Analytics & Reporting Service<br/>- Lắng nghe event từ Kafka<br/>- Tổng hợp & tạo báo cáo"]
+        SignatureSvc["Signature Upload Service<br/>- Tải lên & lưu trữ chữ ký"]
+        WsDeliver["WS Deliver<br/>- Chuyển event tới node ws"]
+    end
+
+    %% Face Verification Pipeline
+    subgraph FaceVerificationPipeline["Face Verification Pipeline"]
+        direction RL
+        Detection["Face Detection"]
+        Alignment["Alignment"]
+        Quality["Quality Assessment"]
+        Embedding["Embedding Extraction"]
+    end
+
+    %% Messaging Layer
+    subgraph MessagingLayer["Messaging Queue"]
+        Kafka["Kafka Cluster"]
+    end
+
+    %% Data Storage Layer
+    subgraph DataStorageLayer["Data Storage Layer"]
+        direction TB
+        PostgreSQL["PostgreSQL Cluster<br/>(Dữ liệu quan hệ: Users, Companies, Shifts, ... )"]
+        ScyllaDB["ScyllaDB/Cassandra<br/>(Timeseries: Attendance Records)"]
+        Minio["Minio Cluster<br/>(Lưu trữ file: Face Images, Signatures, Reports)"]
+        Redis["Redis Cluster<br/>(Cache, Sessions)"]
+    end
+
+    %% Connections
+    WebApp -- "HTTP/S Requests" --> APIGateway
+    DeviceApp -- "HTTP/S Requests (Check-in, Auth)" --> APIGateway
+    DeviceApp -- "WebSocket Connection" --> WSGateway
+
+    APIGateway -- "Định tuyến" --> AuthSvc
+    APIGateway -- "Định tuyến" --> IdentitySvc
+    APIGateway -- "Định tuyến" --> DeviceSvc
+    APIGateway -- "Định tuyến" --> WorkforceSvc
+    APIGateway -- "Định tuyến" --> AttendanceSvc
+    APIGateway -- "Định tuyến" --> AnalyticsSvc
+    APIGateway -- "Định tuyến" --> SignatureSvc
+
+    AttendanceSvc -- "Gửi ảnh vào pipeline" --> FaceVerificationPipeline
+    FaceVerificationPipeline --> Detection
+    Detection --> Alignment
+    Alignment --> Quality
+    Quality --> Embedding
+
+    AttendanceSvc -- "Lấy face vectors để so khớp" --> IdentitySvc
+    AttendanceSvc -- "Ghi nhận lượt chấm công thô" --> ScyllaDB
+    AttendanceSvc -- "Publish 'AttendanceRecordCreated' event" --> Kafka
+    AnalyticsSvc -- "Consume 'AttendanceRecordCreated' event" --> Kafka
+    AnalyticsSvc -- "Xử lý & ghi dữ liệu tổng hợp" --> PostgreSQL
+    AttendanceSvc -- "Push kết quả chấm công (Success/Fail)" --> WSGateway
+    WSGateway -- "WS Deliver: Thông báo kết quả về DeviceApp" --> DeviceApp
+
+    AuthSvc --- PostgreSQL
+    IdentitySvc --- PostgreSQL
+    DeviceSvc --- PostgreSQL
+    WorkforceSvc --- PostgreSQL
+    SignatureSvc --- Minio
+    AnalyticsSvc --- Minio
+    MicroservicesLayer -.-> Redis
+
+    %% Classes for Coloring
+    classDef service fill:#e6f3ff,stroke:#0066cc,stroke-width:2px
+    classDef database fill:#e6ffed,stroke:#00802b,stroke-width:2px
+    classDef client fill:#fff0e6,stroke:#ff6600,stroke-width:2px
+    classDef gateway fill:#f2e6ff,stroke:#8000ff,stroke-width:2px
+    classDef messaging fill:#fff5e6,stroke:#ff9900,stroke-width:2px
+
+    class WebApp,DeviceApp client
+    class APIGateway,WSGateway gateway
+    class AuthSvc,IdentitySvc,DeviceSvc,WorkforceSvc,AttendanceSvc,AnalyticsSvc,SignatureSvc,WsDeliver service
+    class Kafka messaging
+    class PostgreSQL,ScyllaDB,Minio,Redis database
