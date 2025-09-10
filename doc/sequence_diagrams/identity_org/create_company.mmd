@@ -1,0 +1,74 @@
+sequenceDiagram
+    participant Admin as Admin/Reseller
+    participant LB as Load Balancer
+    participant Gateway as API Gateway
+    participant Auth as Auth Service
+    participant Identity as Identity Service
+    participant DB as PostgreSQL
+    participant Cache as Redis Cache
+    participant Queue as Message Queue
+    participant Billing as Billing Service
+
+    Admin->>+LB: POST /api/v1/companies
+    Note over Admin,LB: {name, email, plan, admin_user_data}
+    
+    LB->>+Gateway: Forward request
+    Gateway->>+Auth: Validate admin permissions
+    Auth-->>-Gateway: Authorized
+    
+    Gateway->>+Identity: POST /api/v1/companies
+    
+    Identity->>Identity: Validate company data
+    Note over Identity: Email uniqueness, required fields
+    
+    Identity->>+DB: BEGIN TRANSACTION
+    DB-->>-Identity: Transaction started
+    
+    par Create company record
+        Identity->>+DB: INSERT INTO companies
+        Note over Identity,DB: Generate company_id, set initial status
+        DB-->>-Identity: Company created
+    and Create admin user
+        Identity->>+DB: INSERT INTO users (company admin)
+        Note over Identity,DB: Link to company, set admin role
+        DB-->>-Identity: Admin user created
+    and Initialize company settings
+        Identity->>+DB: INSERT INTO company_settings
+        Note over Identity,DB: Default configurations, limits
+        DB-->>-Identity: Settings initialized
+    end
+    
+    alt Any operation failed
+        Identity->>+DB: ROLLBACK TRANSACTION
+        DB-->>-Identity: Transaction rolled back
+        Identity-->>Gateway: 400 Bad Request - Creation failed
+    else All operations successful
+        Identity->>+DB: COMMIT TRANSACTION
+        DB-->>-Identity: Transaction committed
+        
+        par Cache new company
+            Identity->>+Cache: Set company_profile:{company_id}
+            Note over Identity,Cache: TTL: 1 hour
+            Cache-->>-Identity: Cached
+        and Trigger provisioning
+            Identity->>+Queue: Publish CompanyCreated event
+            Note over Identity,Queue: Async company setup workflow
+            Queue-->>-Identity: Event published
+        and Initialize billing
+            Identity->>+Billing: Setup billing account
+            Note over Identity,Billing: Async billing initialization
+            Billing-->>-Identity: Billing account created
+        end
+        
+        Identity-->>-Gateway: 201 Created with company details
+    end
+    
+    Gateway-->>-LB: Response
+    LB-->>-Admin: Company creation result
+    
+    Note over Admin,DB: Enterprise provisioning optimizations:
+    Note over Admin,DB: 1. Atomic company + admin creation
+    Note over Admin,DB: 2. Async resource provisioning
+    Note over Admin,DB: 3. Pre-allocated company ID pools
+    Note over Admin,DB: 4. Template-based company setup
+    Note over Admin,DB: 5. Bulk company creation APIs

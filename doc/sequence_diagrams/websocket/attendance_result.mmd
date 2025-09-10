@@ -1,0 +1,75 @@
+sequenceDiagram
+    participant Device as Attendance Device
+    participant WSGateway as WebSocket Gateway
+    participant WS as WebSocket Service
+    participant Queue as Kafka Consumer
+    participant Cache as Redis Cache
+    participant Attendance as Attendance Service
+
+    Note over Device,Attendance: Real-time attendance result notification
+    
+    Device->>+WSGateway: WebSocket Connection
+    Note over Device,WSGateway: ws://api.example.com/ws?device_id=123&token=xyz
+    
+    WSGateway->>WSGateway: Validate device token
+    WSGateway->>+Cache: Register device connection
+    Note over WSGateway,Cache: device_ws_connection:{device_id}
+    Cache-->>-WSGateway: Connection registered
+    
+    WSGateway->>+WS: Register WebSocket client
+    Note over WSGateway,WS: Map device_id to WebSocket connection
+    WS-->>-WSGateway: Client registered
+    
+    WSGateway-->>-Device: WebSocket connection established
+    
+    Note over Device,Attendance: Attendance check-in occurs...
+    
+    Attendance->>+Queue: Publish attendance_result event
+    Note over Attendance,Queue: {device_id, user_id, result, timestamp, message}
+    Queue-->>-Attendance: Event published
+    
+    Queue->>+WS: Consume attendance_result event
+    Note over Queue,WS: Kafka consumer processes event
+    
+    WS->>+Cache: Get device connection info
+    Note over WS,Cache: device_ws_connection:{device_id}
+    Cache-->>-WS: Connection details
+    
+    alt Device connected
+        WS->>WSGateway: Send message to device
+        Note over WS,WSGateway: {type: "attendance_result", payload: {...}}
+        
+        WSGateway->>Device: WebSocket message
+        Note over WSGateway,Device: Real-time attendance result
+        
+        Device->>Device: Display result on screen
+        Note over Device: Success: "Welcome John Doe, 08:30 AM"
+        Note over Device: Failure: "Face not recognized"
+        
+        Device->>WSGateway: ACK message received
+        WSGateway->>WS: Delivery confirmation
+    else Device disconnected
+        WS->>+Cache: Store pending message
+        Note over WS,Cache: pending_messages:{device_id}
+        Note over WS,Cache: TTL: 5 minutes
+        Cache-->>-WS: Message queued
+    end
+    
+    WS-->>-Queue: Event processed
+    
+    Note over Device,Attendance: Device status monitoring
+    
+    Device->>WSGateway: Heartbeat ping
+    Note over Device,WSGateway: Every 30 seconds
+    
+    WSGateway->>+Cache: Update device last_seen
+    Cache-->>-WSGateway: Status updated
+    
+    WSGateway->>Device: Heartbeat pong
+    
+    Note over Device,Cache: WebSocket optimizations for scale:
+    Note over Device,Cache: 1. Connection pooling across multiple WS nodes
+    Note over Device,Cache: 2. Message queuing for offline devices
+    Note over Device,Cache: 3. Device heartbeat monitoring
+    Note over Device,Cache: 4. Load balancing WS connections
+    Note over Device,Cache: 5. Automatic reconnection handling

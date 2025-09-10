@@ -1,0 +1,66 @@
+sequenceDiagram
+    participant Employee as Employee
+    parameter LB as Load Balancer
+    participant Gateway as API Gateway
+    participant Auth as Auth Service
+    participant Attendance as Attendance Service
+    participant Cache as Redis Cache
+    participant TimeSeries as ScyllaDB
+    participant Analytics as Analytics Service
+
+    Employee->>+LB: GET /api/v1/attendance/history/my?start_date=2024-01-01&end_date=2024-01-31
+    Note over Employee,LB: Authorization: Bearer {employee_token}
+    
+    LB->>+Gateway: Forward request
+    Gateway->>+Auth: Validate employee token
+    Auth->>Auth: Extract user_id & company_id from token
+    Auth-->>-Gateway: Employee authorized
+    
+    Gateway->>+Attendance: GET /api/v1/attendance/history/my
+    Note over Gateway,Attendance: {user_id, company_id, date_range}
+    
+    Attendance->>+Cache: GET employee_history:{user_id}:{start_date}:{end_date}
+    Cache-->>-Attendance: Cached history or miss
+    
+    alt Cache hit - return cached data
+        Attendance-->>Gateway: Cached attendance history
+    else Cache miss - fetch from database
+        Attendance->>+TimeSeries: Query attendance records
+        Note over Attendance,TimeSeries: SELECT * FROM attendance_records
+        Note over Attendance,TimeSeries: WHERE user_id AND company_id AND date_range
+        Note over Attendance,TimeSeries: ORDER BY timestamp DESC
+        TimeSeries-->>-Attendance: Raw attendance records
+        
+        Attendance->>Attendance: Process attendance data
+        Note over Attendance: Calculate:
+        Note over Attendance: - Daily work hours
+        Note over Attendance: - Late arrivals  
+        Note over Attendance: - Early departures
+        Note over Attendance: - Overtime hours
+        Note over Attendance: - Missing days
+        
+        par Get additional context
+            Attendance->>+Analytics: Get employee work patterns
+            Note over Attendance,Analytics: Average hours, trends
+            Analytics-->>-Attendance: Work pattern insights
+        and Cache processed data
+            Attendance->>+Cache: Cache employee history
+            Note over Attendance,Cache: TTL: 1 hour (updates frequently)
+            Cache-->>-Attendance: History cached
+        end
+        
+        Attendance->>Attendance: Build comprehensive response
+        Note over Attendance: Include summaries, charts data, trends
+        
+        Attendance-->>-Gateway: Employee attendance history
+    end
+    
+    Gateway-->>-LB: Response
+    LB-->>-Employee: Personal attendance history
+    
+    Note over Employee,TimeSeries: Employee self-service optimizations:
+    Note over Employee,TimeSeries: 1. Personal data caching with privacy protection
+    Note over Employee,TimeSeries: 2. Mobile-optimized response format
+    Note over Employee,TimeSeries: 3. Real-time work hour calculations
+    Note over Employee,TimeSeries: 4. Trend analysis and insights
+    Note over Employee,TimeSeries: 5. Export capabilities for personal records

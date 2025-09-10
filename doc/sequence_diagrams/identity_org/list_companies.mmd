@@ -1,0 +1,57 @@
+sequenceDiagram
+    participant Admin as System Admin
+    participant LB as Load Balancer
+    participant Gateway as API Gateway
+    participant Auth as Auth Service
+    participant Identity as Identity Service
+    participant Cache as Redis Cache
+    participant DB as PostgreSQL
+    participant Analytics as Analytics Service
+
+    Admin->>+LB: GET /api/v1/companies
+    Note over Admin,LB: Authorization: Bearer {admin_token}
+    
+    LB->>+Gateway: Forward request
+    Gateway->>+Auth: Validate admin token
+    Auth->>Auth: Check admin permissions
+    Auth-->>-Gateway: Token validated
+    
+    Gateway->>+Identity: GET /api/v1/companies
+    Note over Gateway,Identity: Query params: page, limit, search, status
+    
+    Identity->>+Cache: GET companies_list:{page}:{filters_hash}
+    Cache-->>-Identity: Cached companies or miss
+    
+    alt Cache hit
+        Identity-->>Gateway: Return cached results
+    else Cache miss
+        Identity->>+DB: SELECT companies with pagination
+        Note over Identity,DB: Optimized query with indexes
+        Note over Identity,DB: ORDER BY created_at DESC LIMIT/OFFSET
+        DB-->>-Identity: Companies list
+        
+        par Cache results
+            Identity->>+Cache: Cache companies list
+            Note over Identity,Cache: TTL: 2min for admin views
+            Cache-->>-Identity: Cached
+        and Get aggregated metrics
+            Identity->>+Analytics: Get company metrics
+            Note over Identity,Analytics: Async call for stats
+            Analytics-->>-Identity: Usage statistics
+        end
+        
+        Identity->>Identity: Build response with metadata
+        Note over Identity: Total count, pagination info, metrics
+        
+        Identity-->>-Gateway: Companies list with stats
+    end
+    
+    Gateway-->>-LB: Response
+    LB-->>-Admin: Companies listing
+    
+    Note over Admin,DB: Scale optimizations for millions of companies:
+    Note over Admin,DB: 1. Database indexing on search fields
+    Note over Admin,DB: 2. Paginated results with cursor-based pagination
+    Note over Admin,DB: 3. Read replicas for admin queries
+    Note over Admin,DB: 4. Aggregated metrics pre-computed
+    Note over Admin,DB: 5. Company data partitioning by region

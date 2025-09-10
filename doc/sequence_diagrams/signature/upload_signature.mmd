@@ -1,0 +1,70 @@
+sequenceDiagram
+    participant Admin as Company Admin
+    participant LB as Load Balancer
+    participant Gateway as API Gateway
+    participant Auth as Auth Service
+    participant Signature as Signature Service
+    participant Storage as File Storage (Minio)
+    participant Cache as Redis Cache
+    participant DB as PostgreSQL
+    participant OCR as OCR Service
+
+    Admin->>+LB: POST /api/v1/signatures
+    Note over Admin,LB: Content-Type: multipart/form-data<br/>signature_image, user_id
+    
+    LB->>+Gateway: Forward request
+    Gateway->>+Auth: Validate admin token
+    Auth-->>-Gateway: Authorized for company
+    
+    Gateway->>+Signature: POST /api/v1/signatures
+    
+    Signature->>Signature: Validate uploaded signature
+    Note over Signature: File type, size, image quality checks
+    
+    alt Invalid signature file
+        Signature-->>Gateway: 400 Bad Request - Invalid file
+    else Valid signature file
+        par Process signature image
+            Signature->>+OCR: Analyze signature image
+            Note over Signature,OCR: Extract signature features
+            OCR->>OCR: Signature detection & validation
+            OCR->>OCR: Extract signature boundaries
+            OCR-->>-Signature: Signature analysis result
+        and Store original image
+            Signature->>+Storage: Store signature image
+            Note over Signature,Storage: Encrypted storage with company isolation
+            Note over Signature,Storage: Path: /signatures/{company_id}/{user_id}/
+            Storage-->>-Signature: Image stored with URL
+        end
+        
+        alt Signature processing successful
+            Signature->>+DB: INSERT INTO signatures
+            Note over Signature,DB: Store metadata, file path, user association
+            DB-->>-Signature: Signature record created
+            
+            par Update cache
+                Signature->>+Cache: Set user_signatures:{user_id}
+                Note over Signature,Cache: Cache user's signature list
+                Cache-->>-Signature: Cached
+            and Clear related caches
+                Signature->>+Cache: DELETE signatures_list:{company_id}:*
+                Note over Signature,Cache: Invalidate company signature lists
+                Cache-->>-Signature: Cache cleared
+            end
+            
+            Signature-->>-Gateway: 201 Created - Signature uploaded
+        else Signature processing failed
+            Signature->>Storage: Delete stored image (cleanup)
+            Signature-->>Gateway: 400 Bad Request - Invalid signature
+        end
+    end
+    
+    Gateway-->>-LB: Response
+    LB-->>-Admin: Signature upload result
+    
+    Note over Admin,DB: Signature management optimizations:
+    Note over Admin,DB: 1. Signature template matching
+    Note over Admin,DB: 2. Digital signature verification
+    Note over Admin,DB: 3. Batch signature processing
+    Note over Admin,DB: 4. Signature fraud detection
+    Note over Admin,DB: 5. Mobile signature capture
