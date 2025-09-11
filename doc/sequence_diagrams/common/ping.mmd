@@ -1,0 +1,56 @@
+sequenceDiagram
+    participant Client as Any Client
+    participant LB as Load Balancer
+    participant Gateway as API Gateway
+    participant Health as Health Check Service
+    participant Cache as Redis Cache
+    participant DB as PostgreSQL
+    participant Queue as Kafka
+    participant Storage as File Storage
+
+    Client->>+LB: GET /api/v1/ping
+    
+    LB->>+Gateway: Forward request
+    Gateway->>+Health: GET /api/v1/ping
+    
+    par Check service health
+        Health->>+Cache: PING Redis
+        Cache-->>-Health: PONG (response_time: 5ms)
+    and Check database
+        Health->>+DB: SELECT 1 (health check query)
+        DB-->>-Health: OK (response_time: 12ms)
+    and Check message queue
+        Health->>+Queue: Check topic connectivity
+        Queue-->>-Health: OK (lag: 0ms)
+    and Check file storage
+        Health->>+Storage: HEAD request to test bucket
+        Storage-->>-Health: OK (response_time: 8ms)
+    end
+    
+    Health->>Health: Aggregate health status
+    Note over Health: Calculate overall system health
+    Note over Health: Check response times, availability
+    
+    Health-->>-Gateway: Health check response
+    Note over Health,Gateway: {
+    Note over Health,Gateway:   "status": "healthy",
+    Note over Health,Gateway:   "timestamp": "2024-01-15T10:30:00Z",
+    Note over Health,Gateway:   "version": "1.2.3",
+    Note over Health,Gateway:   "services": {
+    Note over Health,Gateway:     "redis": {"status": "up", "latency": "5ms"},
+    Note over Health,Gateway:     "database": {"status": "up", "latency": "12ms"},
+    Note over Health,Gateway:     "kafka": {"status": "up", "lag": "0ms"},
+    Note over Health,Gateway:     "storage": {"status": "up", "latency": "8ms"}
+    Note over Health,Gateway:   },
+    Note over Health,Gateway:   "load": {"cpu": "45%", "memory": "60%"}
+    Note over Health,Gateway: }
+    
+    Gateway-->>-LB: Health response
+    LB-->>-Client: System health status
+    
+    Note over Client,Storage: Health check optimizations:
+    Note over Client,Storage: 1. Parallel health checks for speed
+    Note over Client,Storage: 2. Circuit breaker for failing services
+    Note over Client,Storage: 3. Health check caching (10s TTL)
+    Note over Client,Storage: 4. Metrics collection for monitoring
+    Note over Client,Storage: 5. Load balancer integration

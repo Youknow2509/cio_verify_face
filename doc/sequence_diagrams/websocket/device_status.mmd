@@ -1,0 +1,79 @@
+sequenceDiagram
+    participant Admin as Admin Dashboard
+    participant WSGateway as WebSocket Gateway
+    participant WS as WebSocket Service
+    participant Monitor as Device Monitor
+    participant Cache as Redis Cache
+    participant DB as PostgreSQL
+    participant Queue as Kafka Consumer
+
+    Admin->>+WSGateway: WebSocket Connection
+    Note over Admin,WSGateway: ws://api.example.com/ws/admin?company_id=123&token=xyz
+    
+    WSGateway->>WSGateway: Validate admin token
+    WSGateway->>+Cache: Register admin connection
+    Note over WSGateway,Cache: admin_ws_connection:{company_id}:{admin_id}
+    Cache-->>-WSGateway: Connection registered
+    
+    WSGateway->>+WS: Register WebSocket client
+    Note over WSGateway,WS: Map admin to company device notifications
+    WS-->>-WSGateway: Admin client registered
+    
+    WSGateway-->>-Admin: WebSocket connection established
+    
+    Note over Admin,Queue: Device status monitoring begins...
+    
+    Monitor->>+DB: Query device status for company
+    Note over Monitor,DB: Check device heartbeats, connectivity
+    DB-->>-Monitor: Device status data
+    
+    Monitor->>Monitor: Analyze device health
+    Note over Monitor: Detect offline devices, connection issues
+    
+    alt Device status changed
+        Monitor->>+Queue: Publish device_status event
+        Note over Monitor,Queue: {company_id, device_id, status, details}
+        Queue-->>-Monitor: Event published
+        
+        Queue->>+WS: Consume device_status event
+        WS->>+Cache: Get admin connections for company
+        Note over WS,Cache: admin_ws_connection:{company_id}:*
+        Cache-->>-WS: Admin connection list
+        
+        loop For each connected admin
+            WS->>WSGateway: Send device status update
+            Note over WS,WSGateway: {type: "device_status", payload: {...}}
+            
+            WSGateway->>Admin: WebSocket message
+            Note over WSGateway,Admin: Real-time device status update
+            
+            Admin->>Admin: Update dashboard UI
+            Note over Admin: Show device online/offline status
+            Note over Admin: Display connection quality, last seen
+        end
+        
+        WS-->>-Queue: Event processed
+    end
+    
+    Note over Admin,Queue: Admin alert generation...
+    
+    Monitor->>Monitor: Check alert conditions
+    Note over Monitor: Multiple offline devices, security alerts
+    
+    alt Alert condition met
+        Monitor->>+Queue: Publish admin_alert event
+        Note over Monitor,Queue: {company_id, alert_type, severity, message}
+        Queue-->>-Monitor: Alert published
+        
+        Queue->>+WS: Consume admin_alert event
+        WS->>WSGateway: Send alert to admins
+        
+        WSGateway->>Admin: Critical alert notification
+        Note over WSGateway,Admin: High priority alert message
+        
+        Admin->>Admin: Display alert notification
+        Note over Admin: Show alert badge, sound notification
+        
+        WS-->>-Queue: Alert processed
+    end
+    

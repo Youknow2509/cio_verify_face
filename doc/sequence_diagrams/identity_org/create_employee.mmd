@@ -1,0 +1,76 @@
+sequenceDiagram
+    participant Admin as Company Admin
+    participant LB as Load Balancer
+    participant Gateway as API Gateway
+    participant Auth as Auth Service
+    participant Identity as Identity Service
+    participant Cache as Redis Cache
+    participant DB as PostgreSQL
+    participant Queue as Message Queue
+    participant Notification as Notification Service
+
+    Admin->>+LB: POST /api/v1/users
+    Note over Admin,LB: {name, email, employee_id, department, position, phone}
+    
+    LB->>+Gateway: Forward request
+    Gateway->>+Auth: Validate admin token
+    Auth->>Auth: Extract company_id from token
+    Auth-->>-Gateway: Admin authorized for company
+    
+    Gateway->>+Identity: POST /api/v1/users
+    Note over Gateway,Identity: Include company_id in request context
+    
+    Identity->>Identity: Validate employee data
+    Note over Identity: Email format, employee_id uniqueness within company
+    
+    Identity->>+DB: Check email & employee_id uniqueness
+    Note over Identity,DB: Scoped to company for employee_id uniqueness
+    DB-->>-Identity: Uniqueness validation result
+    
+    alt Email or employee_id already exists
+        Identity-->>Gateway: 409 Conflict - Duplicate email/employee_id
+    else Data is unique
+        Identity->>+DB: BEGIN TRANSACTION
+        DB-->>-Identity: Transaction started
+        
+        par Create user record
+            Identity->>+DB: INSERT INTO users
+            Note over Identity,DB: Generate user_id, link to company
+            DB-->>-Identity: User created
+        and Create employee profile
+            Identity->>+DB: INSERT INTO employee_profiles
+            Note over Identity,DB: Department, position, hire date
+            DB-->>-Identity: Profile created
+        and Initialize permissions
+            Identity->>+DB: INSERT INTO user_permissions
+            Note over Identity,DB: Default employee permissions
+            DB-->>-Identity: Permissions set
+        end
+        
+        Identity->>+DB: COMMIT TRANSACTION
+        DB-->>-Identity: Transaction committed
+        
+        par Cache new employee data
+            Identity->>+Cache: Set user_profile:{user_id}
+            Note over Identity,Cache: TTL: 1 hour
+            Cache-->>-Identity: Profile cached
+        and Clear company user lists
+            Identity->>+Cache: DELETE company_users:{company_id}:*
+            Note over Identity,Cache: Invalidate cached user listings
+            Cache-->>-Identity: Cache cleared
+        and Queue onboarding workflow
+            Identity->>+Queue: Publish EmployeeCreated event
+            Note over Identity,Queue: Trigger onboarding process
+            Queue-->>-Identity: Event published
+        and Send welcome notification
+            Identity->>+Notification: Send welcome email
+            Note over Identity,Notification: Include setup instructions
+            Notification-->>-Identity: Email queued
+        end
+        
+        Identity-->>-Gateway: 201 Created - Employee added successfully
+    end
+    
+    Gateway-->>-LB: Response
+    LB-->>-Admin: Employee creation result
+    

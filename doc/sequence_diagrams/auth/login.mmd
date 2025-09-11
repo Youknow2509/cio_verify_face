@@ -1,0 +1,63 @@
+sequenceDiagram
+    participant Client as Client/Device
+    participant LB as Load Balancer
+    participant Gateway as API Gateway
+    participant Auth as Auth Service
+    participant Cache as Redis Cache
+    participant DB as PostgreSQL
+    participant Identity as Identity Service
+
+    Client->>+LB: POST /api/v1/auth/login
+    Note over Client,LB: Rate limiting per IP/tenant
+    
+    LB->>+Gateway: Forward request
+    Gateway->>Gateway: Validate request format
+    Gateway->>Gateway: Extract tenant info
+    
+    Gateway->>+Auth: POST /api/v1/auth/login
+    Note over Gateway,Auth: {username, password, device_id?, company_id}
+    
+    Auth->>+Cache: Check login attempts
+    Note over Auth,Cache: Key: login_attempts:{ip}:{username}
+    Cache-->>-Auth: Attempts count
+    
+    alt Too many attempts
+        Auth-->>Gateway: 429 Too Many Requests
+        Gateway-->>LB: Error response
+        LB-->>Client: Rate limited
+    else Valid attempt count
+        Auth->>+Identity: Validate user credentials
+        Note over Auth,Identity: Multi-tenant user lookup
+        Identity->>+Cache: Check user cache
+        Cache-->>-Identity: User data or cache miss
+        
+        alt Cache miss
+            Identity->>+DB: SELECT user WHERE username AND company_id
+            Note over Identity,DB: Partitioned by company_id
+            DB-->>-Identity: User data with password hash
+            Identity->>Cache: Cache user data (TTL: 15min)
+        end
+        
+        Identity-->>-Auth: User validation result
+        
+        alt Invalid credentials
+            Auth->>Cache: Increment login attempts
+            Auth-->>Gateway: 401 Unauthorized
+        else Valid credentials
+            Auth->>Cache: Reset login attempts
+            Auth->>Auth: Generate JWT tokens
+            Note over Auth: Access token (15min) + Refresh token (7 days)
+            
+            Auth->>+Cache: Store refresh token
+            Note over Auth,Cache: Key: refresh_token:{user_id}:{device_id}
+            Cache-->>-Auth: Token stored
+            
+            Auth->>Cache: Cache user session
+            Note over Auth,Cache: TTL: 15min, auto-refresh on activity
+            
+            Auth-->>-Gateway: 200 OK with tokens
+        end
+    end
+    
+    Gateway-->>-LB: Response
+    LB-->>-Client: Login response

@@ -1,0 +1,70 @@
+sequenceDiagram
+    participant Admin as Company Admin
+    participant LB as Load Balancer
+    participant Gateway as API Gateway
+    participant Auth as Auth Service
+    participant DeviceMgmt as Device Management
+    participant Cache as Redis Cache
+    participant DB as PostgreSQL
+    participant Queue as Message Queue
+    participant Monitoring as Device Monitoring
+
+    Admin->>+LB: POST /api/v1/devices
+    Note over Admin,LB: {name, location, serial_number, type, config}
+    
+    LB->>+Gateway: Forward request
+    Gateway->>+Auth: Validate admin permissions
+    Auth-->>-Gateway: Authorized for company
+    
+    Gateway->>+DeviceMgmt: POST /api/v1/devices
+    
+    DeviceMgmt->>DeviceMgmt: Validate device data
+    Note over DeviceMgmt: Check serial uniqueness, location validity
+    
+    DeviceMgmt->>+DB: Check device serial uniqueness
+    Note over DeviceMgmt,DB: Prevent duplicate device registration
+    DB-->>-DeviceMgmt: Serial availability
+    
+    alt Serial number already exists
+        DeviceMgmt-->>Gateway: 409 Conflict - Device already registered
+    else Serial available
+        DeviceMgmt->>+DB: BEGIN TRANSACTION
+        DB-->>-DeviceMgmt: Transaction started
+        
+        par Create device record
+            DeviceMgmt->>+DB: INSERT INTO devices
+            Note over DeviceMgmt,DB: Generate device_id, activation_code
+            DB-->>-DeviceMgmt: Device created
+        and Initialize device settings
+            DeviceMgmt->>+DB: INSERT INTO device_configs
+            Note over DeviceMgmt,DB: Default configurations, security settings
+            DB-->>-DeviceMgmt: Config initialized
+        and Create monitoring entry
+            DeviceMgmt->>+DB: INSERT INTO device_monitoring
+            Note over DeviceMgmt,DB: Initial health status
+            DB-->>-DeviceMgmt: Monitoring setup
+        end
+        
+        DeviceMgmt->>+DB: COMMIT TRANSACTION
+        DB-->>-DeviceMgmt: Transaction committed
+        
+        par Cache device data
+            DeviceMgmt->>+Cache: Set device_info:{device_id}
+            Note over DeviceMgmt,Cache: TTL: 1 hour
+            Cache-->>-DeviceMgmt: Cached
+        and Setup device monitoring
+            DeviceMgmt->>+Monitoring: Initialize device monitoring
+            Note over DeviceMgmt,Monitoring: Health checks, connectivity monitoring
+            Monitoring-->>-DeviceMgmt: Monitoring active
+        and Queue provisioning tasks
+            DeviceMgmt->>+Queue: Publish DeviceCreated event
+            Note over DeviceMgmt,Queue: Trigger device provisioning workflow
+            Queue-->>-DeviceMgmt: Event published
+        end
+        
+        DeviceMgmt-->>-Gateway: 201 Created with device details & activation code
+    end
+    
+    Gateway-->>-LB: Response
+    LB-->>-Admin: Device creation result
+    

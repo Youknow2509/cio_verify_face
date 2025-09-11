@@ -1,0 +1,67 @@
+sequenceDiagram
+    participant Client as Client/Device
+    participant LB as Load Balancer
+    participant Gateway as API Gateway
+    participant Auth as Auth Service
+    participant Cache as Redis Cache
+    participant DB as PostgreSQL
+
+    Client->>+LB: POST /api/v1/auth/refresh
+    Note over Client,LB: {refresh_token}
+    
+    LB->>+Gateway: Forward request
+    Gateway->>Gateway: Validate request format
+    
+    Gateway->>+Auth: POST /api/v1/auth/refresh
+    
+    Auth->>Auth: Decode refresh token
+    Auth->>Auth: Extract user_id, device_id, company_id
+    
+    Auth->>+Cache: GET refresh_token:{user_id}:{device_id}
+    Cache-->>-Auth: Stored refresh token or null
+    
+    alt Token not found or invalid
+        Auth-->>Gateway: 401 Unauthorized - Invalid refresh token
+        Gateway-->>LB: Error response
+        LB-->>Client: Token refresh failed
+    else Valid refresh token
+        Auth->>Auth: Validate refresh token
+        Note over Auth: Check expiration, signature, blacklist
+        
+        alt Token expired or blacklisted
+            Auth->>Cache: DELETE refresh_token:{user_id}:{device_id}
+            Auth-->>Gateway: 401 Unauthorized - Token expired
+        else Valid token
+            Auth->>+Cache: Check user active status
+            Note over Auth,Cache: Key: user_status:{user_id}:{company_id}
+            Cache-->>-Auth: User status or cache miss
+            
+            alt Cache miss - verify user status
+                Auth->>+DB: SELECT active FROM users WHERE id AND company_id
+                Note over Auth,DB: Check if user still active
+                DB-->>-Auth: User status
+                Auth->>Cache: Cache user status (TTL: 5min)
+            end
+            
+            alt User deactivated
+                Auth->>Cache: DELETE refresh_token:{user_id}:{device_id}
+                Auth-->>Gateway: 401 Unauthorized - User deactivated
+            else User active
+                Auth->>Auth: Generate new access token
+                Note over Auth: New JWT with 15min TTL
+                
+                opt Refresh token rotation (security best practice)
+                    Auth->>Auth: Generate new refresh token
+                    Auth->>+Cache: Store new refresh token
+                    Note over Auth,Cache: Replace old token with new one
+                    Cache-->>-Auth: New token stored
+                end
+                
+                Auth-->>-Gateway: 200 OK with new tokens
+            end
+        end
+    end
+    
+    Gateway-->>-LB: Response
+    LB-->>-Client: Token refresh response
+    

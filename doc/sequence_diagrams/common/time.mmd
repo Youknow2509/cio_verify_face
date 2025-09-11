@@ -1,0 +1,38 @@
+sequenceDiagram
+    participant Client as Time Server
+    participant LB as Load Balancer
+    participant Gateway as API Gateway
+    participant Time as Time Service
+    participant Cache as Redis Cache
+    participant NTP as NTP Server
+
+    Client->>+LB: GET /api/v1/time
+    Note over Client,LB: Device synchronization request
+    
+    LB->>+Gateway: Forward request
+    Gateway->>+Time: GET /api/v1/time
+    
+    Time->>+Cache: GET server_time_cache
+    Note over Time,Cache: Check for cached time (TTL: 1 second)
+    Cache-->>-Time: Cached time or miss
+    
+    alt Cache hit
+        Time-->>Gateway: Return cached server time
+    else Cache miss
+        Time->>+NTP: Get precise time
+        Note over Time,NTP: Synchronize with authoritative time source
+        NTP-->>-Time: Precise timestamp
+        
+        Time->>Time: Process time data
+        Note over Time: Add timezone info, format options
+        
+        Time->>+Cache: Cache server time
+        Note over Time,Cache: TTL: 1 second for precision
+        Cache-->>-Time: Time cached
+        
+        Time-->>-Gateway: Server time response
+    end
+    
+    Gateway-->>-LB: Time response
+    LB-->>-Client: Server timestamp
+    

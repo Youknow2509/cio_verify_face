@@ -1,0 +1,51 @@
+sequenceDiagram
+    participant Client as Client
+    participant LB as Load Balancer
+    participant Gateway as API Gateway
+    participant Auth as Auth Service
+    participant Cache as Redis Cache
+
+    Client->>+LB: GET /api/v1/auth/me
+    Note over Client,LB: Authorization: Bearer {access_token}
+    
+    LB->>+Gateway: Forward request
+    Gateway->>Gateway: Extract & validate JWT token
+    Gateway->>Gateway: Check token blacklist
+    
+    alt Token invalid or blacklisted
+        Gateway-->>LB: 401 Unauthorized
+        LB-->>Client: Authentication failed
+    else Valid token
+        Gateway->>+Auth: GET /api/v1/auth/me
+        Note over Gateway,Auth: Token context: {user_id, company_id, device_id}
+        
+        Auth->>+Cache: GET user_profile:{user_id}:{company_id}
+        Cache-->>-Auth: User profile or cache miss
+        
+        alt Cache hit
+            Auth->>Auth: Return cached profile
+            Auth-->>Gateway: 200 OK with user info
+        else Cache miss
+            Auth->>+Cache: GET user_basic:{user_id}
+            Note over Auth,Cache: Fallback to basic user data
+            Cache-->>-Auth: Basic user data
+            
+            alt Basic data available
+                Auth->>Auth: Build minimal profile
+                Auth->>Cache: Cache profile (TTL: 5min)
+                Auth-->>Gateway: 200 OK with basic info
+            else No cached data
+                Note over Auth: Async profile rebuild triggered
+                Auth->>Auth: Return minimal token-based info
+                Auth-->>-Gateway: 200 OK with token claims
+            end
+        end
+        
+        Gateway->>Gateway: Add response headers
+        Note over Gateway: X-User-Company, X-User-Role, X-Rate-Limit
+        
+        Gateway-->>-LB: User profile response
+    end
+    
+    LB-->>-Client: Current user information
+    
