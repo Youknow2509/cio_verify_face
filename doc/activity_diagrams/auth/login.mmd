@@ -1,0 +1,30 @@
+flowchart TD
+    A[Client Login Request] --> B{Rate Limit Check}
+    B -->|Too Many Attempts| C[Return 429 Too Many Requests]
+    B -->|Valid Attempt| D[Validate Request Format]
+    D --> E{Extract Tenant Info}
+    E -->|Invalid Format| F[Return 400 Bad Request]
+    E -->|Valid Format| G[Check Login Attempts in Cache]
+    G --> H{Attempts Within Limit?}
+    H -->|No| I[Return 429 Rate Limited]
+    H -->|Yes| J[Validate User Credentials]
+    J --> K{Check User Cache}
+    K -->|Cache Hit| L[Retrieve User Data from Cache]
+    K -->|Cache Miss| M[Query Database for User]
+    M --> N[Cache User Data]
+    N --> L
+    L --> O{Valid Credentials?}
+    O -->|No| P[Increment Login Attempts]
+    P --> Q[Return 401 Unauthorized]
+    O -->|Yes| R[Reset Login Attempts]
+    R --> S[Generate JWT Tokens]
+    S --> T[Store Refresh Token in Cache]
+    T --> U[Cache User Session]
+    U --> V[Return 200 OK with Tokens]
+    
+    style A fill:#e1f5fe
+    style C fill:#ffebee
+    style F fill:#ffebee
+    style I fill:#ffebee
+    style Q fill:#ffebee
+    style V fill:#e8f5e8

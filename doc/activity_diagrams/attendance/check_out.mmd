@@ -1,0 +1,31 @@
+flowchart TD
+    A[Device Check-out Request] --> B[Validate Device Token]
+    B --> C{Device Authorized?}
+    C -->|No| D[Return 401 Unauthorized]
+    C -->|Yes| E[Check Rate Limit]
+    E --> F{Rate Limit OK?}
+    F -->|No| G[Return 429 Too Many Requests]
+    F -->|Yes| H[Process Face Image]
+    H --> I{Face Detection Success?}
+    I -->|No| J[Return 400 Face Not Detected]
+    I -->|Yes| K[Extract Face Embedding]
+    K --> L[Find Matching Employee]
+    L --> M{Employee Match Found?}
+    M -->|No| N[Return 401 Unknown Person]
+    M -->|Yes| O[Check Existing Check-in]
+    O --> P{Has Active Check-in?}
+    P -->|No| Q[Return 400 No Active Check-in]
+    P -->|Yes| R[Calculate Work Duration]
+    R --> S[Record Check-out]
+    S --> T[Update Rate Limit]
+    T --> U[Publish Event to Queue]
+    U --> V[Send Real-time Notification]
+    V --> W[Return 200 Check-out Successful]
+    
+    style A fill:#e1f5fe
+    style D fill:#ffebee
+    style G fill:#ffebee
+    style J fill:#ffebee
+    style N fill:#ffebee
+    style Q fill:#ffebee
+    style W fill:#e8f5e8

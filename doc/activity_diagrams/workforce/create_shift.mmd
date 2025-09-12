@@ -1,0 +1,28 @@
+flowchart TD
+    A[Create Shift Request] --> B[Validate JWT Token]
+    B --> C{Token Valid?}
+    C -->|No| D[Return 401 Unauthorized]
+    C -->|Yes| E[Check Manager Permissions]
+    E --> F{Manager Access?}
+    F -->|No| G[Return 403 Forbidden]
+    F -->|Yes| H[Validate Shift Data]
+    H --> I{Valid Shift Info?}
+    I -->|No| J[Return 400 Invalid Data]
+    I -->|Yes| K[Check Time Conflicts]
+    K --> L{No Conflicts?}
+    L -->|No| M[Return 409 Time Conflict]
+    L -->|Yes| N[Generate Shift ID]
+    N --> O[Insert Shift Record]
+    O --> P[Assign Employees to Shift]
+    P --> Q[Update Employee Schedules]
+    Q --> R[Cache Shift Data]
+    R --> S[Send Notifications]
+    S --> T[Log Shift Creation]
+    T --> U[Return 201 Shift Created]
+    
+    style A fill:#e1f5fe
+    style D fill:#ffebee
+    style G fill:#ffebee
+    style J fill:#ffebee
+    style M fill:#ffebee
+    style U fill:#e8f5e8

@@ -1,0 +1,27 @@
+flowchart TD
+    A[Create Device Request] --> B[Validate JWT Token]
+    B --> C{Token Valid?}
+    C -->|No| D[Return 401 Unauthorized]
+    C -->|Yes| E[Check Admin Permissions]
+    E --> F{Admin Access?}
+    F -->|No| G[Return 403 Forbidden]
+    F -->|Yes| H[Validate Device Data]
+    H --> I{Valid Device Info?}
+    I -->|No| J[Return 400 Invalid Data]
+    I -->|Yes| K[Check Device Serial Uniqueness]
+    K --> L{Serial Number Available?}
+    L -->|No| M[Return 409 Serial Already Exists]
+    L -->|Yes| N[Generate Device ID]
+    N --> O[Generate Registration Code]
+    O --> P[Insert Device Record]
+    P --> Q[Set Device Status to Pending]
+    Q --> R[Cache Device Data]
+    R --> S[Log Device Creation]
+    S --> T[Return 201 Device Created]
+    
+    style A fill:#e1f5fe
+    style D fill:#ffebee
+    style G fill:#ffebee
+    style J fill:#ffebee
+    style M fill:#ffebee
+    style T fill:#e8f5e8
