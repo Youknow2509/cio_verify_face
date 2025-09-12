@@ -1,0 +1,28 @@
+flowchart TD
+    A[Attendance Result Event Triggered] --> B[Validate Event Data]
+    B --> C{Valid Event Data?}
+    C -->|No| D[Log Invalid Event]
+    C -->|Yes| E[Get Connected Devices for Company]
+    E --> F{Any Devices Connected?}
+    F -->|No| G[Skip Broadcast]
+    F -->|Yes| H[Filter Devices by Location]
+    H --> I[Prepare Event Payload]
+    I --> J[Include Employee Info]
+    J --> K[Include Timestamp]
+    K --> L[Include Attendance Status]
+    L --> M[Broadcast to Target Devices]
+    M --> N{Broadcast Successful?}
+    N -->|No| O[Log Broadcast Failure]
+    N -->|Yes| P[Update Delivery Status]
+    P --> Q[Log Successful Delivery]
+    Q --> R[End Event Processing]
+    G --> R
+    D --> R
+    O --> R
+    
+    style A fill:#e1f5fe
+    style D fill:#fff3e0
+    style G fill:#f3e5f5
+    style O fill:#ffebee
+    style Q fill:#e8f5e8
+    style R fill:#f5f5f5

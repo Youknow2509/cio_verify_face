@@ -1,0 +1,32 @@
+flowchart TD
+    A[Device Check-in Request] --> B[Validate Device Token]
+    B --> C{Device Authorized?}
+    C -->|No| D[Return 401 Unauthorized]
+    C -->|Yes| E[Check Rate Limit]
+    E --> F{Rate Limit OK?}
+    F -->|No| G[Return 429 Too Many Requests]
+    F -->|Yes| H[Process Face Image]
+    H --> I{Face Detection Success?}
+    I -->|No| J[Return 400 Face Not Detected]
+    I -->|Yes| K[Extract Face Embedding]
+    K --> L[Find Matching Employee]
+    L --> M{Check Face Vector Cache?}
+    M -->|Cache Miss| N[Load Face Vectors from Database]
+    N --> O[Cache Face Vectors]
+    O --> P[Compare Face Embeddings]
+    M -->|Cache Hit| P
+    P --> Q{Employee Match Found?}
+    Q -->|No| R[Log Failed Attempt]
+    R --> S[Return 401 Unknown Person]
+    Q -->|Yes| T[Record Attendance]
+    T --> U[Update Rate Limit]
+    U --> V[Publish Event to Queue]
+    V --> W[Send Real-time Notification]
+    W --> X[Return 200 Check-in Successful]
+    
+    style A fill:#e1f5fe
+    style D fill:#ffebee
+    style G fill:#ffebee
+    style J fill:#ffebee
+    style S fill:#ffebee
+    style X fill:#e8f5e8
