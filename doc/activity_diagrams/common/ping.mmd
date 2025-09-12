@@ -1,0 +1,19 @@
+flowchart TD
+    A[Ping Request] --> B[Receive Health Check Request]
+    B --> C[Check Service Status]
+    C --> D[Test Database Connection]
+    D --> E{Database Connected?}
+    E -->|No| F[Mark as Unhealthy]
+    E -->|Yes| G[Test Cache Connection]
+    G --> H{Cache Connected?}
+    H -->|No| F
+    H -->|Yes| I[Test Message Queue]
+    I --> J{Queue Connected?}
+    J -->|No| F
+    J -->|Yes| K[All Systems OK]
+    K --> L[Return 200 OK - Healthy]
+    F --> M[Return 503 Service Unavailable]
+    
+    style A fill:#e1f5fe
+    style L fill:#e8f5e8
+    style M fill:#ffebee

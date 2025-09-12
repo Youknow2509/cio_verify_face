@@ -1,0 +1,13 @@
+flowchart TD
+    A[Client Logout Request] --> B[Validate JWT Token]
+    B --> C{Token Valid?}
+    C -->|No| D[Return 401 Unauthorized]
+    C -->|Yes| E[Extract User & Device Info]
+    E --> F[Invalidate Refresh Token]
+    F --> G[Remove User Session from Cache]
+    G --> H[Log Logout Event]
+    H --> I[Return 200 OK - Logout Successful]
+    
+    style A fill:#e1f5fe
+    style D fill:#ffebee
+    style I fill:#e8f5e8

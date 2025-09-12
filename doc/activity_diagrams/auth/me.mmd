@@ -1,0 +1,16 @@
+flowchart TD
+    A[Client Me Request] --> B[Validate JWT Token]
+    B --> C{Token Valid?}
+    C -->|No| D[Return 401 Unauthorized]
+    C -->|Yes| E[Extract User ID from Token]
+    E --> F[Check User Cache]
+    F --> G{User Found in Cache?}
+    G -->|Yes| H[Retrieve User Data from Cache]
+    G -->|No| I[Query Database for User Info]
+    I --> J[Cache User Data]
+    J --> H
+    H --> K[Return 200 OK with User Info]
+    
+    style A fill:#e1f5fe
+    style D fill:#ffebee
+    style K fill:#e8f5e8

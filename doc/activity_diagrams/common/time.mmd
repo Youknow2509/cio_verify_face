@@ -1,0 +1,11 @@
+flowchart TD
+    A[Time Request] --> B[Receive Time Request]
+    B --> C[Get Current Server Time]
+    C --> D[Format Time in UTC]
+    D --> E[Format Time in Multiple Timezones]
+    E --> F[Include Unix Timestamp]
+    F --> G[Add Server Timezone Info]
+    G --> H[Return 200 OK with Time Data]
+    
+    style A fill:#e1f5fe
+    style H fill:#e8f5e8

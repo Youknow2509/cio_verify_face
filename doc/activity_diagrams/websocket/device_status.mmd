@@ -1,0 +1,33 @@
+flowchart TD
+    A[Device Status Event Triggered] --> B[Validate Device Event]
+    B --> C{Valid Device Data?}
+    C -->|No| D[Log Invalid Event]
+    C -->|Yes| E[Check Device Authentication]
+    E --> F{Device Authenticated?}
+    F -->|No| G[Log Unauthorized Device]
+    F -->|Yes| H[Determine Status Type]
+    H --> I{Status Type?}
+    I -->|Online| J[Mark Device Online]
+    I -->|Offline| K[Mark Device Offline]
+    I -->|Error| L[Mark Device Error State]
+    J --> M[Update Device Heartbeat]
+    K --> N[Log Disconnect Time]
+    L --> O[Store Error Information]
+    M --> P[Notify Company Admins]
+    N --> P
+    O --> P
+    P --> Q[Update Device Cache]
+    Q --> R[Broadcast Status to Dashboard]
+    R --> S[Log Status Change]
+    S --> T[End Status Processing]
+    D --> T
+    G --> T
+    
+    style A fill:#e1f5fe
+    style D fill:#fff3e0
+    style G fill:#ffebee
+    style J fill:#e8f5e8
+    style K fill:#fff3e0
+    style L fill:#ffebee
+    style S fill:#e8f5e8
+    style T fill:#f5f5f5

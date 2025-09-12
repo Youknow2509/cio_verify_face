@@ -1,0 +1,28 @@
+flowchart TD
+    A[Create Company Request] --> B[Validate JWT Token]
+    B --> C{Token Valid?}
+    C -->|No| D[Return 401 Unauthorized]
+    C -->|Yes| E[Check Admin Permissions]
+    E --> F{Admin Access?}
+    F -->|No| G[Return 403 Forbidden]
+    F -->|Yes| H[Validate Request Data]
+    H --> I{Valid Company Data?}
+    I -->|No| J[Return 400 Invalid Data]
+    I -->|Yes| K[Check Company Name Uniqueness]
+    K --> L{Name Available?}
+    L -->|No| M[Return 409 Name Already Exists]
+    L -->|Yes| N[Generate Company ID]
+    N --> O[Create Database Partition]
+    O --> P[Insert Company Record]
+    P --> Q[Setup Default Configurations]
+    Q --> R[Create Admin User]
+    R --> S[Initialize Company Cache]
+    S --> T[Log Company Creation Event]
+    T --> U[Return 201 Company Created]
+    
+    style A fill:#e1f5fe
+    style D fill:#ffebee
+    style G fill:#ffebee
+    style J fill:#ffebee
+    style M fill:#ffebee
+    style U fill:#e8f5e8

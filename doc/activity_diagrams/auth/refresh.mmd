@@ -1,0 +1,21 @@
+flowchart TD
+    A[Client Refresh Request] --> B[Validate Refresh Token]
+    B --> C{Refresh Token Valid?}
+    C -->|No| D[Return 401 Unauthorized]
+    C -->|Yes| E[Check Token in Cache]
+    E --> F{Token Found in Cache?}
+    F -->|No| G[Return 401 Token Not Found]
+    F -->|Yes| H{Token Not Expired?}
+    H -->|No| I[Return 401 Token Expired]
+    H -->|Yes| J[Generate New Access Token]
+    J --> K[Generate New Refresh Token]
+    K --> L[Store New Refresh Token]
+    L --> M[Invalidate Old Refresh Token]
+    M --> N[Update User Session Cache]
+    N --> O[Return 200 OK with New Tokens]
+    
+    style A fill:#e1f5fe
+    style D fill:#ffebee
+    style G fill:#ffebee
+    style I fill:#ffebee
+    style O fill:#e8f5e8

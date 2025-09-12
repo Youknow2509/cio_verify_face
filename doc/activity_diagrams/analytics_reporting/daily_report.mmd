@@ -1,0 +1,27 @@
+flowchart TD
+    A[Daily Report Request] --> B[Validate JWT Token]
+    B --> C{Token Valid?}
+    C -->|No| D[Return 401 Unauthorized]
+    C -->|Yes| E[Check Report Permissions]
+    E --> F{Can Access Reports?}
+    F -->|No| G[Return 403 Forbidden]
+    F -->|Yes| H[Validate Date Parameters]
+    H --> I{Valid Date Range?}
+    I -->|No| J[Return 400 Invalid Date Range]
+    I -->|Yes| K[Check Cache for Report]
+    K --> L{Cache Hit?}
+    L -->|Yes| M[Retrieve from Cache]
+    L -->|No| N[Query Attendance Data]
+    N --> O[Calculate Daily Statistics]
+    O --> P[Group by Departments]
+    P --> Q[Calculate Totals & Averages]
+    Q --> R[Format Report Data]
+    R --> S[Cache Report Results]
+    S --> M
+    M --> T[Return 200 OK with Report]
+    
+    style A fill:#e1f5fe
+    style D fill:#ffebee
+    style G fill:#ffebee
+    style J fill:#ffebee
+    style T fill:#e8f5e8

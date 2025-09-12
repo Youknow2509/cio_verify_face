@@ -1,0 +1,26 @@
+flowchart TD
+    A[Employee History Request] --> B[Validate JWT Token]
+    B --> C{Token Valid?}
+    C -->|No| D[Return 401 Unauthorized]
+    C -->|Yes| E[Extract User & Company Info]
+    E --> F[Validate Query Parameters]
+    F --> G{Valid Parameters?}
+    G -->|No| H[Return 400 Invalid Parameters]
+    G -->|Yes| I[Check Cache for History]
+    I --> J{Cache Hit?}
+    J -->|Yes| K[Retrieve from Cache]
+    J -->|No| L[Query Time-Series Database]
+    L --> M[Apply Date Range Filter]
+    M --> N[Apply Company Scope Filter]
+    N --> O[Apply Employee Filter]
+    O --> P[Sort by Timestamp]
+    P --> Q[Apply Pagination]
+    Q --> R[Cache Results]
+    R --> K
+    K --> S[Format Response Data]
+    S --> T[Return 200 OK with History]
+    
+    style A fill:#e1f5fe
+    style D fill:#ffebee
+    style H fill:#ffebee
+    style T fill:#e8f5e8
