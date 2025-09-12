@@ -1,0 +1,32 @@
+flowchart TD
+    A[Export Report Request] --> B[Validate JWT Token]
+    B --> C{Token Valid?}
+    C -->|No| D[Return 401 Unauthorized]
+    C -->|Yes| E[Check Export Permissions]
+    E --> F{Can Export Reports?}
+    F -->|No| G[Return 403 Forbidden]
+    F -->|Yes| H[Validate Export Parameters]
+    H --> I{Valid Parameters?}
+    I -->|No| J[Return 400 Invalid Parameters]
+    I -->|Yes| K[Check Rate Limit]
+    K --> L{Rate Limit OK?}
+    L -->|No| M[Return 429 Too Many Requests]
+    L -->|Yes| N[Queue Export Job]
+    N --> O[Generate Job ID]
+    O --> P[Process Data in Background]
+    P --> Q{Export Format?}
+    Q -->|CSV| R[Generate CSV File]
+    Q -->|PDF| S[Generate PDF Report]
+    Q -->|Excel| T[Generate Excel File]
+    R --> U[Store File in Cloud Storage]
+    S --> U
+    T --> U
+    U --> V[Send Download Link via Email]
+    V --> W[Return 202 Export Initiated]
+    
+    style A fill:#e1f5fe
+    style D fill:#ffebee
+    style G fill:#ffebee
+    style J fill:#ffebee
+    style M fill:#ffebee
+    style W fill:#e8f5e8

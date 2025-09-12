@@ -1,0 +1,28 @@
+flowchart TD
+    A[Create Employee Request] --> B[Validate JWT Token]
+    B --> C{Token Valid?}
+    C -->|No| D[Return 401 Unauthorized]
+    C -->|Yes| E[Check Company Admin Permissions]
+    E --> F{Admin Access for Company?}
+    F -->|No| G[Return 403 Forbidden]
+    F -->|Yes| H[Validate Employee Data]
+    H --> I{Valid Employee Data?}
+    I -->|No| J[Return 400 Invalid Data]
+    I -->|Yes| K[Check Email Uniqueness]
+    K --> L{Email Available?}
+    L -->|No| M[Return 409 Email Already Exists]
+    L -->|Yes| N[Hash Password]
+    N --> O[Generate Employee ID]
+    O --> P[Insert Employee Record]
+    P --> Q[Set Default Permissions]
+    Q --> R[Send Welcome Email]
+    R --> S[Cache Employee Data]
+    S --> T[Log Employee Creation]
+    T --> U[Return 201 Employee Created]
+    
+    style A fill:#e1f5fe
+    style D fill:#ffebee
+    style G fill:#ffebee
+    style J fill:#ffebee
+    style M fill:#ffebee
+    style U fill:#e8f5e8

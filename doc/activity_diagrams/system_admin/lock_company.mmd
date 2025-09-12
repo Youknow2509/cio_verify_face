@@ -1,0 +1,28 @@
+flowchart TD
+    A[Lock Company Request] --> B[Validate JWT Token]
+    B --> C{Token Valid?}
+    C -->|No| D[Return 401 Unauthorized]
+    C -->|Yes| E[Check Super Admin Role]
+    E --> F{Super Admin Access?}
+    F -->|No| G[Return 403 Forbidden]
+    F -->|Yes| H[Validate Company ID]
+    H --> I{Valid Company ID?}
+    I -->|No| J[Return 404 Company Not Found]
+    I -->|Yes| K[Check Current Company Status]
+    K --> L{Company Already Locked?}
+    L -->|Yes| M[Return 409 Already Locked]
+    L -->|No| N[Update Company Status to Locked]
+    N --> O[Disable All Company Users]
+    O --> P[Invalidate All Company Sessions]
+    P --> Q[Disable All Company Devices]
+    Q --> R[Send Lock Notification]
+    R --> S[Log Admin Action]
+    S --> T[Cache Status Update]
+    T --> U[Return 200 Company Locked]
+    
+    style A fill:#e1f5fe
+    style D fill:#ffebee
+    style G fill:#ffebee
+    style J fill:#ffebee
+    style M fill:#ffebee
+    style U fill:#e8f5e8

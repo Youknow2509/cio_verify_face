@@ -1,0 +1,30 @@
+flowchart TD
+    A[Upload Signature Request] --> B[Validate JWT Token]
+    B --> C{Token Valid?}
+    C -->|No| D[Return 401 Unauthorized]
+    C -->|Yes| E[Check Upload Permissions]
+    E --> F{Can Upload Signature?}
+    F -->|No| G[Return 403 Forbidden]
+    F -->|Yes| H[Validate Signature Image]
+    H --> I{Valid Image Format?}
+    I -->|No| J[Return 400 Invalid Image]
+    I -->|Yes| K[Check Image Size]
+    K --> L{Size Within Limits?}
+    L -->|No| M[Return 400 File Too Large]
+    L -->|Yes| N[Process Signature Image]
+    N --> O[Remove Background]
+    O --> P[Normalize Image Quality]
+    P --> Q[Generate Unique Filename]
+    Q --> R[Upload to Cloud Storage]
+    R --> S[Store Signature Metadata]
+    S --> T[Update User Profile]
+    T --> U[Cache Signature Data]
+    U --> V[Log Upload Event]
+    V --> W[Return 200 Signature Uploaded]
+    
+    style A fill:#e1f5fe
+    style D fill:#ffebee
+    style G fill:#ffebee
+    style J fill:#ffebee
+    style M fill:#ffebee
+    style W fill:#e8f5e8
