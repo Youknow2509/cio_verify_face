@@ -75,3 +75,9 @@ sequenceDiagram
     Gateway-->>-LB: Response
     LB-->>-Device: Activation response
     
+    Note over Device,DB: Enterprise scale optimizations:
+    Note over Device,DB: 1. Device registration pre-validation
+    Note over Device,DB: 2. Bulk device activation APIs
+    Note over Device,DB: 3. Device credential rotation
+    Note over Device,DB: 4. Distributed device registry
+    Note over Device,DB: 5. Automated device health monitoring

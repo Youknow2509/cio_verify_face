@@ -61,3 +61,9 @@ sequenceDiagram
     
     Gateway-->>-LB: Response
     LB-->>-Client: Login response
+    
+    Note over Client,DB: Optimizations for millions of companies:
+    Note over Client,DB: 1. Database sharding by company_id
+    Note over Client,DB: 2. Redis cluster for distributed caching
+    Note over Client,DB: 3. Connection pooling with tenant isolation
+    Note over Client,DB: 4. JWT with short TTL to reduce session storage

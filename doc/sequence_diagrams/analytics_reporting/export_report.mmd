@@ -79,3 +79,9 @@ sequenceDiagram
     Gateway-->>-LB: Response
     LB-->>-Admin: Export result with download link
     
+    Note over Admin,Storage: Export optimizations for large datasets:
+    Note over Admin,Storage: 1. Async report generation for large companies
+    Note over Admin,Storage: 2. Chunked data processing to prevent timeouts
+    Note over Admin,Storage: 3. Compressed file formats for faster downloads
+    Note over Admin,Storage: 4. CDN distribution for export files
+    Note over Admin,Storage: 5. Automatic cleanup of expired exports

@@ -35,3 +35,8 @@ sequenceDiagram
     Gateway-->>-LB: Success response
     LB-->>-Client: Logout confirmed
     
+    Note over Client,Cache: Optimizations for scale:
+    Note over Client,Cache: 1. Token blacklist with automatic TTL cleanup
+    Note over Client,Cache: 2. Batch operations for multi-device logout
+    Note over Client,Cache: 3. Distributed cache for session consistency
+    Note over Client,Cache: 4. Async cleanup of expired tokens

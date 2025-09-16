@@ -80,3 +80,9 @@ sequenceDiagram
     Gateway-->>-LB: Response
     LB-->>-Admin: Face registration result
     
+    Note over Admin,DB: Scale optimizations for face processing:
+    Note over Admin,DB: 1. Batch face processing pipeline
+    Note over Admin,DB: 2. Distributed face embedding storage
+    Note over Admin,DB: 3. Company-isolated face models
+    Note over Admin,DB: 4. Async background processing
+    Note over Admin,DB: 5. Face quality pre-filtering

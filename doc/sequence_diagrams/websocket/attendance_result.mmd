@@ -67,3 +67,9 @@ sequenceDiagram
     
     WSGateway->>Device: Heartbeat pong
     
+    Note over Device,Cache: WebSocket optimizations for scale:
+    Note over Device,Cache: 1. Connection pooling across multiple WS nodes
+    Note over Device,Cache: 2. Message queuing for offline devices
+    Note over Device,Cache: 3. Device heartbeat monitoring
+    Note over Device,Cache: 4. Load balancing WS connections
+    Note over Device,Cache: 5. Automatic reconnection handling

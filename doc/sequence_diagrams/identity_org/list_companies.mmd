@@ -49,3 +49,9 @@ sequenceDiagram
     Gateway-->>-LB: Response
     LB-->>-Admin: Companies listing
     
+    Note over Admin,DB: Scale optimizations for millions of companies:
+    Note over Admin,DB: 1. Database indexing on search fields
+    Note over Admin,DB: 2. Paginated results with cursor-based pagination
+    Note over Admin,DB: 3. Read replicas for admin queries
+    Note over Admin,DB: 4. Aggregated metrics pre-computed
+    Note over Admin,DB: 5. Company data partitioning by region

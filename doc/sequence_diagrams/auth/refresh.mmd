@@ -65,3 +65,8 @@ sequenceDiagram
     Gateway-->>-LB: Response
     LB-->>-Client: Token refresh response
     
+    Note over Client,DB: Scale optimizations:
+    Note over Client,DB: 1. Refresh token rotation for security
+    Note over Client,DB: 2. User status caching to reduce DB load
+    Note over Client,DB: 3. Batch token cleanup for expired tokens
+    Note over Client,DB: 4. Redis cluster for token distribution
