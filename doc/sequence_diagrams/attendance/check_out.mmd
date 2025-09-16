@@ -70,3 +70,8 @@ sequenceDiagram
     Gateway-->>-LB: Response
     LB-->>-Device: Check-out result
     
+    Note over Device,TimeSeries: Check-out optimizations:
+    Note over Device,TimeSeries: 1. Automatic break time calculation
+    Note over Device,TimeSeries: 2. Overtime detection and alerts
+    Note over Device,TimeSeries: 3. Shift validation against schedules
+    Note over Device,TimeSeries: 4. Real-time work hour tracking

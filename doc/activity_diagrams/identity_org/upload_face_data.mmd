@@ -1,0 +1,33 @@
+flowchart TD
+    A[Upload Face Data Request] --> B[Validate JWT Token]
+    B --> C{Token Valid?}
+    C -->|No| D[Return 401 Unauthorized]
+    C -->|Yes| E[Check User Permissions]
+    E --> F{Can Upload Face Data?}
+    F -->|No| G[Return 403 Forbidden]
+    F -->|Yes| H[Validate Face Image]
+    H --> I{Valid Image Format?}
+    I -->|No| J[Return 400 Invalid Image]
+    I -->|Yes| K[Process Face Detection]
+    K --> L{Face Detected?}
+    L -->|No| M[Return 400 No Face Found]
+    L -->|Yes| N[Quality Assessment]
+    N --> O{Image Quality OK?}
+    O -->|No| P[Return 400 Poor Image Quality]
+    O -->|Yes| Q[Extract Face Embedding]
+    Q --> R[Check for Duplicate Faces]
+    R --> S{Duplicate Found?}
+    S -->|Yes| T[Return 409 Face Already Exists]
+    S -->|No| U[Store Face Embedding]
+    U --> V[Update Face Vector Cache]
+    V --> W[Log Face Data Upload]
+    W --> X[Return 200 Face Data Uploaded]
+    
+    style A fill:#e1f5fe
+    style D fill:#ffebee
+    style G fill:#ffebee
+    style J fill:#ffebee
+    style M fill:#ffebee
+    style P fill:#ffebee
+    style T fill:#ffebee
+    style X fill:#e8f5e8

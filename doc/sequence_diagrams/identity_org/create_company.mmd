@@ -66,3 +66,9 @@ sequenceDiagram
     Gateway-->>-LB: Response
     LB-->>-Admin: Company creation result
     
+    Note over Admin,DB: Enterprise provisioning optimizations:
+    Note over Admin,DB: 1. Atomic company + admin creation
+    Note over Admin,DB: 2. Async resource provisioning
+    Note over Admin,DB: 3. Pre-allocated company ID pools
+    Note over Admin,DB: 4. Template-based company setup
+    Note over Admin,DB: 5. Bulk company creation APIs

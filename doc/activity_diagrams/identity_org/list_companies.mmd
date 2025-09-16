@@ -1,0 +1,27 @@
+flowchart TD
+    A[List Companies Request] --> B[Validate JWT Token]
+    B --> C{Token Valid?}
+    C -->|No| D[Return 401 Unauthorized]
+    C -->|Yes| E[Extract User Role]
+    E --> F{Admin Role?}
+    F -->|No| G[Return 403 Forbidden]
+    F -->|Yes| H[Parse Query Parameters]
+    H --> I{Valid Parameters?}
+    I -->|No| J[Return 400 Invalid Parameters]
+    I -->|Yes| K[Check Cache for Companies List]
+    K --> L{Cache Hit?}
+    L -->|Yes| M[Retrieve from Cache]
+    L -->|No| N[Query Database]
+    N --> O[Apply Filters & Pagination]
+    O --> P[Apply Company Status Filter]
+    P --> Q[Sort Results]
+    Q --> R[Cache Results]
+    R --> M
+    M --> S[Format Response Data]
+    S --> T[Return 200 OK with Companies]
+    
+    style A fill:#e1f5fe
+    style D fill:#ffebee
+    style G fill:#ffebee
+    style J fill:#ffebee
+    style T fill:#e8f5e8

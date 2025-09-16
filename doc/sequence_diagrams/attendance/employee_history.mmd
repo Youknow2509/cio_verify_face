@@ -1,6 +1,6 @@
 sequenceDiagram
     participant Employee as Employee
-    participant LB as Load Balancer
+    parameter LB as Load Balancer
     participant Gateway as API Gateway
     participant Auth as Auth Service
     participant Attendance as Attendance Service
@@ -58,3 +58,9 @@ sequenceDiagram
     Gateway-->>-LB: Response
     LB-->>-Employee: Personal attendance history
     
+    Note over Employee,TimeSeries: Employee self-service optimizations:
+    Note over Employee,TimeSeries: 1. Personal data caching with privacy protection
+    Note over Employee,TimeSeries: 2. Mobile-optimized response format
+    Note over Employee,TimeSeries: 3. Real-time work hour calculations
+    Note over Employee,TimeSeries: 4. Trend analysis and insights
+    Note over Employee,TimeSeries: 5. Export capabilities for personal records

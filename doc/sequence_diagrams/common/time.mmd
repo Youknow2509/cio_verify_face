@@ -36,3 +36,9 @@ sequenceDiagram
     Gateway-->>-LB: Time response
     LB-->>-Client: Server timestamp
     
+    Note over Client,NTP: Time synchronization optimizations:
+    Note over Client,NTP: 1. Sub-second caching for high-frequency requests
+    Note over Client,NTP: 2. Multiple NTP source redundancy
+    Note over Client,NTP: 3. Timezone-aware responses
+    Note over Client,NTP: 4. Device clock drift detection
+    Note over Client,NTP: 5. Atomic clock precision for attendance accuracy

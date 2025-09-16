@@ -2,7 +2,7 @@ sequenceDiagram
     participant Admin as Company Admin
     participant LB as Load Balancer
     participant Gateway as API Gateway
-    participant Auth as Auth Service
+    parameter Auth as Auth Service
     participant Analytics as Analytics Service
     participant TimeSeries as ScyllaDB
     participant Cache as Redis Cache
@@ -66,3 +66,9 @@ sequenceDiagram
     Gateway-->>-LB: Report response
     LB-->>-Admin: Daily attendance report
     
+    Note over Admin,DB: Reporting optimizations for scale:
+    Note over Admin,DB: 1. Pre-aggregated daily summaries
+    Note over Admin,DB: 2. Time-series data compression
+    Note over Admin,DB: 3. Report caching with smart invalidation
+    Note over Admin,DB: 4. Async report generation for large datasets
+    Note over Admin,DB: 5. Dashboard real-time metrics streaming

@@ -81,6 +81,46 @@ Hệ thống là một giải pháp Phần mềm như một Dịch vụ (SaaS), 
 
 ---
 
+### **3.2. SƠ ĐỒ QUY TRÌNH (Process Diagrams)**
+
+Hệ thống được thiết kế với tài liệu chi tiết về quy trình xử lý và tương tác:
+
+#### **3.2.1. Biểu đồ Tuần tự (Sequence Diagrams)**
+- Thư mục: `doc/sequence_diagrams/`
+- Mô tả chi tiết tương tác giữa các thành phần hệ thống
+- Bao gồm 22 biểu đồ cho tất cả các API endpoints và WebSocket events
+
+#### **3.2.2. Biểu đồ Hoạt động (Activity Diagrams)**
+- Thư mục: `doc/activity_diagrams/`
+- Mô tả quy trình xử lý và điểm quyết định trong từng dịch vụ
+- Mỗi sequence diagram có một activity diagram tương ứng
+- Hiển thị luồng xử lý, điều kiện lỗi và các bước validation
+
+#### **3.2.3. Giao diện Client (Client UI Documentation)**
+- File: `doc/client_ui_pages.md`
+- Mô tả chi tiết tất cả các trang giao diện người dùng
+- Bao gồm: Web Admin App, Device App (IoT), System Admin Interface
+- Đặc tả UI/UX, responsive design, và technical requirements
+
+- File: `doc/ui_workflows.md` 
+- Quy trình sử dụng và tương tác giữa các trang
+- User journey, page flows, và component interactions
+- Error handling, accessibility, và performance optimization
+
+**Cấu trúc biểu đồ hoạt động:**
+- **Auth Service:** 5 quy trình xác thực
+- **Identity & Organization:** 4 quy trình quản lý danh tính và tổ chức
+- **Device Management:** 1 quy trình quản lý thiết bị
+- **Workforce:** 1 quy trình quản lý ca làm việc
+- **Attendance:** 3 quy trình chấm công
+- **Analytics & Reporting:** 2 quy trình báo cáo
+- **Signature:** 1 quy trình tải chữ ký
+- **System Admin:** 1 quy trình quản trị hệ thống
+- **Common/Utility:** 2 quy trình tiện ích
+- **WebSocket Events:** 2 quy trình sự kiện thời gian thực
+
+---
+
 ### **4. YÊU CẦU PHI CHỨC NĂNG (Non-Functional Requirements)**
 
 | ID | Loại yêu cầu | Yêu cầu |

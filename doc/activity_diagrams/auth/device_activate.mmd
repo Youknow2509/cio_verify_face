@@ -1,0 +1,21 @@
+flowchart TD
+    A[Device Activation Request] --> B[Validate Request Format]
+    B --> C{Valid Format?}
+    C -->|No| D[Return 400 Bad Request]
+    C -->|Yes| E[Check Device Registration Code]
+    E --> F{Valid Registration Code?}
+    F -->|No| G[Return 401 Invalid Code]
+    F -->|Yes| H[Verify Company Association]
+    H --> I{Company Active?}
+    I -->|No| J[Return 403 Company Inactive]
+    I -->|Yes| K[Generate Device Certificate]
+    K --> L[Create Device Session]
+    L --> M[Store Device Credentials]
+    M --> N[Mark Device as Active]
+    N --> O[Return 200 OK with Device Token]
+    
+    style A fill:#e1f5fe
+    style D fill:#ffebee
+    style G fill:#ffebee
+    style J fill:#ffebee
+    style O fill:#e8f5e8
