@@ -96,6 +96,17 @@ Hệ thống được thiết kế với tài liệu chi tiết về quy trình 
 - Mỗi sequence diagram có một activity diagram tương ứng
 - Hiển thị luồng xử lý, điều kiện lỗi và các bước validation
 
+#### **3.2.3. Giao diện Client (Client UI Documentation)**
+- File: `doc/client_ui_pages.md`
+- Mô tả chi tiết tất cả các trang giao diện người dùng
+- Bao gồm: Web Admin App, Device App (IoT), System Admin Interface
+- Đặc tả UI/UX, responsive design, và technical requirements
+
+- File: `doc/ui_workflows.md` 
+- Quy trình sử dụng và tương tác giữa các trang
+- User journey, page flows, và component interactions
+- Error handling, accessibility, và performance optimization
+
 **Cấu trúc biểu đồ hoạt động:**
 - **Auth Service:** 5 quy trình xác thực
 - **Identity & Organization:** 4 quy trình quản lý danh tính và tổ chức
