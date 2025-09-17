@@ -23,6 +23,9 @@ MIGRATE_DB_DSN ?= "${MIGRATE_DRIVER}://${MIGRATE_URL}"
 
 help:
 	@echo "Available commands:"
+	@echo "\nCql Commands:"
+	@echo "\t cmd_create_keyspace \t Cmd Create keyspace"
+
 	@echo "\nGoose Migration SQL Commands:"
 	@echo "\t goose_create \t Create a new migration"
 	@echo "\t goose_up \t Run all available migrations"
@@ -34,7 +37,7 @@ help:
 	@echo "\t goose_reset \t Rollback all migrations"
 	@echo "\t goose_clean \t Remove all migrations"
 
-	@echo "\nGolang-migrate Migration SQL Commands:"
+	@echo "\nGolang-migrate Migration CQL Commands:"
 	@echo "\t migrate_create \t Create a new migration"
 	@echo "\t migrate_up \t Run all up migrations"
 	@echo "\t migrate_up_n \t Run N up migrations"
@@ -44,6 +47,13 @@ help:
 	@echo "\t migrate_force \t Force a migration to a specific version"
 
 	@echo "  help - Show this help message"
+
+# Create keyspace scylladb
+cmd_create_keyspace:
+	@echo "Creating keyspace"
+	@echo "-- Create keyspace with proper replication"
+	@echo "CREATE KEYSPACE IF NOT EXISTS face_attendance WITH replication = {'class': 'NetworkTopologyStrategy', 'datacenter1': 3} AND durable_writes = true;"
+	@echo "USE face_attendance;"
 
 # Golang-migrate - Force a migration to a specific version
 migrate_force:
