@@ -1,0 +1,210 @@
+# =======================================================
+# Docker Compose file for Development Environment
+# @author: Ly Tran Vinh
+# @contact: lytranvinh.work@gmail.com
+# =======================================================
+
+# Network configuration
+networks:
+    nw-dev-0:
+        driver: bridge
+
+# Volume configuration
+volumes:
+    postgresql_data:
+        driver: local
+    redis_data:
+        driver: local
+    minio_data:
+        driver: local
+    scylladb_data:
+        driver: local
+    kafka_data:
+        driver: local
+    redis_ui_data:
+        driver: local
+
+# Service configuration
+services:
+    # PosgreSQL Database Service
+    postgres:
+        container_name: postgres
+        image: docker.io/bitnami/postgresql:17
+        ports:
+            - '${POSTGRES_PORT_EXTERNAL}:5432'
+        networks:
+            - nw-dev-0
+        volumes:
+            - 'postgresql_data:/bitnami/postgresql'
+        environment:
+            - POSTGRESQL_DATABASE=${POSTGRES_DB}
+            - POSTGRESQL_USERNAME=${POSTGRES_USER}
+            - POSTGRESQL_PASSWORD=${POSTGRES_PASSWORD}
+        healthcheck:
+            test:
+                [
+                    'CMD-SHELL',
+                    'pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}',
+                ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 30s
+
+    # Redis Cache Service
+    redis:
+        container_name: redis
+        image: docker.io/bitnami/redis:8.0
+        ports:
+            - '${REDIS_PORT_EXTERNAL}:6379'
+        networks:
+            - nw-dev-0
+        volumes:
+            - 'redis_data:/bitnami/redis/data'
+        environment:
+            - REDIS_PASSWORD=${REDIS_PASSWORD}
+            - REDIS_DISABLE_COMMANDS=FLUSHDB,FLUSHALL,CONFIG
+        healthcheck:
+            test: ['CMD', 'redis-cli', '--raw', 'incr', 'ping']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 20s
+
+    # MinIO Object Storage Service
+    minio:
+        container_name: minio
+        image: docker.io/bitnami/minio:2025
+        networks:
+            - nw-dev-0
+        ports:
+            - '${MINIO_PORT_EXTERNAL}:9000'
+            - '${MINIO_CONSOLE_PORT_EXTERNAL}:9001'
+        volumes:
+            - 'minio_data:/bitnami/minio/data'
+        environment:
+            - MINIO_ROOT_USER=${MINIO_ROOT_USER}
+            - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
+        healthcheck:
+            test: ['CMD', 'mc', 'ready', 'local']
+            interval: 5s
+            timeout: 5s
+            retries: 5
+
+    # ScyllaDB NoSQL Database Service
+    scylladb:
+        container_name: scylladb
+        image: docker.io/bitnami/scylladb:latest
+        networks:
+            - nw-dev-0
+        ports:
+            - '${SCYLLADB_TRANSPORT_PORT_EXTERNAL}:7000'
+            - '${SCYLLADB_CQL_PORT_EXTERNAL}:9042'
+        volumes:
+            - 'scylladb_data:/bitnami'
+        environment:
+            - SCYLLADB_TRANSPORT_PORT_NUMBER=${SCYLLADB_TRANSPORT_PORT_INTERNAL}
+            - SCYLLADB_CQL_PORT_NUMBER=${SCYLLADB_CQL_PORT_INTERNAL}
+            - SCYLLADB_SEEDS=scylladb
+            - SCYLLADB_PASSWORD_SEEDER=yes
+            - SCYLLADB_USER=${SCYLLADB_USER}
+            - SCYLLADB_PASSWORD=${SCYLLADB_PASSWORD}
+            - MAX_HEAP_SIZE=512M
+            - HEAP_NEWSIZE=100M
+        healthcheck:
+            test:
+                [
+                    'CMD',
+                    'cqlsh',
+                    '-u',
+                    '${SCYLLADB_USER}',
+                    '-p',
+                    '${SCYLLADB_PASSWORD}',
+                    '-e',
+                    'SELECT now() FROM system.local',
+                ]
+            interval: 1m30s
+            timeout: 30s
+            retries: 5
+            start_period: 20s
+
+    # Kafka Message Broker Service
+    kafka:
+        container_name: kafka
+        image: docker.io/bitnami/kafka:4.0
+        networks:
+            - nw-dev-0
+        ports:
+            - '${KAFKA_PORT_EXTERNAL}:${KAFKA_PLAINTEXT_PORT}'
+        volumes:
+            - 'kafka_data:/bitnami'
+        environment:
+            # KRaft settings
+            - KAFKA_CFG_NODE_ID=0
+            - KAFKA_CFG_PROCESS_ROLES=controller,broker
+            - KAFKA_CFG_CONTROLLER_QUORUM_VOTERS=0@kafka:${KAFKA_CONTROLLER_PORT}
+            # Listeners
+            - KAFKA_CFG_LISTENERS=PLAINTEXT://:${KAFKA_PLAINTEXT_PORT},CONTROLLER://:${KAFKA_CONTROLLER_PORT},NW1://:${KAFKA_NW1_PORT}
+            - KAFKA_CFG_ADVERTISED_LISTENERS=PLAINTEXT://${KAFKA_HOST_EXTERNAL_CONN}:${KAFKA_PLAINTEXT_PORT},NW1://kafka:${KAFKA_NW1_PORT}
+            - KAFKA_CFG_LISTENER_SECURITY_PROTOCOL_MAP=CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,NW1:PLAINTEXT
+            - KAFKA_CFG_CONTROLLER_LISTENER_NAMES=CONTROLLER
+            - KAFKA_CFG_INTER_BROKER_LISTENER_NAME=PLAINTEXT
+        healthcheck:
+            test:
+                [
+                    'CMD-SHELL',
+                    '/opt/bitnami/kafka/bin/kafka-cluster.sh cluster-id --bootstrap-server 127.0.0.1:${KAFKA_PLAINTEXT_PORT} > /dev/null 2>&1 || exit 1',
+                ]
+            interval: 1m30s
+            timeout: 30s
+            retries: 5
+            start_period: 20s
+
+    # Redis UI
+    redisinsight:
+        container_name: redisinsight
+        image: redis/redisinsight:latest
+        networks:
+            - nw-dev-0
+        ports:
+            - '${REDIS_UI_PORT_EXTERNAL}:5540'
+        volumes:
+            - 'redis_ui_data:/data'
+        environment:
+            - TZ=UTC
+        depends_on:
+            redis:
+                condition: service_healthy
+
+    # MinIO UI
+    minio-ui:
+        container_name: minio-ui
+        image: bitnami/minio-object-browser:latest
+        networks:
+            - nw-dev-0
+        ports:
+            - '${MINIO_UI_PORT_EXTERNAL}:9090'
+        command:
+            - 'server'
+        environment:
+            - CONSOLE_PBKDF_PASSPHRASE=console123
+            - CONSOLE_PBKDF_SALT=console123
+            - CONSOLE_MINIO_SERVER=http://minio:9000
+        depends_on:
+            minio:
+                condition: service_healthy
+
+    # Kafka UI
+    kafka-ui:
+        container_name: kafka-ui
+        image: provectuslabs/kafka-ui:latest
+        networks:
+            - nw-dev-0
+        ports:
+            - '${KAFKA_UI_PORT_EXTERNAL}:8080'
+        depends_on:
+            kafka:
+                condition: service_healthy
+        environment:
+            - KAFKA_CLUSTERS_0_NAME=kafka
+            - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=kafka:${KAFKA_NW1_PORT}
