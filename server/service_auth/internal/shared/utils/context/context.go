@@ -22,3 +22,13 @@ func SaveSessionToContext(c *gin.Context, userId string, sessionId string) {
 	c.Set(constants.ContextUserIDKey, userId)
 	c.Set(constants.ContextSessionIDKey, sessionId)
 }
+
+// Get session from the context
+func GetSessionFromContext(c *gin.Context) (string, string, bool) {
+	userId, userIdExists := c.Get(constants.ContextUserIDKey)
+	sessionId, sessionIdExists := c.Get(constants.ContextSessionIDKey)
+	if !userIdExists || !sessionIdExists {
+		return "", "", false
+	}
+	return userId.(string), sessionId.(string), true
+}

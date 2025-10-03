@@ -1,5 +1,7 @@
 package model
 
+import "github.com/google/uuid"
+
 // =======================================================
 //
 //	For Input Auth Model, Validation
@@ -40,8 +42,8 @@ type (
 	}
 
 	LogoutInput struct {
-		AccessToken  string `json:"access_token"`
-		RefreshToken string `json:"refresh_token"`
+		UserId    uuid.UUID `json:"user_id"`
+		SessionId uuid.UUID `json:"session_id"`
 	}
 
 	LogoutAllInput struct {

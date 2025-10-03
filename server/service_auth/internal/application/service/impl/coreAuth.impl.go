@@ -15,6 +15,7 @@ import (
 	domainRepository "github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/repository"
 	domainToken "github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/token"
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/global"
+	utilsCache "github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/cache"
 	utilsCrypto "github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/crypto"
 	utilsRandom "github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/random"
 	utilsUuid "github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/uuid"
@@ -132,6 +133,7 @@ func (c *CoreAuthService) Login(ctx context.Context, input *applicationModel.Log
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
 	sessionHash := utilsCrypto.GetHash(tokenId.String())
+	keyCache := utilsCache.GetKeyUserAccessTokenIsActive(sessionHash)
 	var valCache = map[string]string{
 		"user_id":       response.UserID,
 		"role":          strconv.Itoa(int(domainModel.RoleUser)),
@@ -139,7 +141,7 @@ func (c *CoreAuthService) Login(ctx context.Context, input *applicationModel.Log
 	}
 	if err := cacheDistributed.SetTTL(
 		ctx,
-		sessionHash,
+		keyCache,
 		valCache,
 		constants.TTL_ACCESS_TOKEN,
 	); err != nil {
@@ -244,9 +246,10 @@ func (c *CoreAuthService) LoginAdmin(ctx context.Context, input *applicationMode
 		"role":          strconv.Itoa(int(domainModel.RoleAdmin)),
 		"refresh_token": refreshToken,
 	}
+	keyCache := utilsCache.GetKeyUserAccessTokenIsActive(sessionHash)
 	if err := cacheDistributed.SetTTL(
 		ctx,
-		sessionHash,
+		keyCache,
 		valCache,
 		constants.TTL_ACCESS_TOKEN,
 	); err != nil {
@@ -262,7 +265,33 @@ func (c *CoreAuthService) LoginAdmin(ctx context.Context, input *applicationMode
 
 // Logout implements service.ICoreAuthService.
 func (c *CoreAuthService) Logout(ctx context.Context, input *applicationModel.LogoutInput) *errors.Error {
-	// TODO: Implement
+	// Get user repository
+	userRepo, err := domainRepository.GetUserRepository()
+	if err != nil {
+		global.Logger.Error("Error getting user repository: ", err)
+		return errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	// Remove session from db
+	if err := userRepo.RemoveUserSession(
+		ctx,
+		&domainModel.RemoveUserSessionInput{
+			SessionID: input.SessionId,
+		},
+	); err != nil {
+		global.Logger.Warn("Error removing user session: ", err)
+		return errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	// Remove session from cache
+	cacheDistributed, err := domainCache.GetDistributedCache()
+	if err != nil {
+		global.Logger.Error("Error getting distributed cache: ", err)
+		return errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	keyCache := utilsCache.GetKeyUserAccessTokenIsActive(utilsCrypto.GetHash(input.SessionId.String()))
+	if err := cacheDistributed.Delete(ctx, keyCache); err != nil {
+		global.Logger.Error("Error removing session from cache: ", err)
+		return errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
 	return nil
 }
 
