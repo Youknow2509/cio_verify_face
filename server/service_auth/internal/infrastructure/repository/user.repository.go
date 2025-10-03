@@ -20,6 +20,23 @@ type UserRepository struct {
 	q db.Queries
 }
 
+// GetUserInfoByID implements repository.IUserRepository.
+func (u *UserRepository) GetUserInfoByID(ctx context.Context, userID uuid.UUID) (*model.UserInfoOutput, error) {
+	response, err := u.q.GetUserInfoWithID(ctx, pgtype.UUID{Bytes: userID, Valid: true})
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &model.UserInfoOutput{
+		Email:     response.Email,
+		Phone:     response.Phone,
+		FullName:  response.FullName,
+		AvatarURL: response.AvatarUrl.String,
+	}, nil
+}
+
 // GetUserSessionByID implements repository.IUserRepository.
 func (u *UserRepository) GetUserSessionByID(ctx context.Context, sessionID uuid.UUID) (*model.UserSessionOutput, error) {
 	response, err := u.q.GetUserSessionByID(

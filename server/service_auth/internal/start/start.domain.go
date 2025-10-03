@@ -30,6 +30,18 @@ func initDomain() error {
 	); err != nil {
 		return err
 	}
+	// init ICompanyRepository
+	if err := domainRepository.SetCompanyRepository(
+		infraRepository.NewCompanyRepository(postgres),
+	); err != nil {
+		return err
+	}
+	// init IAuditLogRepository
+	if err := domainRepository.SetAuditRepository(
+		infraRepository.NewAuditRepository(postgres),
+	); err != nil {
+		return err
+	}
 
 	// v.v
 	return nil

@@ -1,3 +1,14 @@
+
+-- name: GetUserInfoWithID :one
+SELECT 
+    email,
+    phone,
+    full_name,
+    avatar_url
+FROM users
+WHERE user_id = $1
+LIMIT 1;
+
 -- name: GetUserBaseWithMail :one
 SELECT user_id, email, salt, password_hash, role, is_locked 
 FROM users

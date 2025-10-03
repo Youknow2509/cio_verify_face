@@ -95,4 +95,18 @@ type (
 		CreatedAt    time.Time  `json:"created_at"`
 		ExpiredAt    time.Time  `json:"expired_at"`
 	}
+
+	// UserInfoOutput
+	UserInfoOutput struct {
+		Email     string `json:"email"`
+		Phone     string `json:"phone"`
+		FullName  string `json:"full_name"`
+		AvatarURL string `json:"avatar_url"`
+	}
+
+	// CheckUserIsManagementInCompanyInput
+	CheckUserIsManagementInCompanyInput struct {
+		CompanyID uuid.UUID `json:"company_id"`
+		UserID    uuid.UUID `json:"user_id"`
+	}
 )
