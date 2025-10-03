@@ -15,10 +15,12 @@ const (
 	AuthResetPasswordTokenInvalidErrorCode      = 10007
 	AuthUserIdInvalidErrorCode                  = 10008
 	AuthUUIDParseErrorCode                      = 10009
+	AuthDontHavePermissionErrorCode             = 10010
 	TokenExpiredErrorCode                       = 20010
 )
 
 var mapAuthErrors = map[int]string{
+	AuthDontHavePermissionErrorCode:             "Don't have permission",
 	TokenExpiredErrorCode:                       "Token is expired",
 	AuthUUIDParseErrorCode:                      "UUID parse error",
 	AuthUserIdInvalidErrorCode:                  "User ID is invalid",

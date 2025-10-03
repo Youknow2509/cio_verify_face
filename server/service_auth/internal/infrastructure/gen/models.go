@@ -41,7 +41,6 @@ type AttendanceRecord struct {
 type AuditLog struct {
 	LogID        pgtype.UUID
 	UserID       pgtype.UUID
-	CompanyID    pgtype.UUID
 	Action       string
 	ResourceType string
 	ResourceID   pgtype.UUID

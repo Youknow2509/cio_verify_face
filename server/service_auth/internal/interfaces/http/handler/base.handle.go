@@ -354,18 +354,118 @@ func (h *AuthBaseHandler) GetMyInfo(c *gin.Context) {
 	)
 }
 
-// CreateDevice create device
-// @Summary      Create session device
-// @Description  Create session device
+// UpdateDeviceSession updates device session
+// @Summary      Update session device
+// @Description  Update session device
 // @Tags         Core Auth
 // @Accept       json
 // @Produce      json
 // @Param        Authorization header string true "Authorization Bearer token"
+// @Param        request   body dto.UpdateDeviceRequest  true  "Request body update device"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
 // @Router       /v1/auth/device [post]
-func (h *AuthBaseHandler) CreateDevice(c *gin.Context) {
-	// TODO: Implement create device handler
+func (h *AuthBaseHandler) UpdateDeviceSession(c *gin.Context) {
+	// Bind the request to the UpdateDeviceRequest DTO
+	var request dto.UpdateDeviceRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid request parameters",
+		)
+		return
+	}
+	// Validate the request
+	validate := c.MustGet(constants.MIDDLEWARE_VALIDATE_SERVICE_NAME).(*validator.Validate)
+	if err := validate.Struct(request); err != nil {
+		var fieldErrors []string
+		for _, fieldError := range err.(validator.ValidationErrors) {
+			fieldErrors = append(fieldErrors, fieldError.Field())
+		}
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid request parameters: "+strings.Join(fieldErrors, ", "),
+		)
+		return
+	}
+	// Get data auth from context
+	userIdStr, sessionIdStr, role, exists := utilsContext.GetSessionFromContext(c)
+	if !exists {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid request parameters",
+		)
+		return
+	}
+	// Validate id str to uuid
+	userId, err := utilsUuid.ParseUUID(userIdStr)
+	if err != nil {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid data session",
+		)
+		return
+	}
+	sessionId, err := utilsUuid.ParseUUID(sessionIdStr)
+	if err != nil {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid data session",
+		)
+		return
+	}
+	companyUuid, err := utilsUuid.ParseUUID(request.CompanyId)
+	if err != nil {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid company id",
+		)
+		return
+	}
+	deviceUuid, err := utilsUuid.ParseUUID(request.DeviceId)
+	if err != nil {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid device id",
+		)
+		return
+	}
+	// Call handle to service
+	response, err_r := applicationService.GetCoreAuthService().UpdateDeviceSession(
+		c,
+		&applicationModel.UpdateDeviceSessionInput{
+			UserId:    userId,
+			SessionId: sessionId,
+			ClientIp:  c.ClientIP(),
+			UserAgent: c.Request.UserAgent(),
+			Role:      role,
+			// From request
+			DeviceName: request.DeviceName,
+			DeviceType: request.DeviceType,
+			DeviceId:   deviceUuid,
+			CompanyId:  companyUuid,
+		},
+	)
+	if err_r != nil {
+		interfaceResponse.ErrorResponse(
+			c,
+			err_r.Code,
+			err_r.Message,
+		)
+		return
+	}
+	interfaceResponse.SuccessResponse(
+		c,
+		interfaceResponse.ErrCodeSuccess,
+		response,
+	)
 }
 
 // Delete device by id
@@ -378,20 +478,6 @@ func (h *AuthBaseHandler) CreateDevice(c *gin.Context) {
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
 // @Router       /v1/auth/device/{id} [delete]
-func (h *AuthBaseHandler) DeleteDevice(c *gin.Context) {
+func (h *AuthBaseHandler) DeleteDeviceSession(c *gin.Context) {
 	// TODO: Implement delete device handler
-}
-
-// RefreshTokenDevice refresh device token
-// @Summary      Refresh session device
-// @Description  Refresh session device
-// @Tags         Core Auth
-// @Accept       json
-// @Produce      json
-// @Param        Authorization header string true "Authorization Bearer token"
-// @Success      200  {object}  dto.ResponseData
-// @Failure      400  {object}  dto.ErrResponseData
-// @Router       /v1/device/{id}/refresh [post]
-func (h *AuthBaseHandler) RefreshTokenDevice(c *gin.Context) {
-	// TODO: Implement RefreshTokenDevice device handler
 }

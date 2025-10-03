@@ -103,4 +103,10 @@ type (
 		FullName  string `json:"full_name"`
 		AvatarURL string `json:"avatar_url"`
 	}
+
+	// CheckUserIsManagementInCompanyInput
+	CheckUserIsManagementInCompanyInput struct {
+		CompanyID uuid.UUID `json:"company_id"`
+		UserID    uuid.UUID `json:"user_id"`
+	}
 )

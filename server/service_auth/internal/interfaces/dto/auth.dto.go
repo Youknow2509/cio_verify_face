@@ -5,6 +5,13 @@ package dto
 //	Auth DTOs
 //
 // ======================
+type UpdateDeviceRequest struct {
+	CompanyId  string `json:"company_id" validate:"required"`
+	DeviceName string `json:"device_name" validate:"required,min=2,max=100"`
+	DeviceType int    `json:"device_type" validate:"required"`
+	DeviceId   string `json:"device_id" validate:"required"`
+}
+
 type RegisterRequest struct {
 	Email string `json:"email" validate:"required,email"`
 }
@@ -50,7 +57,7 @@ type ChangePasswordRequest struct {
 }
 
 type ResetPasswordRequest struct {
-	Email    string `json:"email" validate:"required,email"`
+	Email string `json:"email" validate:"required,email"`
 }
 
 type ValidateResetPasswordTokenRequest struct {

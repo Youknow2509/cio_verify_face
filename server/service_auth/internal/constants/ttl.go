@@ -7,16 +7,17 @@ package constants
 // ========================
 const (
 	// Save second
-	TTL_OTP_REGISTER                = 60 * 8           // 8 minutes
-	TTL_LOCAL_OTP_REGISTER          = 3                // 3 seconds
-	TTL_TOKEN_VERIFY_REGISTER       = 60 * 30          // 30 minutes
-	TTL_ACCESS_TOKEN                = 60 * 60 * 2      // 2 hour
-	TTL_REFRESH_TOKEN               = 60 * 60 * 24 * 7 // 7 days
-	TTL_RESET_PASSWORD_TOKEN        = 60 * 15          // 15 minutes
-	TTL_FRIEND_REQUEST              = 60 * 5           // 5 minutes
-	TTL_USER_INFO_VIEW              = 60 * 10          // 10 minutes
-	TTL_LIST_FRIEND_REQUEST_TO_USER = 60 * 3           // 3 minutes
-	TTL_LIST_FRIENDS_OF_USER        = 60 * 10          // 10 minutes
+	TTL_OTP_REGISTER                = 60 * 8            // 8 minutes
+	TTL_LOCAL_OTP_REGISTER          = 3                 // 3 seconds
+	TTL_TOKEN_VERIFY_REGISTER       = 60 * 30           // 30 minutes
+	TTL_ACCESS_TOKEN                = 60 * 60 * 2       // 2 hour
+	TTL_REFRESH_TOKEN               = 60 * 60 * 24 * 7  // 7 days
+	TTL_RESET_PASSWORD_TOKEN        = 60 * 15           // 15 minutes
+	TTL_FRIEND_REQUEST              = 60 * 5            // 5 minutes
+	TTL_USER_INFO_VIEW              = 60 * 10           // 10 minutes
+	TTL_LIST_FRIEND_REQUEST_TO_USER = 60 * 3            // 3 minutes
+	TTL_LIST_FRIENDS_OF_USER        = 60 * 10           // 10 minutes
+	TTL_TOKEN_DEVICE                = 60 * 60 * 24 * 30 // 30 days
 )
 
 // For spam and count spam

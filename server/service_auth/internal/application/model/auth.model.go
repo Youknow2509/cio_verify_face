@@ -85,8 +85,16 @@ type (
 		Token    string `json:"token"`
 	}
 
-	CreateDeviceSessionInput struct {
-		// TODO: Add fields for CreateDeviceSessionInput
+	UpdateDeviceSessionInput struct {
+		UserId     uuid.UUID `json:"user_id"`
+		SessionId  uuid.UUID `json:"session_id"`
+		ClientIp   string    `json:"client_ip"`
+		UserAgent  string    `json:"user_agent"`
+		Role       int       `json:"role"`
+		CompanyId  uuid.UUID `json:"company_id"`
+		DeviceName string    `json:"device_name"`
+		DeviceType int       `json:"device_type"`
+		DeviceId   uuid.UUID `json:"device_id"`
 	}
 
 	DeleteDeviceSessionInput struct {
@@ -109,8 +117,9 @@ type (
 		// TODO: Add fields
 	}
 
-	CreateDeviceSessionOutput struct {
-		// TODO: Add fields
+	UpdateDeviceSessionOutput struct {
+		Token    string `json:"token"`
+		ExpireAt int64  `json:"expire_at"`
 	}
 
 	GetMyInfoOutput struct {

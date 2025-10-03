@@ -1,3 +1,4 @@
+
 -- name: GetUserInfoWithID :one
 SELECT 
     email,

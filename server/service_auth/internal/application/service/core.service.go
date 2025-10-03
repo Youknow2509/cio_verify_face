@@ -26,12 +26,10 @@ type (
 		RefreshToken(ctx context.Context, input *model.RefreshTokenInput) (*model.RefreshTokenOutput, *errorService.Error)
 		// Get my info
 		GetMyInfo(ctx context.Context, input *model.GetMyInfoInput) (*model.GetMyInfoOutput, *errorService.Error)
-		// Create device token
-		CreateDeviceSession(ctx context.Context, input *model.CreateDeviceSessionInput) (*model.CreateDeviceSessionOutput, *errorService.Error)
+		// Update device token
+		UpdateDeviceSession(ctx context.Context, input *model.UpdateDeviceSessionInput) (*model.UpdateDeviceSessionOutput, *errorService.Error)
 		// Delete device token
 		DeleteDeviceSession(ctx context.Context, input *model.DeleteDeviceSessionInput) *errorService.Error	
-		// Refresh device token
-		RefreshDeviceSession(ctx context.Context, input *model.RefreshDeviceSessionInput) (*model.RefreshDeviceSessionOutput, *errorService.Error)
 	}
 )
 

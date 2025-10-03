@@ -28,9 +28,104 @@ import (
 type CoreAuthService struct{}
 
 // CreateDeviceSession implements service.ICoreAuthService.
-func (c *CoreAuthService) CreateDeviceSession(ctx context.Context, input *applicationModel.CreateDeviceSessionInput) (*applicationModel.CreateDeviceSessionOutput, *errors.Error) {
-	return &applicationModel.CreateDeviceSessionOutput{
-		// TODO: Add fields
+func (c *CoreAuthService) UpdateDeviceSession(ctx context.Context, input *applicationModel.UpdateDeviceSessionInput) (*applicationModel.UpdateDeviceSessionOutput, *errors.Error) {
+	// Check user exists in company
+	companyRepo, err := domainRepository.GetCompanyRepository()
+	if err != nil {
+		global.Logger.Error("Error getting company repository: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	ok, err := companyRepo.CheckUserIsManagementInCompany(
+		ctx,
+		&domainModel.CheckCompanyIsManagementInCompanyInput{
+			CompanyID: input.CompanyId,
+			UserID:    input.UserId,
+		},
+	)
+	if err != nil {
+		global.Logger.Error("Error checking user is management in company: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	if !ok {
+		// User not found or not management in company
+		return nil, errors.GetError(errors.AuthDontHavePermissionErrorCode)
+	}
+	// Check device exists in company
+	ok, err = companyRepo.CheckDeviceExistsInCompany(
+		ctx,
+		&domainModel.CheckDeviceExistsInCompanyInput{
+			CompanyID: input.CompanyId,
+			DeviceID:  input.DeviceId,
+		},
+	)
+	if err != nil {
+		global.Logger.Error("Error checking device exists in company: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	if !ok {
+		// Device not found in company
+		return nil, errors.GetError(errors.DeviceNotFoundErrorCode)
+	}
+	// Create token
+	tokenService := domainToken.GetTokenService()
+	if tokenService == nil {
+		global.Logger.Error("Error getting token service: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	tokenId := utilsRandom.GenerateUUID()
+	tokenTtl := time.Duration(constants.TTL_TOKEN_DEVICE) * time.Second
+	token, err := tokenService.CreateDeviceRefreshToken(
+		ctx,
+		&domainModel.TokenDeviceRefreshInput{
+			TokenId:   tokenId.String(),
+			CompanyId: input.CompanyId.String(),
+			DeviceId:  input.DeviceId.String(),
+			Expires:   time.Now().Add(tokenTtl),
+		},
+	)
+	if err != nil {
+		global.Logger.Error("Error creating device token: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	// Update device session to database
+	if err := companyRepo.UpdateDeviceSession(
+		ctx,
+		&domainModel.UpdateDeviceSessionInput{
+			DeviceId: input.DeviceId,
+			Token:    token,
+		},
+	); err != nil {
+		global.Logger.Error("Error updating device session: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	// Save audit log
+	auditRepo, err := domainRepository.GetAuditRepository()
+	if err != nil {
+		global.Logger.Error("Error getting audit repository: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	if err := auditRepo.AddAuditLog(
+		ctx,
+		&domainModel.AuditLog{
+			UserId:       input.UserId,
+			Action:       constants.AuditActionUpdateSessionDevice,
+			ResourceType: constants.AuditResourceTypeDevice,
+			ResourceId:   input.DeviceId,
+			OldValues:    nil,
+			NewValues: map[string]interface{}{
+				"token": token,
+			},
+			IpAddress: input.ClientIp,
+			UserAgent: input.UserAgent,
+			Timestamp: time.Now().Unix(),
+		},
+	); err != nil {
+		global.Logger.Error("Error logging audit log: ", err)
+		// Not return error
+	}
+	return &applicationModel.UpdateDeviceSessionOutput{
+		Token:    token,
+		ExpireAt: time.Now().Add(tokenTtl).Unix(),
 	}, nil
 }
 
@@ -102,7 +197,7 @@ func (c *CoreAuthService) Login(ctx context.Context, input *applicationModel.Log
 	tokenService := domainToken.GetTokenService()
 	tokenId := utilsRandom.GenerateUUID()
 	// Create access token
-	timeTtlAccessToken := time.Duration(constants.TTL_ACCESS_TOKEN) * time.Hour
+	timeTtlAccessToken := time.Duration(constants.TTL_ACCESS_TOKEN) * time.Second
 	accessToken, err := tokenService.CreateUserToken(
 		ctx,
 		&domainModel.TokenUserJwtInput{
@@ -117,7 +212,7 @@ func (c *CoreAuthService) Login(ctx context.Context, input *applicationModel.Log
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
 	// Create refresh token
-	timeTtlRefreshToken := time.Duration(constants.TTL_REFRESH_TOKEN) * time.Hour
+	timeTtlRefreshToken := time.Duration(constants.TTL_REFRESH_TOKEN) * time.Second
 	refreshToken, err := tokenService.CreateUserRefreshToken(
 		ctx,
 		&domainModel.TokenUserRefreshInput{
@@ -209,7 +304,7 @@ func (c *CoreAuthService) LoginAdmin(ctx context.Context, input *applicationMode
 	tokenService := domainToken.GetTokenService()
 	tokenId := utilsRandom.GenerateUUID()
 	// Create access token
-	timeTtlAccessToken := time.Duration(constants.TTL_ACCESS_TOKEN) * time.Hour
+	timeTtlAccessToken := time.Duration(constants.TTL_ACCESS_TOKEN) * time.Second
 	accessToken, err := tokenService.CreateUserToken(
 		ctx,
 		&domainModel.TokenUserJwtInput{
@@ -224,7 +319,7 @@ func (c *CoreAuthService) LoginAdmin(ctx context.Context, input *applicationMode
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
 	// Create refresh token
-	timeTtlRefreshToken := time.Duration(constants.TTL_REFRESH_TOKEN) * time.Hour
+	timeTtlRefreshToken := time.Duration(constants.TTL_REFRESH_TOKEN) * time.Second
 	refreshToken, err := tokenService.CreateUserRefreshToken(
 		ctx,
 		&domainModel.TokenUserRefreshInput{
@@ -313,14 +408,6 @@ func (c *CoreAuthService) Logout(ctx context.Context, input *applicationModel.Lo
 	return nil
 }
 
-// RefreshDeviceSession implements service.ICoreAuthService.
-func (c *CoreAuthService) RefreshDeviceSession(ctx context.Context, input *applicationModel.RefreshDeviceSessionInput) (*applicationModel.RefreshDeviceSessionOutput, *errors.Error) {
-	// TODO: Implement
-	return &applicationModel.RefreshDeviceSessionOutput{
-		// TODO: Add fields
-	}, nil
-}
-
 // RefreshToken implements service.ICoreAuthService.
 func (c *CoreAuthService) RefreshToken(ctx context.Context, input *applicationModel.RefreshTokenInput) (*applicationModel.RefreshTokenOutput, *errors.Error) {
 	// Validate token refresh
@@ -366,7 +453,7 @@ func (c *CoreAuthService) RefreshToken(ctx context.Context, input *applicationMo
 		return nil, errors.GetError(errors.AuthCannotRefreshTokenErrorCode)
 	}
 	// Create new access token and refresh token
-	accessTokenTimeTtl := time.Duration(constants.TTL_ACCESS_TOKEN) * time.Hour
+	accessTokenTimeTtl := time.Duration(constants.TTL_ACCESS_TOKEN) * time.Second
 	accessToken, err := tokenService.CreateUserToken(
 		ctx,
 		&domainModel.TokenUserJwtInput{
@@ -380,7 +467,7 @@ func (c *CoreAuthService) RefreshToken(ctx context.Context, input *applicationMo
 		global.Logger.Error("Error creating user token: ", err)
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
-	refreshTokenTimeTtl := time.Duration(constants.TTL_REFRESH_TOKEN) * time.Hour
+	refreshTokenTimeTtl := time.Duration(constants.TTL_REFRESH_TOKEN) * time.Second
 	refreshTokenNew, err := tokenService.CreateUserRefreshToken(
 		ctx,
 		&domainModel.TokenUserRefreshInput{

@@ -34,6 +34,9 @@ func GetError(code int) *Error {
 	for k, v := range mapAuthErrors {
 		data[k] = v
 	}
+	for k, v := range mapCompanyErrors {
+		data[k] = v
+	}
 	// v.v
 	if msg, ok := data[code]; ok {
 		return NewError(code, msg)
