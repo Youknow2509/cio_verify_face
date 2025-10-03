@@ -3,20 +3,17 @@ package impl
 import (
 	"context"
 	"net/netip"
-	"strconv"
 	"time"
 
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/application/errors"
 	applicationModel "github.com/youknow2509/cio_verify_face/server/service_auth/internal/application/model"
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/application/service"
 	constants "github.com/youknow2509/cio_verify_face/server/service_auth/internal/constants"
-	domainCache "github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/cache"
 	domainError "github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/errors"
 	domainModel "github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/model"
 	domainRepository "github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/repository"
 	domainToken "github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/token"
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/global"
-	utilsCache "github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/cache"
 	utilsCrypto "github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/crypto"
 	utilsRandom "github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/random"
 	utilsUuid "github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/uuid"
@@ -25,45 +22,72 @@ import (
 /**
  * Define CoreAuthService struct implementing
  */
-type CoreAuthService struct{}
+type CoreAuthService struct {
+	cacheStrategy *CacheStrategy
+}
+
+// initCacheStrategy initializes the cache strategy if not already done
+func (c *CoreAuthService) initCacheStrategy() error {
+	if c.cacheStrategy == nil {
+		var err error
+		c.cacheStrategy, err = NewCacheStrategy()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // CreateDeviceSession implements service.ICoreAuthService.
 func (c *CoreAuthService) UpdateDeviceSession(ctx context.Context, input *applicationModel.UpdateDeviceSessionInput) (*applicationModel.UpdateDeviceSessionOutput, *errors.Error) {
-	// Check user exists in company
+	// Initialize cache strategy
+	if err := c.initCacheStrategy(); err != nil {
+		global.Logger.Error("Error initializing cache strategy: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+
+	// Get company repository
 	companyRepo, err := domainRepository.GetCompanyRepository()
 	if err != nil {
 		global.Logger.Error("Error getting company repository: ", err)
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
-	ok, err := companyRepo.CheckUserIsManagementInCompany(
-		ctx,
-		&domainModel.CheckCompanyIsManagementInCompanyInput{
-			CompanyID: input.CompanyId,
-			UserID:    input.UserId,
-		},
-	)
+
+	// Check user permission with caching
+	hasPermission, err := c.cacheStrategy.GetCompanyUserPermission(ctx,
+		input.CompanyId.String(),
+		input.UserId.String(),
+		func() (bool, error) {
+			return companyRepo.CheckUserIsManagementInCompany(ctx, &domainModel.CheckCompanyIsManagementInCompanyInput{
+				CompanyID: input.CompanyId,
+				UserID:    input.UserId,
+			})
+		})
+
 	if err != nil {
-		global.Logger.Error("Error checking user is management in company: ", err)
+		global.Logger.Error("Error checking user permission: ", err)
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
-	if !ok {
-		// User not found or not management in company
+	if !hasPermission {
 		return nil, errors.GetError(errors.AuthDontHavePermissionErrorCode)
 	}
-	// Check device exists in company
-	ok, err = companyRepo.CheckDeviceExistsInCompany(
-		ctx,
-		&domainModel.CheckDeviceExistsInCompanyInput{
-			CompanyID: input.CompanyId,
-			DeviceID:  input.DeviceId,
-		},
-	)
+
+	// Check device exists with caching
+	deviceExists, err := c.cacheStrategy.GetDeviceInCompany(ctx,
+		input.CompanyId.String(),
+		input.DeviceId.String(),
+		func() (bool, error) {
+			return companyRepo.CheckDeviceExistsInCompany(ctx, &domainModel.CheckDeviceExistsInCompanyInput{
+				CompanyID: input.CompanyId,
+				DeviceID:  input.DeviceId,
+			})
+		})
+
 	if err != nil {
-		global.Logger.Error("Error checking device exists in company: ", err)
+		global.Logger.Error("Error checking device existence: ", err)
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
-	if !ok {
-		// Device not found in company
+	if !deviceExists {
 		return nil, errors.GetError(errors.DeviceNotFoundErrorCode)
 	}
 	// Create token
@@ -193,9 +217,9 @@ func (c *CoreAuthService) DeleteDeviceSession(ctx context.Context, input *applic
 			ResourceId:   input.DeviceId,
 			OldValues:    nil,
 			NewValues:    nil,
-			IpAddress: input.ClientIp,
-			UserAgent:   input.UserAgent,
-			Timestamp:   time.Now().Unix(),
+			IpAddress:    input.ClientIp,
+			UserAgent:    input.UserAgent,
+			Timestamp:    time.Now().Unix(),
 		},
 	); err != nil {
 		global.Logger.Error("Error logging audit log: ", err)
@@ -206,27 +230,35 @@ func (c *CoreAuthService) DeleteDeviceSession(ctx context.Context, input *applic
 
 // GetMyInfo implements service.ICoreAuthService.
 func (c *CoreAuthService) GetMyInfo(ctx context.Context, input *applicationModel.GetMyInfoInput) (*applicationModel.GetMyInfoOutput, *errors.Error) {
-	// Get data from data base
-	domainRepo, err := domainRepository.GetUserRepository()
-	if err != nil {
-		global.Logger.Error("Error getting user repository: ", err)
+	// Initialize cache strategy
+	if err := c.initCacheStrategy(); err != nil {
+		global.Logger.Error("Error initializing cache strategy: ", err)
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
-	response, err := domainRepo.GetUserInfoByID(ctx, input.UserId)
+
+	// Get user info with caching
+	userInfo, err := c.cacheStrategy.GetUserInfo(ctx, input.UserId.String(), func() (*domainModel.UserInfoOutput, error) {
+		domainRepo, err := domainRepository.GetUserRepository()
+		if err != nil {
+			return nil, err
+		}
+		return domainRepo.GetUserInfoByID(ctx, input.UserId)
+	})
+
 	if err != nil {
-		global.Logger.Warn("Error getting user info by ID: ", err)
+		global.Logger.Warn("Error getting user info: ", err)
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
-	if response == nil {
-		// User not found
+	if userInfo == nil {
 		return nil, errors.GetError(errors.UserNotFoundErrorCode)
 	}
+
 	return &applicationModel.GetMyInfoOutput{
 		UserId:    input.UserId.String(),
-		Email:     response.Email,
-		Phone:     response.Phone,
-		FullName:  response.FullName,
-		AvatarURL: response.AvatarURL,
+		Email:     userInfo.Email,
+		Phone:     userInfo.Phone,
+		FullName:  userInfo.FullName,
+		AvatarURL: userInfo.AvatarURL,
 		Role:      input.Role,
 	}, nil
 }
@@ -294,6 +326,12 @@ func (c *CoreAuthService) Login(ctx context.Context, input *applicationModel.Log
 		global.Logger.Warn("Error creating user refresh token: ", err)
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
+	// Initialize cache strategy
+	if err := c.initCacheStrategy(); err != nil {
+		global.Logger.Error("Error initializing cache strategy: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+
 	// Save session to db and cache
 	uuidUser, _ := utilsUuid.ParseUUID(response.UserID)
 	ipAddr, _ := netip.ParseAddr(input.ClientIp)
@@ -311,23 +349,9 @@ func (c *CoreAuthService) Login(ctx context.Context, input *applicationModel.Log
 		global.Logger.Error("Error creating user session: ", err)
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
-	cacheDistributed, err := domainCache.GetDistributedCache()
-	if err != nil {
-		global.Logger.Error("Error getting distributed cache: ", err)
-		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
-	}
-	sessionHash := utilsCrypto.GetHash(tokenId.String())
-	keyCache := utilsCache.GetKeyUserAccessTokenIsActive(sessionHash)
-	var valCache = map[string]string{
-		"user_id": response.UserID,
-		"role":    strconv.Itoa(int(domainModel.RoleUser)),
-	}
-	if err := cacheDistributed.SetTTL(
-		ctx,
-		keyCache,
-		valCache,
-		constants.TTL_ACCESS_TOKEN,
-	); err != nil {
+
+	// Use cache strategy to set session
+	if err := c.cacheStrategy.SetUserSession(ctx, tokenId.String(), response.UserID, domainModel.RoleUser, constants.TTL_ACCESS_TOKEN); err != nil {
 		global.Logger.Error("Error setting session in cache: ", err)
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
@@ -401,6 +425,12 @@ func (c *CoreAuthService) LoginAdmin(ctx context.Context, input *applicationMode
 		global.Logger.Error("Error creating user refresh token: ", err)
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
+	// Initialize cache strategy
+	if err := c.initCacheStrategy(); err != nil {
+		global.Logger.Error("Error initializing cache strategy: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+
 	// Save session to db and cache
 	uuidUser, _ := utilsUuid.ParseUUID(response.UserID)
 	ipAddr, _ := netip.ParseAddr(input.ClientIp)
@@ -418,23 +448,9 @@ func (c *CoreAuthService) LoginAdmin(ctx context.Context, input *applicationMode
 		global.Logger.Error("Error creating user session: ", err)
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
-	cacheDistributed, err := domainCache.GetDistributedCache()
-	if err != nil {
-		global.Logger.Error("Error getting distributed cache: ", err)
-		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
-	}
-	sessionHash := utilsCrypto.GetHash(tokenId.String())
-	var valCache = map[string]string{
-		"user_id": response.UserID,
-		"role":    strconv.Itoa(int(domainModel.RoleAdmin)),
-	}
-	keyCache := utilsCache.GetKeyUserAccessTokenIsActive(sessionHash)
-	if err := cacheDistributed.SetTTL(
-		ctx,
-		keyCache,
-		valCache,
-		constants.TTL_ACCESS_TOKEN,
-	); err != nil {
+
+	// Use cache strategy to set session
+	if err := c.cacheStrategy.SetUserSession(ctx, tokenId.String(), response.UserID, domainModel.RoleAdmin, constants.TTL_ACCESS_TOKEN); err != nil {
 		global.Logger.Error("Error setting session in cache: ", err)
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
@@ -447,12 +463,19 @@ func (c *CoreAuthService) LoginAdmin(ctx context.Context, input *applicationMode
 
 // Logout implements service.ICoreAuthService.
 func (c *CoreAuthService) Logout(ctx context.Context, input *applicationModel.LogoutInput) *errors.Error {
+	// Initialize cache strategy
+	if err := c.initCacheStrategy(); err != nil {
+		global.Logger.Error("Error initializing cache strategy: ", err)
+		return errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+
 	// Get user repository
 	userRepo, err := domainRepository.GetUserRepository()
 	if err != nil {
 		global.Logger.Error("Error getting user repository: ", err)
 		return errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
+
 	// Remove session from db
 	if err := userRepo.RemoveUserSession(
 		ctx,
@@ -463,17 +486,10 @@ func (c *CoreAuthService) Logout(ctx context.Context, input *applicationModel.Lo
 		global.Logger.Warn("Error removing user session: ", err)
 		return errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
-	// Remove session from cache
-	cacheDistributed, err := domainCache.GetDistributedCache()
-	if err != nil {
-		global.Logger.Error("Error getting distributed cache: ", err)
-		return errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
-	}
-	keyCache := utilsCache.GetKeyUserAccessTokenIsActive(utilsCrypto.GetHash(input.SessionId.String()))
-	if err := cacheDistributed.Delete(ctx, keyCache); err != nil {
-		global.Logger.Error("Error removing session from cache: ", err)
-		return errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
-	}
+
+	// Remove session from cache using cache strategy
+	c.cacheStrategy.DeleteUserSession(ctx, input.SessionId.String())
+
 	return nil
 }
 
@@ -561,24 +577,14 @@ func (c *CoreAuthService) RefreshToken(ctx context.Context, input *applicationMo
 		global.Logger.Error("Error refreshing user session: ", err)
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
-	// Save new session to cache - Use to block access token
-	cacheDistributed, err := domainCache.GetDistributedCache()
-	if err != nil {
-		global.Logger.Error("Error getting distributed cache: ", err)
+	// Initialize cache strategy
+	if err := c.initCacheStrategy(); err != nil {
+		global.Logger.Error("Error initializing cache strategy: ", err)
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
-	sessionHash := utilsCrypto.GetHash(input.SessionId.String())
-	keyCache := utilsCache.GetKeyUserAccessTokenIsActive(sessionHash)
-	var valCache = map[string]string{
-		"user_id": input.UserId.String(),
-		"role":    strconv.Itoa(int(input.UserRole)),
-	}
-	if err := cacheDistributed.SetTTL(
-		ctx,
-		keyCache,
-		valCache,
-		constants.TTL_ACCESS_TOKEN,
-	); err != nil {
+
+	// Save new session to cache using cache strategy
+	if err := c.cacheStrategy.SetUserSession(ctx, input.SessionId.String(), input.UserId.String(), domainModel.Role(input.UserRole), constants.TTL_ACCESS_TOKEN); err != nil {
 		global.Logger.Error("Error setting session in cache: ", err)
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}

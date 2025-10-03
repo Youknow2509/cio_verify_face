@@ -142,4 +142,29 @@ type (
 		AccessToken  string `json:"access_token"`
 		RefreshToken string `json:"refresh_token"`
 	}
+
+	// Token validation result for cached operations
+	TokenValidationResult struct {
+		Valid  bool      `json:"valid"`
+		UserID uuid.UUID `json:"user_id,omitempty"`
+		Role   int       `json:"role,omitempty"`
+		Error  string    `json:"error,omitempty"`
+	}
+
+	// User info output for cached operations (re-export from domain)
+	UserInfoOutput struct {
+		Email     string `json:"email"`
+		Phone     string `json:"phone"`
+		FullName  string `json:"full_name"`
+		AvatarURL string `json:"avatar_url"`
+	}
+
+	// Cache statistics for monitoring
+	CacheStats struct {
+		LocalCacheHits       int64   `json:"local_cache_hits"`
+		DistributedCacheHits int64   `json:"distributed_cache_hits"`
+		CacheMisses          int64   `json:"cache_misses"`
+		TotalRequests        int64   `json:"total_requests"`
+		HitRatio             float64 `json:"hit_ratio"`
+	}
 )
