@@ -3,6 +3,7 @@ package router
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/interfaces/http/handler"
+	infraMiddleware "github.com/youknow2509/cio_verify_face/server/service_auth/internal/infrastructure/middleware"
 )
 
 /**
@@ -23,6 +24,7 @@ func (r *AuthRouter) InitializeCoreAuth(g *gin.RouterGroup) {
 		routerV1Public.POST("/login/admin", handler.GetAuthBaseHandler().LoginAdmin)
 	}
 	routerV1Private := g.Group("/v1/auth")
+	routerV1Private.Use(infraMiddleware.GetAuthAccessTokenJwtMiddleware().Apply())
 	{
 		// Logout
 		routerV1Private.POST("/logout", handler.GetAuthBaseHandler().Logout)

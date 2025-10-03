@@ -68,7 +68,7 @@ func (u *UserRepository) RefreshSession(ctx context.Context, data *model.Refresh
 
 // RemoveUserSession implements repository.IUserRepository.
 func (u *UserRepository) RemoveUserSession(ctx context.Context, data *model.RemoveUserSessionInput) error {
-	panic("unimplemented")
+	return u.q.DeleteUserSessionByID(ctx, pgtype.UUID{Bytes: data.SessionID, Valid: true})
 }
 
 /**

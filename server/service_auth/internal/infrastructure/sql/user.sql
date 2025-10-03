@@ -14,3 +14,7 @@ INSERT INTO user_sessions (
     created_at,
     expires_at
 ) VALUES ($1, $2, $3, $4, $5, CURRENT_TIMESTAMP, $6);
+
+-- name: DeleteUserSessionByID :exec
+DELETE FROM user_sessions
+WHERE session_id = $1;

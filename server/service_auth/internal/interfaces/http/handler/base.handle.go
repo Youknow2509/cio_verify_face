@@ -7,9 +7,11 @@ import (
 	"github.com/go-playground/validator/v10"
 	applicationModel "github.com/youknow2509/cio_verify_face/server/service_auth/internal/application/model"
 	applicationService "github.com/youknow2509/cio_verify_face/server/service_auth/internal/application/service"
-	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/interfaces/dto"
 	constants "github.com/youknow2509/cio_verify_face/server/service_auth/internal/constants"
+	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/interfaces/dto"
 	interfaceResponse "github.com/youknow2509/cio_verify_face/server/service_auth/internal/interfaces/response"
+	utilsContext "github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/context"
+	utilsUuid "github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/uuid"
 )
 
 /**
@@ -64,9 +66,9 @@ func (h *AuthBaseHandler) Login(c *gin.Context) {
 	response, err := applicationService.GetCoreAuthService().Login(
 		c,
 		&applicationModel.LoginInput{
-			UserName: request.UserName,
-			Password: request.Password,
-			ClientIp: c.ClientIP(),
+			UserName:  request.UserName,
+			Password:  request.Password,
+			ClientIp:  c.ClientIP(),
 			UserAgent: c.Request.UserAgent(),
 		},
 	)
@@ -155,7 +157,55 @@ func (h *AuthBaseHandler) LoginAdmin(c *gin.Context) {
 // @Failure      400  {object}  dto.ErrResponseData
 // @Router       /v1/auth/logout [post]
 func (h *AuthBaseHandler) Logout(c *gin.Context) {
-	// TODO: Implement logout handler
+	// Get data auth from context
+	userIdStr, sessionIdStr, exists := utilsContext.GetSessionFromContext(c)
+	if !exists {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid request parameters",
+		)
+		return
+	}
+	// Validate id str to uuid
+	userId, err := utilsUuid.ParseUUID(userIdStr)
+	if err != nil {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid data session",
+		)
+		return
+	}
+	sessionId, err := utilsUuid.ParseUUID(sessionIdStr)
+	if err != nil {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid data session",
+		)
+		return
+	}
+	// Call handle to service
+	if err := applicationService.GetCoreAuthService().Logout(
+		c,
+		&applicationModel.LogoutInput{
+			UserId:    userId,
+			SessionId: sessionId,
+		},
+	); err != nil {
+		interfaceResponse.ErrorResponse(
+			c,
+			err.Code,
+			err.Message,
+		)
+		return
+	}
+	interfaceResponse.SuccessResponse(
+		c,
+		interfaceResponse.ErrCodeSuccess,
+		nil,
+	)
 }
 
 // Handle refresh token
