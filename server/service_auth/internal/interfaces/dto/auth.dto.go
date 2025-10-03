@@ -5,6 +5,11 @@ package dto
 //	Auth DTOs
 //
 // ======================
+type DeleteDeviceRequest struct {
+	DeviceId  string `json:"device_id" validate:"required"`
+	CompanyId string `json:"company_id" validate:"required"`
+}
+
 type UpdateDeviceRequest struct {
 	CompanyId  string `json:"company_id" validate:"required"`
 	DeviceName string `json:"device_name" validate:"required,min=2,max=100"`

@@ -131,7 +131,76 @@ func (c *CoreAuthService) UpdateDeviceSession(ctx context.Context, input *applic
 
 // DeleteDeviceSession implements service.ICoreAuthService.
 func (c *CoreAuthService) DeleteDeviceSession(ctx context.Context, input *applicationModel.DeleteDeviceSessionInput) *errors.Error {
-	// TODO: Implement the delete device session logic here
+	// Check user exists in company
+	companyRepo, err := domainRepository.GetCompanyRepository()
+	if err != nil {
+		global.Logger.Error("Error getting company repository: ", err)
+		return errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	ok, err := companyRepo.CheckUserIsManagementInCompany(
+		ctx,
+		&domainModel.CheckCompanyIsManagementInCompanyInput{
+			CompanyID: input.CompanyId,
+			UserID:    input.UserId,
+		},
+	)
+	if err != nil {
+		global.Logger.Error("Error checking user is management in company: ", err)
+		return errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	if !ok {
+		// User not found or not management in company
+		return errors.GetError(errors.AuthDontHavePermissionErrorCode)
+	}
+	// Check device exists in company
+	ok, err = companyRepo.CheckDeviceExistsInCompany(
+		ctx,
+		&domainModel.CheckDeviceExistsInCompanyInput{
+			CompanyID: input.CompanyId,
+			DeviceID:  input.DeviceId,
+		},
+	)
+	if err != nil {
+		global.Logger.Error("Error checking device exists in company: ", err)
+		return errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	if !ok {
+		// Device not found in company
+		return errors.GetError(errors.DeviceNotFoundErrorCode)
+	}
+	// Delete device session in database
+	if err := companyRepo.DeleteDeviceSession(
+		ctx,
+		&domainModel.DeleteDeviceSessionInput{
+			DeviceId: input.DeviceId,
+		},
+	); err != nil {
+		global.Logger.Error("Error deleting device session: ", err)
+		return errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	// Save audit log
+	auditRepo, err := domainRepository.GetAuditRepository()
+	if err != nil {
+		global.Logger.Error("Error getting audit repository: ", err)
+		return errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	if err := auditRepo.AddAuditLog(
+		ctx,
+		&domainModel.AuditLog{
+			UserId:       input.UserId,
+			Action:       constants.AuditActionDeleteSessionDevice,
+			ResourceType: constants.AuditResourceTypeDevice,
+			ResourceId:   input.DeviceId,
+			OldValues:    nil,
+			NewValues:    nil,
+			IpAddress: input.ClientIp,
+			UserAgent:   input.UserAgent,
+			Timestamp:   time.Now().Unix(),
+		},
+	); err != nil {
+		global.Logger.Error("Error logging audit log: ", err)
+		// Not return error
+	}
 	return nil
 }
 

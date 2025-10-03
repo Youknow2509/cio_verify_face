@@ -475,9 +475,105 @@ func (h *AuthBaseHandler) UpdateDeviceSession(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param        Authorization header string true "Authorization Bearer token"
+// @Param        body   body dto.DeleteDeviceRequest  true  "Request body delete device"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /v1/auth/device/{id} [delete]
+// @Router       /v1/auth/device [delete]
 func (h *AuthBaseHandler) DeleteDeviceSession(c *gin.Context) {
-	// TODO: Implement delete device handler
+	// Bind the request to the DeleteDeviceRequest DTO
+	var request dto.DeleteDeviceRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid request parameters",
+		)
+		return
+	}
+	// Validate the request
+	validate := c.MustGet(constants.MIDDLEWARE_VALIDATE_SERVICE_NAME).(*validator.Validate)
+	if err := validate.Struct(request); err != nil {
+		var fieldErrors []string
+		for _, fieldError := range err.(validator.ValidationErrors) {
+			fieldErrors = append(fieldErrors, fieldError.Field())
+		}
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid request parameters: "+strings.Join(fieldErrors, ", "),
+		)
+		return
+	}
+	// Get data auth from context
+	userIdStr, sessionIdStr, role, exists := utilsContext.GetSessionFromContext(c)
+	if !exists {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid request parameters",
+		)
+		return
+	}
+	// Validate id str to uuid
+	userId, err := utilsUuid.ParseUUID(userIdStr)
+	if err != nil {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid data session",
+		)
+		return
+	}
+	sessionId, err := utilsUuid.ParseUUID(sessionIdStr)
+	if err != nil {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid data session",
+		)
+		return
+	}
+	companyUuid, err := utilsUuid.ParseUUID(request.CompanyId)
+	if err != nil {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid company id",
+		)
+		return
+	}
+	deviceUuid, err := utilsUuid.ParseUUID(request.DeviceId)
+	if err != nil {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid device id",
+		)
+		return
+	}
+	// Call handle to service
+	if err_r := applicationService.GetCoreAuthService().DeleteDeviceSession(
+		c,
+		&applicationModel.DeleteDeviceSessionInput{
+			UserId:    userId,
+			SessionId: sessionId,
+			ClientIp:  c.ClientIP(),
+			Role:      role,
+			// From request
+			DeviceId:  deviceUuid,
+			CompanyId: companyUuid,
+		},
+	); err_r != nil {
+		interfaceResponse.ErrorResponse(
+			c,
+			err_r.Code,
+			err_r.Message,
+		)
+		return
+	}
+	interfaceResponse.SuccessResponse(
+		c,
+		interfaceResponse.ErrCodeSuccess,
+		nil,
+	)
 }

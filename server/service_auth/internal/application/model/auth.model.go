@@ -98,12 +98,13 @@ type (
 	}
 
 	DeleteDeviceSessionInput struct {
-		// TODO: Add fields
-	}
-
-	RefreshDeviceSessionInput struct {
-		// TODO: Add fields
-
+		UserId    uuid.UUID `json:"user_id"`
+		SessionId uuid.UUID `json:"session_id"`
+		ClientIp  string    `json:"client_ip"`
+		UserAgent string    `json:"user_agent"`
+		Role      int       `json:"role"`
+		CompanyId uuid.UUID `json:"company_id"`
+		DeviceId  uuid.UUID `json:"device_id"`
 	}
 )
 
@@ -113,10 +114,6 @@ type (
 //
 // =======================================================
 type (
-	RefreshDeviceSessionOutput struct {
-		// TODO: Add fields
-	}
-
 	UpdateDeviceSessionOutput struct {
 		Token    string `json:"token"`
 		ExpireAt int64  `json:"expire_at"`
@@ -144,13 +141,5 @@ type (
 	RefreshTokenOutput struct {
 		AccessToken  string `json:"access_token"`
 		RefreshToken string `json:"refresh_token"`
-	}
-
-	ValidateJwtUserOutput struct {
-		// TODO: Add fields for ValidateJwtUserOutput
-	}
-
-	ValidateJwtServiceOutput struct {
-		// TODO: Add fields for ValidateJwtServiceOutput
 	}
 )
