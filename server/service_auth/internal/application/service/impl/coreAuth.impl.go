@@ -10,6 +10,7 @@ import (
 	applicationModel "github.com/youknow2509/cio_verify_face/server/service_auth/internal/application/model"
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/application/service"
 	constants "github.com/youknow2509/cio_verify_face/server/service_auth/internal/constants"
+	domainError "github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/errors"
 	domainCache "github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/cache"
 	domainModel "github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/model"
 	domainRepository "github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/repository"
@@ -137,7 +138,6 @@ func (c *CoreAuthService) Login(ctx context.Context, input *applicationModel.Log
 	var valCache = map[string]string{
 		"user_id":       response.UserID,
 		"role":          strconv.Itoa(int(domainModel.RoleUser)),
-		"refresh_token": refreshToken,
 	}
 	if err := cacheDistributed.SetTTL(
 		ctx,
@@ -244,7 +244,6 @@ func (c *CoreAuthService) LoginAdmin(ctx context.Context, input *applicationMode
 	var valCache = map[string]string{
 		"user_id":       response.UserID,
 		"role":          strconv.Itoa(int(domainModel.RoleAdmin)),
-		"refresh_token": refreshToken,
 	}
 	keyCache := utilsCache.GetKeyUserAccessTokenIsActive(sessionHash)
 	if err := cacheDistributed.SetTTL(
@@ -305,9 +304,113 @@ func (c *CoreAuthService) RefreshDeviceSession(ctx context.Context, input *appli
 
 // RefreshToken implements service.ICoreAuthService.
 func (c *CoreAuthService) RefreshToken(ctx context.Context, input *applicationModel.RefreshTokenInput) (*applicationModel.RefreshTokenOutput, *errors.Error) {
-	// TODO: Implement
+	// Validate token refresh
+	tokenService := domainToken.GetTokenService()
+	_, tkErr := tokenService.ParseUserRefreshToken(
+		ctx,
+		input.RefreshToken,
+	)
+	if tkErr != nil {
+		if tkErr.Code ==  domainError.TokenExpiredErrorCode{
+			// Token expired
+			return nil, errors.GetError(errors.TokenExpiredErrorCode)
+		}
+		if tkErr.Code == domainError.TokenMalformedErrorCode || tkErr.Code == domainError.TokenSignatureInvalidErrCode {
+			// Token invalid
+			return nil, errors.GetError(errors.AuthTokenInvalidErrorCode)
+		}
+		// Other error
+		global.Logger.Error("Error parsing user refresh token: ", tkErr.Message)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	// Get data session from db
+	domainRepo, err := domainRepository.GetUserRepository()
+	if err != nil {
+		global.Logger.Error("Error getting user repository: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	sessionData, err := domainRepo.GetUserSessionByID(ctx, input.SessionId)
+	if err != nil {
+		global.Logger.Error("Error getting user session by ID: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	if sessionData == nil {
+		// Session not found
+		return nil, errors.GetError(errors.AuthCannotRefreshTokenErrorCode)
+	}
+	if sessionData.ExpiredAt.Before(time.Now()) {
+		// Session expired
+		return nil, errors.GetError(errors.AuthCannotRefreshTokenErrorCode)
+	}
+	if sessionData.RefreshToken != input.RefreshToken {
+		// Refresh token not match
+		return nil, errors.GetError(errors.AuthCannotRefreshTokenErrorCode)
+	}
+	// Create new access token and refresh token
+	accessTokenTimeTtl := time.Duration(constants.TTL_ACCESS_TOKEN) * time.Hour
+	accessToken, err := tokenService.CreateUserToken(
+		ctx,
+		&domainModel.TokenUserJwtInput{
+			UserId:  input.UserId.String(),
+			TokenId: input.SessionId.String(),
+			Role:    input.UserRole,
+			Expires: time.Now().Add(accessTokenTimeTtl),
+		},
+	)
+	if err != nil {
+		global.Logger.Error("Error creating user token: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	refreshTokenTimeTtl := time.Duration(constants.TTL_REFRESH_TOKEN) * time.Hour
+	refreshTokenNew, err := tokenService.CreateUserRefreshToken(
+		ctx,
+		&domainModel.TokenUserRefreshInput{
+			UserId:  input.UserId.String(),
+			TokenId: input.SessionId.String(),
+			Expires: time.Now().Add(refreshTokenTimeTtl),
+		},
+	)
+	if err != nil {
+		global.Logger.Error("Error creating user token: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	// Save new session to db
+	if err := domainRepo.RefreshSession(
+		ctx,
+		&domainModel.RefreshSessionInput{
+			SessionID:    input.SessionId,
+			RefreshToken: refreshTokenNew,
+			ExpiredAt:    time.Now().Add(refreshTokenTimeTtl),
+		},
+	); err != nil {
+		global.Logger.Error("Error refreshing user session: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	// Save new session to cache - Use to block access token 
+	cacheDistributed, err := domainCache.GetDistributedCache()
+	if err != nil {
+		global.Logger.Error("Error getting distributed cache: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	sessionHash := utilsCrypto.GetHash(input.SessionId.String())
+	keyCache := utilsCache.GetKeyUserAccessTokenIsActive(sessionHash)
+	var valCache = map[string]string{
+		"user_id":       input.UserId.String(),
+		"role":          strconv.Itoa(int(input.UserRole)),
+	}
+	if err := cacheDistributed.SetTTL(
+		ctx,
+		keyCache,
+		valCache,
+		constants.TTL_ACCESS_TOKEN,
+	); err != nil {
+		global.Logger.Error("Error setting session in cache: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	// Return new tokens
 	return &applicationModel.RefreshTokenOutput{
-		// TODO: Add fields
+		AccessToken:  accessToken,
+		RefreshToken: refreshTokenNew,
 	}, nil
 }
 

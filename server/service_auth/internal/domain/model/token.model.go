@@ -70,6 +70,16 @@ type (
 		IssuedAt  time.Time `json:"iat,omitempty"`
 	}
 
+	TokenUserRefreshOutput struct {
+		TokenId   string    `json:"jti,omitempty"`
+		Issuer    string    `json:"iss,omitempty"`
+		Subject   string    `json:"sub,omitempty"`
+		Audience  []string  `json:"aud,omitempty"`
+		ExpiresAt time.Time `json:"exp,omitempty"`
+		NotBefore time.Time `json:"nbf,omitempty"`
+		IssuedAt  time.Time `json:"iat,omitempty"`
+	}
+
 	TokenServiceJwtOutput struct {
 		ServiceId   string    `json:"service_id" validate:"required"`
 		ServiceName string    `json:"service_name" validate:"required"`

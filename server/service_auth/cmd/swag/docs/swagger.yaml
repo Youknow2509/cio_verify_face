@@ -25,22 +25,16 @@ definitions:
     type: object
   dto.LogoutRequest:
     properties:
-      access_token:
-        type: string
       refresh_token:
         type: string
     required:
-    - access_token
     - refresh_token
     type: object
   dto.RefreshTokenRequest:
     properties:
-      access_token:
-        type: string
       refresh_token:
         type: string
     required:
-    - access_token
     - refresh_token
     type: object
   dto.ResponseData:
@@ -179,6 +173,11 @@ paths:
       - application/json
       description: User logout
       parameters:
+      - description: Authorization Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
       - description: Request body logout
         in: body
         name: request
@@ -199,7 +198,7 @@ paths:
       summary: User logout
       tags:
       - Core Auth
-  /v1/auth/refresh-token:
+  /v1/auth/me:
     post:
       consumes:
       - application/json
@@ -222,6 +221,37 @@ paths:
           schema:
             $ref: '#/definitions/dto.ErrResponseData'
       summary: User get base info
+      tags:
+      - Core Auth
+  /v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: User refresh token
+      parameters:
+      - description: Authorization Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Request body refresh token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: User refresh token
       tags:
       - Core Auth
   /v1/device/{id}/refresh:

@@ -71,6 +71,14 @@ type ITokenService interface {
 	ParseUserToken(ctx context.Context, token string) (*model.TokenUserJwtOutput, *domainErrors.TokenValidationError)
 
 	/**
+	 * Parse a user refresh token
+	 * @param ctx context.Context
+	 * @param token string - jwt token
+	 * @return *model.TokenUserRefreshOutput, *domainErrors.TokenValidationError
+	 */
+	ParseUserRefreshToken(ctx context.Context, token string) (*model.TokenUserRefreshOutput, *domainErrors.TokenValidationError)
+
+	/**
 	 * Parse a service token
 	 * @param ctx context.Context
 	 * @param token string - jwt token

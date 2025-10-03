@@ -25,6 +25,10 @@ type (
 		Role   int    `json:"role"`
 	}
 
+	TokenUserRefreshJwtClaim struct {
+		jwt.RegisteredClaims
+	}
+
 	TokenServiceJwtClaim struct {
 		jwt.RegisteredClaims
 		ServiceId   string `json:"service_id"`
@@ -49,16 +53,46 @@ type TokenService struct {
 	audience []string
 }
 
+// ParseUserRefreshToken implements token.ITokenService.
+func (t *TokenService) ParseUserRefreshToken(ctx context.Context, token string) (*domainModel.TokenUserRefreshOutput, *domainErrors.TokenValidationError) {
+	parsedToken, err := jwt.ParseWithClaims(
+		token,
+		&TokenUserRefreshJwtClaim{},
+		func(token *jwt.Token) (any, error) {
+			return []byte(t.secret), nil
+		},
+	)
+	if e := handleError(err); e != nil {
+		return nil, e
+	}
+	if !parsedToken.Valid {
+		return nil, domainErrors.GetTokenValidationError(domainErrors.TokenValidationErrorCode)
+	}
+	out := parsedToken.Claims.(*TokenUserRefreshJwtClaim)
+	if out == nil {
+		return nil, domainErrors.GetTokenValidationError(domainErrors.TokenMalformedErrorCode)
+	}
+	output := &domainModel.TokenUserRefreshOutput{
+		TokenId:   out.ID,
+		Issuer:    out.Issuer,
+		Subject:   out.Subject,
+		Audience:  out.Audience,
+		ExpiresAt: out.ExpiresAt.Time,
+		IssuedAt:  out.IssuedAt.Time,
+	}
+	return output, nil
+}
+
 // CreateDeviceRefreshToken implements token.ITokenService.
 func (t *TokenService) CreateDeviceRefreshToken(ctx context.Context, input *domainModel.TokenDeviceRefreshInput) (string, error) {
 	token := fmt.Sprintf(
-        "%s.%s.%s.%s",
-        utilsRandom.RandomString(8),
-        utilsRandom.RandomString(8),
-        utilsRandom.RandomString(8),
-        utilsRandom.RandomString(8),
-    )
-    return token, nil
+		"%s.%s.%s.%s",
+		utilsRandom.RandomString(8),
+		utilsRandom.RandomString(8),
+		utilsRandom.RandomString(8),
+		utilsRandom.RandomString(8),
+	)
+	return token, nil
 }
 
 // CreateDeviceToken implements token.ITokenService.
@@ -83,70 +117,6 @@ func (t *TokenService) CreateDeviceToken(ctx context.Context, input *domainModel
 // CreateServiceRefreshToken implements token.ITokenService.
 func (t *TokenService) CreateServiceRefreshToken(ctx context.Context, input *domainModel.ServiceRefreshTokenInput) (string, error) {
 	token := fmt.Sprintf(
-        "%s.%s.%s.%s",
-        utilsRandom.RandomString(8),
-        utilsRandom.RandomString(8),
-        utilsRandom.RandomString(8),
-        utilsRandom.RandomString(8),
-    )
-    return token, nil
-}
-
-// ParseDeviceToken implements token.ITokenService.
-func (t *TokenService) ParseDeviceToken(ctx context.Context, token string) (*domainModel.TokenDeviceJwtOutput, *domainErrors.TokenValidationError) {
-	parsedToken, err := jwt.ParseWithClaims(
-        token,
-        &TokenDeviceJwtClaim{},
-        func(token *jwt.Token) (any, error) {
-            return []byte(t.secret), nil
-        },
-    )
-    if e := handleError(err); e != nil {
-        return nil, e
-    }
-    if !parsedToken.Valid {
-        return nil, domainErrors.GetTokenValidationError(domainErrors.TokenValidationErrorCode)
-    }
-    out := parsedToken.Claims.(*TokenDeviceJwtClaim)
-    if out == nil {
-        return nil, domainErrors.GetTokenValidationError(domainErrors.TokenMalformedErrorCode)
-    }
-    output := &domainModel.TokenDeviceJwtOutput{
-        DeviceId:  out.DeviceId,
-        CompanyId: out.CompanyId,
-        TokenId:   out.ID,
-        Issuer:    out.Issuer,
-        Subject:   out.Subject,
-        Audience:  out.Audience,
-        ExpiresAt: out.ExpiresAt.Time,
-        IssuedAt:  out.IssuedAt.Time,
-        NotBefore: out.NotBefore.Time,
-    }
-    return output, nil
-}
-
-// CreateServiceToken implements token.ITokenService.
-func (t *TokenService) CreateServiceToken(ctx context.Context, input *domainModel.TokenServiceJwtInput) (string, error) {
-	 tokenClaims := &TokenServiceJwtClaim{
-        RegisteredClaims: jwt.RegisteredClaims{
-            Issuer:    t.issuer,
-            Subject:   t.subject,
-            Audience:  t.audience,
-            ExpiresAt: jwt.NewNumericDate(input.Expires),
-            NotBefore: jwt.NewNumericDate(time.Now()),
-            IssuedAt:  jwt.NewNumericDate(time.Now()),
-            ID:        input.TokenId,
-        },
-        ServiceName: input.ServiceName,
-        Type:        input.Type,
-    }
-    token := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaims)
-    return token.SignedString([]byte(t.secret))
-}
-
-// CreateUserRefreshToken implements token.ITokenService.
-func (t *TokenService) CreateUserRefreshToken(ctx context.Context, input *domainModel.TokenUserRefreshInput) (string, error) {
-	token := fmt.Sprintf(
 		"%s.%s.%s.%s",
 		utilsRandom.RandomString(8),
 		utilsRandom.RandomString(8),
@@ -154,6 +124,58 @@ func (t *TokenService) CreateUserRefreshToken(ctx context.Context, input *domain
 		utilsRandom.RandomString(8),
 	)
 	return token, nil
+}
+
+// ParseDeviceToken implements token.ITokenService.
+func (t *TokenService) ParseDeviceToken(ctx context.Context, token string) (*domainModel.TokenDeviceJwtOutput, *domainErrors.TokenValidationError) {
+	parsedToken, err := jwt.ParseWithClaims(
+		token,
+		&TokenDeviceJwtClaim{},
+		func(token *jwt.Token) (any, error) {
+			return []byte(t.secret), nil
+		},
+	)
+	if e := handleError(err); e != nil {
+		return nil, e
+	}
+	if !parsedToken.Valid {
+		return nil, domainErrors.GetTokenValidationError(domainErrors.TokenValidationErrorCode)
+	}
+	out := parsedToken.Claims.(*TokenDeviceJwtClaim)
+	if out == nil {
+		return nil, domainErrors.GetTokenValidationError(domainErrors.TokenMalformedErrorCode)
+	}
+	output := &domainModel.TokenDeviceJwtOutput{
+		DeviceId:  out.DeviceId,
+		CompanyId: out.CompanyId,
+		TokenId:   out.ID,
+		Issuer:    out.Issuer,
+		Subject:   out.Subject,
+		Audience:  out.Audience,
+		ExpiresAt: out.ExpiresAt.Time,
+		IssuedAt:  out.IssuedAt.Time,
+		NotBefore: out.NotBefore.Time,
+	}
+	return output, nil
+}
+
+// CreateServiceToken implements token.ITokenService.
+func (t *TokenService) CreateServiceToken(ctx context.Context, input *domainModel.TokenServiceJwtInput) (string, error) {
+	tokenClaims := &TokenServiceJwtClaim{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    t.issuer,
+			Subject:   t.subject,
+			Audience:  t.audience,
+			ExpiresAt: jwt.NewNumericDate(input.Expires),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ID:        input.TokenId,
+		},
+		ServiceName: input.ServiceName,
+		Type:        input.Type,
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaims)
+	return token.SignedString([]byte(t.secret))
 }
 
 // CreateUserToken implements token.ITokenService.
@@ -170,6 +192,23 @@ func (t *TokenService) CreateUserToken(ctx context.Context, input *domainModel.T
 		},
 		UserId: input.UserId,
 		Role:   input.Role,
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaim)
+	return token.SignedString([]byte(t.secret))
+}
+
+// CreateUserRefreshToken implements token.ITokenService.
+func (t *TokenService) CreateUserRefreshToken(ctx context.Context, input *domainModel.TokenUserRefreshInput) (string, error) {
+	tokenClaim := &TokenUserRefreshJwtClaim{
+		RegisteredClaims: jwt.RegisteredClaims{
+			Issuer:    t.issuer,
+			Subject:   t.subject,
+			Audience:  t.audience,
+			ExpiresAt: jwt.NewNumericDate(input.Expires),
+			NotBefore: jwt.NewNumericDate(time.Now()),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+			ID:        input.TokenId,
+		},
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaim)
 	return token.SignedString([]byte(t.secret))

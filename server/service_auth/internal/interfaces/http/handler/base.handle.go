@@ -152,13 +152,13 @@ func (h *AuthBaseHandler) LoginAdmin(c *gin.Context) {
 // @Tags         Core Auth
 // @Accept       json
 // @Produce      json
-// @Param        request   body dto.LogoutRequest  true  "Request body logout"
+// @Param        Authorization header string true "Authorization Bearer token"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
 // @Router       /v1/auth/logout [post]
 func (h *AuthBaseHandler) Logout(c *gin.Context) {
 	// Get data auth from context
-	userIdStr, sessionIdStr, exists := utilsContext.GetSessionFromContext(c)
+	userIdStr, sessionIdStr, _, exists := utilsContext.GetSessionFromContext(c)
 	if !exists {
 		interfaceResponse.BadRequestResponse(
 			c,
@@ -214,12 +214,89 @@ func (h *AuthBaseHandler) Logout(c *gin.Context) {
 // @Tags         Core Auth
 // @Accept       json
 // @Produce      json
+// @Param        Authorization header string true "Authorization Bearer token"
 // @Param        request   body dto.RefreshTokenRequest  true  "Request body refresh token"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /v1/auth/refresh-token [post]
+// @Router       /v1/auth/refresh [post]
 func (h *AuthBaseHandler) RefreshToken(c *gin.Context) {
-	// TODO: Implement refresh token handler
+	// Get data auth from context
+	userIdStr, sessionIdStr, userRole, exists := utilsContext.GetSessionFromContext(c)
+	if !exists {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid request parameters",
+		)
+		return
+	}
+	// Validate id str to uuid
+	userId, err := utilsUuid.ParseUUID(userIdStr)
+	if err != nil {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid data session",
+		)
+		return
+	}
+	sessionId, err := utilsUuid.ParseUUID(sessionIdStr)
+	if err != nil {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid data session",
+		)
+		return
+	}
+	// Bind the request to the RefreshTokenRequest DTO
+	var request dto.RefreshTokenRequest
+	if err := c.ShouldBindJSON(&request); err != nil {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid request parameters",
+		)
+		return
+	}
+	// Validate the request
+	validate := c.MustGet(constants.MIDDLEWARE_VALIDATE_SERVICE_NAME).(*validator.Validate)
+	if err := validate.Struct(request); err != nil {
+		var fieldErrors []string
+		for _, fieldError := range err.(validator.ValidationErrors) {
+			fieldErrors = append(fieldErrors, fieldError.Field())
+		}
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid request parameters: "+strings.Join(fieldErrors, ", "),
+		)
+		return
+	}
+	// Call handle to service
+	response, serviceErr := applicationService.GetCoreAuthService().RefreshToken(
+		c,
+		&applicationModel.RefreshTokenInput{
+			UserId:       userId,
+			SessionId:    sessionId,
+			RefreshToken: request.RefreshToken,
+			ClientIp:     c.ClientIP(),
+			UserRole:     userRole,
+		},
+	)
+	if serviceErr != nil {
+		interfaceResponse.ErrorResponse(
+			c,
+			serviceErr.Code,
+			serviceErr.Message,
+		)
+		return
+	}
+	interfaceResponse.SuccessResponse(
+		c,
+		interfaceResponse.ErrCodeSuccess,
+		response,
+	)
 }
 
 // User get info
@@ -231,7 +308,7 @@ func (h *AuthBaseHandler) RefreshToken(c *gin.Context) {
 // @Param        Authorization header string true "Authorization Bearer token"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /v1/auth/refresh-token [post]
+// @Router       /v1/auth/me [post]
 func (h *AuthBaseHandler) GetMyInfo(c *gin.Context) {
 	// TODO: Implement get my info handler
 }

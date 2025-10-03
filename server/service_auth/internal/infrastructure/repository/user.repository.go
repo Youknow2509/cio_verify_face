@@ -20,6 +20,29 @@ type UserRepository struct {
 	q db.Queries
 }
 
+// GetUserSessionByID implements repository.IUserRepository.
+func (u *UserRepository) GetUserSessionByID(ctx context.Context, sessionID uuid.UUID) (*model.UserSessionOutput, error) {
+	response, err := u.q.GetUserSessionByID(
+		ctx,
+		pgtype.UUID{Bytes: sessionID, Valid: true},
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &model.UserSessionOutput{
+		SessionID:    response.SessionID.Bytes,
+		UserID:       response.UserID.Bytes,
+		RefreshToken: response.RefreshToken,
+		IPAddress:    *response.IpAddress,
+		UserAgent:    response.UserAgent.String,
+		CreatedAt:    response.CreatedAt.Time,
+		ExpiredAt:    response.ExpiresAt.Time,
+	}, nil
+}
+
 // CreateUserSession implements repository.IUserRepository.
 func (u *UserRepository) CreateUserSession(ctx context.Context, data *model.CreateUserSessionInput) error {
 	return u.q.CreateUserSession(ctx, db.CreateUserSessionParams{
@@ -30,11 +53,6 @@ func (u *UserRepository) CreateUserSession(ctx context.Context, data *model.Crea
 		UserAgent:    pgtype.Text{String: data.UserAgent, Valid: true},
 		ExpiresAt:    pgtype.Timestamptz{Time: data.ExpiredAt, Valid: true},
 	})
-}
-
-// GetRefreshSessionInfo implements repository.IUserRepository.
-func (u *UserRepository) GetRefreshSessionInfo(ctx context.Context, data *model.GetRefreshSessionInfoInput) (*model.GetRefreshSessionInfoOutput, error) {
-	panic("unimplemented")
 }
 
 // GetUserBaseByEmail implements repository.IUserRepository.
@@ -63,7 +81,14 @@ func (u *UserRepository) GetUserBaseByID(ctx context.Context, userID uuid.UUID) 
 
 // RefreshSession implements repository.IUserRepository.
 func (u *UserRepository) RefreshSession(ctx context.Context, data *model.RefreshSessionInput) error {
-	panic("unimplemented")
+	return u.q.UpdateUserSession(
+		ctx,
+		db.UpdateUserSessionParams{
+			SessionID:    pgtype.UUID{Bytes: data.SessionID, Valid: true},
+			RefreshToken: data.RefreshToken,
+			ExpiresAt:    pgtype.Timestamptz{Time: data.ExpiredAt, Valid: true},
+		},
+	)
 }
 
 // RemoveUserSession implements repository.IUserRepository.
