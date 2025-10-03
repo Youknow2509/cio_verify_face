@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS work_shifts (
-    shift_id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    shift_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     company_id UUID NOT NULL REFERENCES companies(company_id) ON DELETE CASCADE,
     name VARCHAR(255) NOT NULL,
     description TEXT,
@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS work_shifts (
     overtime_after_minutes INTEGER DEFAULT 480, -- 8 hours = 480 minutes
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 
 )
 -- +goose StatementEnd

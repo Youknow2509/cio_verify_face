@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS employee_shifts (
-    employee_shift_id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    employee_shift_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     employee_id UUID NOT NULL REFERENCES employees(employee_id) ON DELETE CASCADE,
     shift_id UUID NOT NULL REFERENCES work_shifts(shift_id) ON DELETE CASCADE,
     effective_from DATE NOT NULL,
