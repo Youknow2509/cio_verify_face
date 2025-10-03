@@ -7,7 +7,7 @@
 GOOSE=goose
 GOOSE_NAME ?= cio_verify_face
 GOOSE_DRIVER ?= postgres
-GOOSE_DB_DSN = "postgresql://postgres:root1234@localhost:5432/cio_verify_face?sslmode=disable"
+GOOSE_DB_DSN = "postgresql://postgres:root1234@localhost:5433/cio_verify_face"
 GOOSE_MIGRATION_DSN ?= database/migration/sql/
 GOOSE_PATH_SCHEMA ?= database/migration/sql/
 GOOSE_PATH_QUERIES = database/queries/

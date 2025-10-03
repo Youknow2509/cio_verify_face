@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS audit_logs (
-    log_id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    log_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES users(user_id),
     company_id UUID REFERENCES companies(company_id),
     action VARCHAR(100) NOT NULL,

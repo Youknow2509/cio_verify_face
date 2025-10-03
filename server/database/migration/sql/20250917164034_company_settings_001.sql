@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS company_settings (
-    setting_id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    setting_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     company_id UUID NOT NULL REFERENCES companies(company_id) ON DELETE CASCADE,
     setting_key VARCHAR(100) NOT NULL,
     setting_value TEXT,

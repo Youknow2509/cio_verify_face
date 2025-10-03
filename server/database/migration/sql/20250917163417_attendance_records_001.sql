@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS attendance_records (
-    record_id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    record_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     employee_id UUID NOT NULL REFERENCES employees(employee_id) ON DELETE CASCADE,
     device_id UUID NOT NULL REFERENCES devices(device_id) ON DELETE CASCADE,
     timestamp TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT CURRENT_TIMESTAMP,
