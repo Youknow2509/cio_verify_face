@@ -84,3 +84,61 @@ func (q *Queries) GetUserBaseWithMail(ctx context.Context, email string) (GetUse
 	)
 	return i, err
 }
+
+const getUserSessionByID = `-- name: GetUserSessionByID :one
+SELECT 
+    session_id, 
+    user_id, 
+    refresh_token,
+    ip_address,
+    user_agent,
+    created_at,
+    expires_at
+FROM user_sessions
+WHERE session_id = $1
+LIMIT 1
+`
+
+type GetUserSessionByIDRow struct {
+	SessionID    pgtype.UUID
+	UserID       pgtype.UUID
+	RefreshToken string
+	IpAddress    *netip.Addr
+	UserAgent    pgtype.Text
+	CreatedAt    pgtype.Timestamptz
+	ExpiresAt    pgtype.Timestamptz
+}
+
+func (q *Queries) GetUserSessionByID(ctx context.Context, sessionID pgtype.UUID) (GetUserSessionByIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserSessionByID, sessionID)
+	var i GetUserSessionByIDRow
+	err := row.Scan(
+		&i.SessionID,
+		&i.UserID,
+		&i.RefreshToken,
+		&i.IpAddress,
+		&i.UserAgent,
+		&i.CreatedAt,
+		&i.ExpiresAt,
+	)
+	return i, err
+}
+
+const updateUserSession = `-- name: UpdateUserSession :exec
+UPDATE user_sessions
+SET
+    refresh_token = $2,
+    expires_at = $3
+WHERE session_id = $1
+`
+
+type UpdateUserSessionParams struct {
+	SessionID    pgtype.UUID
+	RefreshToken string
+	ExpiresAt    pgtype.Timestamptz
+}
+
+func (q *Queries) UpdateUserSession(ctx context.Context, arg UpdateUserSessionParams) error {
+	_, err := q.db.Exec(ctx, updateUserSession, arg.SessionID, arg.RefreshToken, arg.ExpiresAt)
+	return err
+}

@@ -23,8 +23,8 @@ type IUserRepository interface {
 	CreateUserSession(ctx context.Context, data *model.CreateUserSessionInput) error
 	// Remove user session
 	RemoveUserSession(ctx context.Context, data *model.RemoveUserSessionInput) error
-	// Get refresh session info
-	GetRefreshSessionInfo(ctx context.Context, data *model.GetRefreshSessionInfoInput) (*model.GetRefreshSessionInfoOutput, error)
+	// Get user session by ID
+	GetUserSessionByID(ctx context.Context, sessionID uuid.UUID) (*model.UserSessionOutput, error)
 	// Refresh user session
 	RefreshSession(ctx context.Context, data *model.RefreshSessionInput) error
 	// v.v

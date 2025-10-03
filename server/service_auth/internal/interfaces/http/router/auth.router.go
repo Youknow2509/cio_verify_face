@@ -1,9 +1,10 @@
 package router
 
 import (
+
 	"github.com/gin-gonic/gin"
-	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/interfaces/http/handler"
 	infraMiddleware "github.com/youknow2509/cio_verify_face/server/service_auth/internal/infrastructure/middleware"
+	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/interfaces/http/handler"
 )
 
 /**
@@ -40,7 +41,6 @@ func (r *AuthRouter) InitializeCoreAuth(g *gin.RouterGroup) {
 		routerV1Private.POST("/device/:id/refresh", handler.GetAuthBaseHandler().RefreshTokenDevice)
 	}
 }
-
 
 /**
  * Initialize Auth Routers

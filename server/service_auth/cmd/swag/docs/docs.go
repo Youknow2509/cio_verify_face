@@ -195,6 +195,13 @@ const docTemplate = `{
                 "summary": "User logout",
                 "parameters": [
                     {
+                        "type": "string",
+                        "description": "Authorization Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
                         "description": "Request body logout",
                         "name": "request",
                         "in": "body",
@@ -220,7 +227,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/auth/refresh-token": {
+        "/v1/auth/me": {
             "post": {
                 "description": "User get base info",
                 "consumes": [
@@ -240,6 +247,53 @@ const docTemplate = `{
                         "name": "Authorization",
                         "in": "header",
                         "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ResponseData"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrResponseData"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/auth/refresh": {
+            "post": {
+                "description": "User refresh token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Core Auth"
+                ],
+                "summary": "User refresh token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Authorization Bearer token",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body refresh token",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.RefreshTokenRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -334,13 +388,9 @@ const docTemplate = `{
         "dto.LogoutRequest": {
             "type": "object",
             "required": [
-                "access_token",
                 "refresh_token"
             ],
             "properties": {
-                "access_token": {
-                    "type": "string"
-                },
                 "refresh_token": {
                     "type": "string"
                 }
@@ -349,13 +399,9 @@ const docTemplate = `{
         "dto.RefreshTokenRequest": {
             "type": "object",
             "required": [
-                "access_token",
                 "refresh_token"
             ],
             "properties": {
-                "access_token": {
-                    "type": "string"
-                },
                 "refresh_token": {
                     "type": "string"
                 }
