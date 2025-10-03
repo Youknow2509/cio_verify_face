@@ -20,6 +20,7 @@ type (
 		SessionID    uuid.UUID  `json:"session_id"`
 		UserID       uuid.UUID  `json:"user_id"`
 		IPAddress    netip.Addr `json:"ip_address"`
+		UserAgent    string     `json:"user_agent"`
 		RefreshToken string     `json:"refresh_token"`
 		ExpiredAt    time.Time  `json:"expired_at"`
 	}

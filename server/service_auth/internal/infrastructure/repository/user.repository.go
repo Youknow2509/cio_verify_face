@@ -6,6 +6,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/model"
 	domainRepository "github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/repository"
@@ -21,7 +22,14 @@ type UserRepository struct {
 
 // CreateUserSession implements repository.IUserRepository.
 func (u *UserRepository) CreateUserSession(ctx context.Context, data *model.CreateUserSessionInput) error {
-	panic("unimplemented")
+	return u.q.CreateUserSession(ctx, db.CreateUserSessionParams{
+		SessionID:    pgtype.UUID{Bytes: data.SessionID, Valid: true},
+		UserID:       pgtype.UUID{Bytes: data.UserID, Valid: true},
+		RefreshToken: data.RefreshToken,
+		IpAddress:    &data.IPAddress,
+		UserAgent:    pgtype.Text{String: data.UserAgent, Valid: true},
+		ExpiresAt:    pgtype.Timestamptz{Time: data.ExpiredAt, Valid: true},
+	})
 }
 
 // GetRefreshSessionInfo implements repository.IUserRepository.

@@ -67,6 +67,7 @@ func (h *AuthBaseHandler) Login(c *gin.Context) {
 			UserName: request.UserName,
 			Password: request.Password,
 			ClientIp: c.ClientIP(),
+			UserAgent: c.Request.UserAgent(),
 		},
 	)
 	if err != nil {

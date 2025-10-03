@@ -173,10 +173,9 @@ type User struct {
 	UpdatedAt     pgtype.Timestamptz
 }
 
-type UsersSession struct {
+type UserSession struct {
 	SessionID    pgtype.UUID
 	UserID       pgtype.UUID
-	AccessToken  string
 	RefreshToken string
 	IpAddress    *netip.Addr
 	UserAgent    pgtype.Text
