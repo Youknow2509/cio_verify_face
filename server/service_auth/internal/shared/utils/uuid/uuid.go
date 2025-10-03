@@ -16,6 +16,11 @@ func GetTimeUUID() (ggUuid.UUID, error) {
 	return ggUuid.NewV7()
 }
 
+// ParseUUID
+func ParseUUID(uuidStr string) (ggUuid.UUID, error) {
+	return ggUuid.Parse(uuidStr)
+}
+
 // Parse uuid time
 func ParseTimeUUID(uuidStr string) (ggUuid.UUID, error) {
 	return ggUuid.Parse(uuidStr)

@@ -26,17 +26,17 @@ type (
 	}
 
 	LoginInput struct {
-		UserName string `json:"username"`
-		Password string `json:"password"`
-		ClientIp string `json:"client_ip"`
+		UserName  string `json:"username"`
+		Password  string `json:"password"`
+		ClientIp  string `json:"client_ip"`
+		UserAgent string `json:"user_agent"`
 	}
 
 	LoginInputAdmin struct {
 		UserName  string `json:"username"`
 		Password  string `json:"password"`
 		ClientIp  string `json:"client_ip"`
-		DeviceId  string `json:"device_id"`
-		PushToken string `json:"push_token"`
+		UserAgent string `json:"user_agent"`
 	}
 
 	LogoutInput struct {
@@ -55,9 +55,9 @@ type (
 	}
 
 	GetMyInfoInput struct {
-		ClientIp    string `json:"client_ip"`
-		UserId      string `json:"user_id"`
-		SessionId   string `json:"session_id"`
+		ClientIp  string `json:"client_ip"`
+		UserId    string `json:"user_id"`
+		SessionId string `json:"session_id"`
 	}
 
 	// =======================================================
