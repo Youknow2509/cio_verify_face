@@ -10,8 +10,8 @@ import (
 	applicationModel "github.com/youknow2509/cio_verify_face/server/service_auth/internal/application/model"
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/application/service"
 	constants "github.com/youknow2509/cio_verify_face/server/service_auth/internal/constants"
-	domainError "github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/errors"
 	domainCache "github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/cache"
+	domainError "github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/errors"
 	domainModel "github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/model"
 	domainRepository "github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/repository"
 	domainToken "github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/token"
@@ -42,9 +42,28 @@ func (c *CoreAuthService) DeleteDeviceSession(ctx context.Context, input *applic
 
 // GetMyInfo implements service.ICoreAuthService.
 func (c *CoreAuthService) GetMyInfo(ctx context.Context, input *applicationModel.GetMyInfoInput) (*applicationModel.GetMyInfoOutput, *errors.Error) {
-	// TODO: Implement the get my info logic here
+	// Get data from data base
+	domainRepo, err := domainRepository.GetUserRepository()
+	if err != nil {
+		global.Logger.Error("Error getting user repository: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	response, err := domainRepo.GetUserInfoByID(ctx, input.UserId)
+	if err != nil {
+		global.Logger.Warn("Error getting user info by ID: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	if response == nil {
+		// User not found
+		return nil, errors.GetError(errors.UserNotFoundErrorCode)
+	}
 	return &applicationModel.GetMyInfoOutput{
-		// TODO: Add fields
+		UserId:    input.UserId.String(),
+		Email:     response.Email,
+		Phone:     response.Phone,
+		FullName:  response.FullName,
+		AvatarURL: response.AvatarURL,
+		Role:      input.Role,
 	}, nil
 }
 
@@ -136,8 +155,8 @@ func (c *CoreAuthService) Login(ctx context.Context, input *applicationModel.Log
 	sessionHash := utilsCrypto.GetHash(tokenId.String())
 	keyCache := utilsCache.GetKeyUserAccessTokenIsActive(sessionHash)
 	var valCache = map[string]string{
-		"user_id":       response.UserID,
-		"role":          strconv.Itoa(int(domainModel.RoleUser)),
+		"user_id": response.UserID,
+		"role":    strconv.Itoa(int(domainModel.RoleUser)),
 	}
 	if err := cacheDistributed.SetTTL(
 		ctx,
@@ -242,8 +261,8 @@ func (c *CoreAuthService) LoginAdmin(ctx context.Context, input *applicationMode
 	}
 	sessionHash := utilsCrypto.GetHash(tokenId.String())
 	var valCache = map[string]string{
-		"user_id":       response.UserID,
-		"role":          strconv.Itoa(int(domainModel.RoleAdmin)),
+		"user_id": response.UserID,
+		"role":    strconv.Itoa(int(domainModel.RoleAdmin)),
 	}
 	keyCache := utilsCache.GetKeyUserAccessTokenIsActive(sessionHash)
 	if err := cacheDistributed.SetTTL(
@@ -311,7 +330,7 @@ func (c *CoreAuthService) RefreshToken(ctx context.Context, input *applicationMo
 		input.RefreshToken,
 	)
 	if tkErr != nil {
-		if tkErr.Code ==  domainError.TokenExpiredErrorCode{
+		if tkErr.Code == domainError.TokenExpiredErrorCode {
 			// Token expired
 			return nil, errors.GetError(errors.TokenExpiredErrorCode)
 		}
@@ -386,7 +405,7 @@ func (c *CoreAuthService) RefreshToken(ctx context.Context, input *applicationMo
 		global.Logger.Error("Error refreshing user session: ", err)
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
-	// Save new session to cache - Use to block access token 
+	// Save new session to cache - Use to block access token
 	cacheDistributed, err := domainCache.GetDistributedCache()
 	if err != nil {
 		global.Logger.Error("Error getting distributed cache: ", err)
@@ -395,8 +414,8 @@ func (c *CoreAuthService) RefreshToken(ctx context.Context, input *applicationMo
 	sessionHash := utilsCrypto.GetHash(input.SessionId.String())
 	keyCache := utilsCache.GetKeyUserAccessTokenIsActive(sessionHash)
 	var valCache = map[string]string{
-		"user_id":       input.UserId.String(),
-		"role":          strconv.Itoa(int(input.UserRole)),
+		"user_id": input.UserId.String(),
+		"role":    strconv.Itoa(int(input.UserRole)),
 	}
 	if err := cacheDistributed.SetTTL(
 		ctx,

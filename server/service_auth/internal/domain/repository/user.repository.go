@@ -15,6 +15,8 @@ type IUserRepository interface {
 	// ======================================
 	// 			Use for core auth
 	// ======================================
+	// Get user info with id
+	GetUserInfoByID(ctx context.Context, userID uuid.UUID) (*model.UserInfoOutput, error)
 	// Get user base info by ID
 	GetUserBaseByID(ctx context.Context, userID uuid.UUID) (*model.UserBaseInfoOutput, error)
 	// Get user base by phone

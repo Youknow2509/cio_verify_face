@@ -95,4 +95,12 @@ type (
 		CreatedAt    time.Time  `json:"created_at"`
 		ExpiredAt    time.Time  `json:"expired_at"`
 	}
+
+	// UserInfoOutput
+	UserInfoOutput struct {
+		Email     string `json:"email"`
+		Phone     string `json:"phone"`
+		FullName  string `json:"full_name"`
+		AvatarURL string `json:"avatar_url"`
+	}
 )

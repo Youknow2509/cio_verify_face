@@ -310,7 +310,48 @@ func (h *AuthBaseHandler) RefreshToken(c *gin.Context) {
 // @Failure      400  {object}  dto.ErrResponseData
 // @Router       /v1/auth/me [post]
 func (h *AuthBaseHandler) GetMyInfo(c *gin.Context) {
-	// TODO: Implement get my info handler
+	// Get data auth from context
+	userIdStr, _, role, exists := utilsContext.GetSessionFromContext(c)
+	if !exists {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid request parameters",
+		)
+		return
+	}
+	// Validate id str to uuid
+	userId, err := utilsUuid.ParseUUID(userIdStr)
+	if err != nil {
+		interfaceResponse.BadRequestResponse(
+			c,
+			interfaceResponse.ErrCodeParamInvalid,
+			"Invalid data session",
+		)
+		return
+	}
+	// Call handle to service
+	response, err_r := applicationService.GetCoreAuthService().GetMyInfo(
+		c,
+		&applicationModel.GetMyInfoInput{
+			ClientIp: c.ClientIP(),
+			UserId:   userId,
+			Role:     role,
+		},
+	)
+	if err_r != nil {
+		interfaceResponse.ErrorResponse(
+			c,
+			err_r.Code,
+			err_r.Message,
+		)
+		return
+	}
+	interfaceResponse.SuccessResponse(
+		c,
+		interfaceResponse.ErrCodeSuccess,
+		response,
+	)
 }
 
 // CreateDevice create device

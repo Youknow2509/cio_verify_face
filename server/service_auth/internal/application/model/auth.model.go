@@ -59,9 +59,9 @@ type (
 	}
 
 	GetMyInfoInput struct {
-		ClientIp  string `json:"client_ip"`
-		UserId    string `json:"user_id"`
-		SessionId string `json:"session_id"`
+		ClientIp string    `json:"client_ip"`
+		UserId   uuid.UUID `json:"user_id"`
+		Role     int       `json:"role"`
 	}
 
 	// =======================================================
@@ -114,7 +114,12 @@ type (
 	}
 
 	GetMyInfoOutput struct {
-		// TODO: Add fields for GetMyInfoOutput
+		UserId    string `json:"user_id"`
+		Email     string `json:"email"`
+		Phone     string `json:"phone"`
+		FullName  string `json:"full_name"`
+		AvatarURL string `json:"avatar_url"`
+		Role      int    `json:"role"`
 	}
 
 	VerifyOTPRegisterOutput struct {

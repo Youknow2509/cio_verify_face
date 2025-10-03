@@ -85,6 +85,36 @@ func (q *Queries) GetUserBaseWithMail(ctx context.Context, email string) (GetUse
 	return i, err
 }
 
+const getUserInfoWithID = `-- name: GetUserInfoWithID :one
+SELECT 
+    email,
+    phone,
+    full_name,
+    avatar_url
+FROM users
+WHERE user_id = $1
+LIMIT 1
+`
+
+type GetUserInfoWithIDRow struct {
+	Email     string
+	Phone     string
+	FullName  string
+	AvatarUrl pgtype.Text
+}
+
+func (q *Queries) GetUserInfoWithID(ctx context.Context, userID pgtype.UUID) (GetUserInfoWithIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserInfoWithID, userID)
+	var i GetUserInfoWithIDRow
+	err := row.Scan(
+		&i.Email,
+		&i.Phone,
+		&i.FullName,
+		&i.AvatarUrl,
+	)
+	return i, err
+}
+
 const getUserSessionByID = `-- name: GetUserSessionByID :one
 SELECT 
     session_id, 
