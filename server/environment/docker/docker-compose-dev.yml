@@ -28,8 +28,7 @@ volumes:
 services:
     # PosgreSQL Database Service
     postgres:
-        container_name: postgres
-        image: docker.io/bitnami/postgresql:17
+        image: bitnami/postgresql:latest
         ports:
             - '${POSTGRES_PORT_EXTERNAL}:5432'
         networks:
@@ -53,8 +52,7 @@ services:
 
     # Redis Cache Service
     redis:
-        container_name: redis
-        image: docker.io/bitnami/redis:8.0
+        image: bitnamilegacy/redis:latest
         ports:
             - '${REDIS_PORT_EXTERNAL}:6379'
         networks:
@@ -73,8 +71,7 @@ services:
 
     # MinIO Object Storage Service
     minio:
-        container_name: minio
-        image: docker.io/bitnami/minio:2025
+        image: bitnami/minio:2025
         networks:
             - nw-dev-0
         ports:
@@ -93,8 +90,7 @@ services:
 
     # ScyllaDB NoSQL Database Service
     scylladb:
-        container_name: scylladb
-        image: docker.io/bitnami/scylladb:latest
+        image: bitnamilegacy/scylladb:latest
         networks:
             - nw-dev-0
         ports:
@@ -130,8 +126,7 @@ services:
 
     # Kafka Message Broker Service
     kafka:
-        container_name: kafka
-        image: docker.io/bitnami/kafka:4.0
+        image: bitnamilegacy/kafka:4.0
         networks:
             - nw-dev-0
         ports:
@@ -162,7 +157,6 @@ services:
 
     # Redis UI
     redisinsight:
-        container_name: redisinsight
         image: redis/redisinsight:latest
         networks:
             - nw-dev-0
@@ -178,7 +172,6 @@ services:
 
     # MinIO UI
     minio-ui:
-        container_name: minio-ui
         image: bitnami/minio-object-browser:latest
         networks:
             - nw-dev-0
@@ -196,7 +189,6 @@ services:
 
     # Kafka UI
     kafka-ui:
-        container_name: kafka-ui
         image: provectuslabs/kafka-ui:latest
         networks:
             - nw-dev-0
