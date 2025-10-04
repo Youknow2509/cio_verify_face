@@ -1,5 +1,15 @@
 basePath: /api
 definitions:
+  dto.DeleteDeviceRequest:
+    properties:
+      company_id:
+        type: string
+      device_id:
+        type: string
+    required:
+    - company_id
+    - device_id
+    type: object
   dto.ErrResponseData:
     properties:
       code:
@@ -23,13 +33,6 @@ definitions:
     - password
     - username
     type: object
-  dto.LogoutRequest:
-    properties:
-      refresh_token:
-        type: string
-    required:
-    - refresh_token
-    type: object
   dto.RefreshTokenRequest:
     properties:
       refresh_token:
@@ -47,6 +50,24 @@ definitions:
       message:
         description: Thong bao loi
         type: string
+    type: object
+  dto.UpdateDeviceRequest:
+    properties:
+      company_id:
+        type: string
+      device_id:
+        type: string
+      device_name:
+        maxLength: 100
+        minLength: 2
+        type: string
+      device_type:
+        type: integer
+    required:
+    - company_id
+    - device_id
+    - device_name
+    - device_type
     type: object
 externalDocs:
   description: OpenAPI
@@ -66,31 +87,6 @@ info:
   version: "1.0"
 paths:
   /v1/auth/device:
-    post:
-      consumes:
-      - application/json
-      description: Create session device
-      parameters:
-      - description: Authorization Bearer token
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.ResponseData'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrResponseData'
-      summary: Create session device
-      tags:
-      - Core Auth
-  /v1/auth/device/{id}:
     delete:
       consumes:
       - application/json
@@ -101,6 +97,12 @@ paths:
         name: Authorization
         required: true
         type: string
+      - description: Request body delete device
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.DeleteDeviceRequest'
       produces:
       - application/json
       responses:
@@ -113,6 +115,36 @@ paths:
           schema:
             $ref: '#/definitions/dto.ErrResponseData'
       summary: Delete session device
+      tags:
+      - Core Auth
+    post:
+      consumes:
+      - application/json
+      description: Update session device
+      parameters:
+      - description: Authorization Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Request body update device
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateDeviceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Update session device
       tags:
       - Core Auth
   /v1/auth/login:
@@ -178,12 +210,6 @@ paths:
         name: Authorization
         required: true
         type: string
-      - description: Request body logout
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.LogoutRequest'
       produces:
       - application/json
       responses:
@@ -252,31 +278,6 @@ paths:
           schema:
             $ref: '#/definitions/dto.ErrResponseData'
       summary: User refresh token
-      tags:
-      - Core Auth
-  /v1/device/{id}/refresh:
-    post:
-      consumes:
-      - application/json
-      description: Refresh session device
-      parameters:
-      - description: Authorization Bearer token
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.ResponseData'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrResponseData'
-      summary: Refresh session device
       tags:
       - Core Auth
 securityDefinitions:

@@ -33,9 +33,9 @@ func StartService() error {
 		return err
 	}
 	// Initialize Grpc Server
-	// if err := initServerGrpc(); err != nil {
-	// 	return err
-	// }
+	if err := initServerGrpc(); err != nil {
+		return err
+	}
 	// Initialize Gin Engine
 	if err := initGinRouter(&setting.Server); err != nil {
 		return err

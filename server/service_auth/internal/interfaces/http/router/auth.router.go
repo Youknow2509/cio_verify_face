@@ -36,7 +36,7 @@ func (r *AuthRouter) InitializeCoreAuth(g *gin.RouterGroup) {
 		// Update device token
 		routerV1Private.POST("/device", handler.GetAuthBaseHandler().UpdateDeviceSession)
 		// Delete device token
-		routerV1Private.DELETE("/device/:id", handler.GetAuthBaseHandler().DeleteDeviceSession)
+		routerV1Private.DELETE("/device", handler.GetAuthBaseHandler().DeleteDeviceSession)
 	}
 }
 

@@ -1,6 +1,10 @@
 package model
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // =======================================================
 //
@@ -98,12 +102,13 @@ type (
 	}
 
 	DeleteDeviceSessionInput struct {
-		// TODO: Add fields
-	}
-
-	RefreshDeviceSessionInput struct {
-		// TODO: Add fields
-
+		UserId    uuid.UUID `json:"user_id"`
+		SessionId uuid.UUID `json:"session_id"`
+		ClientIp  string    `json:"client_ip"`
+		UserAgent string    `json:"user_agent"`
+		Role      int       `json:"role"`
+		CompanyId uuid.UUID `json:"company_id"`
+		DeviceId  uuid.UUID `json:"device_id"`
 	}
 )
 
@@ -113,10 +118,6 @@ type (
 //
 // =======================================================
 type (
-	RefreshDeviceSessionOutput struct {
-		// TODO: Add fields
-	}
-
 	UpdateDeviceSessionOutput struct {
 		Token    string `json:"token"`
 		ExpireAt int64  `json:"expire_at"`
@@ -146,11 +147,40 @@ type (
 		RefreshToken string `json:"refresh_token"`
 	}
 
-	ValidateJwtUserOutput struct {
-		// TODO: Add fields for ValidateJwtUserOutput
+	// Token validation result for cached operations
+	TokenValidationResult struct {
+		Valid       bool      `json:"valid"`
+		UserID      uuid.UUID `json:"user_id,omitempty"`
+		CompanyID   uuid.UUID `json:"company_id,omitempty"`
+		SessionID   uuid.UUID `json:"session_id,omitempty"`
+		Role        int       `json:"role,omitempty"`
+		ExpiresAt   time.Time `json:"expires_at,omitempty"`
+		Permissions []string  `json:"permissions,omitempty"`
+		Error       string    `json:"error,omitempty"`
 	}
 
-	ValidateJwtServiceOutput struct {
-		// TODO: Add fields for ValidateJwtServiceOutput
+	// User info output for cached operations (re-export from domain)
+	UserInfoOutput struct {
+		UserID    string    `json:"user_id"`
+		Email     string    `json:"email"`
+		FirstName string    `json:"first_name"`
+		LastName  string    `json:"last_name"`
+		Phone     string    `json:"phone"`
+		FullName  string    `json:"full_name"`
+		AvatarURL string    `json:"avatar_url"`
+		CompanyID string    `json:"company_id"`
+		Role      string    `json:"role"`
+		IsActive  bool      `json:"is_active"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
+	}
+
+	// Cache statistics for monitoring
+	CacheStats struct {
+		LocalCacheHits       int64   `json:"local_cache_hits"`
+		DistributedCacheHits int64   `json:"distributed_cache_hits"`
+		CacheMisses          int64   `json:"cache_misses"`
+		TotalRequests        int64   `json:"total_requests"`
+		HitRatio             float64 `json:"hit_ratio"`
 	}
 )

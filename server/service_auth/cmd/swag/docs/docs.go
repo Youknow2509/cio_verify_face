@@ -26,7 +26,7 @@ const docTemplate = `{
     "paths": {
         "/v1/auth/device": {
             "post": {
-                "description": "Create session device",
+                "description": "Update session device",
                 "consumes": [
                     "application/json"
                 ],
@@ -36,7 +36,7 @@ const docTemplate = `{
                 "tags": [
                     "Core Auth"
                 ],
-                "summary": "Create session device",
+                "summary": "Update session device",
                 "parameters": [
                     {
                         "type": "string",
@@ -44,6 +44,15 @@ const docTemplate = `{
                         "name": "Authorization",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "description": "Request body update device",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateDeviceRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -60,9 +69,7 @@ const docTemplate = `{
                         }
                     }
                 }
-            }
-        },
-        "/v1/auth/device/{id}": {
+            },
             "delete": {
                 "description": "Delete session device",
                 "consumes": [
@@ -82,6 +89,15 @@ const docTemplate = `{
                         "name": "Authorization",
                         "in": "header",
                         "required": true
+                    },
+                    {
+                        "description": "Request body delete device",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.DeleteDeviceRequest"
+                        }
                     }
                 ],
                 "responses": {
@@ -200,15 +216,6 @@ const docTemplate = `{
                         "name": "Authorization",
                         "in": "header",
                         "required": true
-                    },
-                    {
-                        "description": "Request body logout",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.LogoutRequest"
-                        }
                     }
                 ],
                 "responses": {
@@ -311,47 +318,24 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/v1/device/{id}/refresh": {
-            "post": {
-                "description": "Refresh session device",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Core Auth"
-                ],
-                "summary": "Refresh session device",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Authorization Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ResponseData"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrResponseData"
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
+        "dto.DeleteDeviceRequest": {
+            "type": "object",
+            "required": [
+                "company_id",
+                "device_id"
+            ],
+            "properties": {
+                "company_id": {
+                    "type": "string"
+                },
+                "device_id": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.ErrResponseData": {
             "type": "object",
             "properties": {
@@ -385,17 +369,6 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.LogoutRequest": {
-            "type": "object",
-            "required": [
-                "refresh_token"
-            ],
-            "properties": {
-                "refresh_token": {
-                    "type": "string"
-                }
-            }
-        },
         "dto.RefreshTokenRequest": {
             "type": "object",
             "required": [
@@ -420,6 +393,31 @@ const docTemplate = `{
                 "message": {
                     "description": "Thong bao loi",
                     "type": "string"
+                }
+            }
+        },
+        "dto.UpdateDeviceRequest": {
+            "type": "object",
+            "required": [
+                "company_id",
+                "device_id",
+                "device_name",
+                "device_type"
+            ],
+            "properties": {
+                "company_id": {
+                    "type": "string"
+                },
+                "device_id": {
+                    "type": "string"
+                },
+                "device_name": {
+                    "type": "string",
+                    "maxLength": 100,
+                    "minLength": 2
+                },
+                "device_type": {
+                    "type": "integer"
                 }
             }
         }

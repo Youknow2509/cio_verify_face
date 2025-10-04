@@ -18,6 +18,16 @@ const (
 	TTL_LIST_FRIEND_REQUEST_TO_USER = 60 * 3            // 3 minutes
 	TTL_LIST_FRIENDS_OF_USER        = 60 * 10           // 10 minutes
 	TTL_TOKEN_DEVICE                = 60 * 60 * 24 * 30 // 30 days
+
+	// Local cache TTLs (shorter for faster invalidation)
+	TTL_LOCAL_USER_INFO_VIEW  = 60 * 2 // 2 minutes
+	TTL_LOCAL_ACCESS_TOKEN    = 60 * 5 // 5 minutes
+	TTL_LOCAL_USER_PERMISSION = 60 * 1 // 1 minute
+	TTL_LOCAL_DEVICE_CHECK    = 60 * 1 // 1 minute
+
+	// Additional cache TTLs
+	TTL_USER_PERMISSION = 60 * 10 // 10 minutes
+	TTL_DEVICE_CHECK    = 60 * 5  // 5 minutes
 )
 
 // For spam and count spam
