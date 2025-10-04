@@ -61,7 +61,8 @@ type (
 //
 // =======================================================
 var (
-	_ICoreAuthService ICoreAuthService
+	_ICoreAuthService  ICoreAuthService
+	_IAuthCacheService IAuthCacheService
 )
 
 // =======================================================
@@ -78,5 +79,17 @@ func SetCoreAuthService(s ICoreAuthService) error {
 		return errors.New("auth service is already set")
 	}
 	_ICoreAuthService = s
+	return nil
+}
+
+func GetAuthCacheService() IAuthCacheService {
+	return _IAuthCacheService
+}
+
+func SetAuthCacheService(s IAuthCacheService) error {
+	if _IAuthCacheService != nil {
+		return errors.New("auth cache service is already set")
+	}
+	_IAuthCacheService = s
 	return nil
 }

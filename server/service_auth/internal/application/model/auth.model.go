@@ -1,6 +1,10 @@
 package model
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // =======================================================
 //
@@ -145,18 +149,30 @@ type (
 
 	// Token validation result for cached operations
 	TokenValidationResult struct {
-		Valid  bool      `json:"valid"`
-		UserID uuid.UUID `json:"user_id,omitempty"`
-		Role   int       `json:"role,omitempty"`
-		Error  string    `json:"error,omitempty"`
+		Valid       bool      `json:"valid"`
+		UserID      uuid.UUID `json:"user_id,omitempty"`
+		CompanyID   uuid.UUID `json:"company_id,omitempty"`
+		SessionID   uuid.UUID `json:"session_id,omitempty"`
+		Role        int       `json:"role,omitempty"`
+		ExpiresAt   time.Time `json:"expires_at,omitempty"`
+		Permissions []string  `json:"permissions,omitempty"`
+		Error       string    `json:"error,omitempty"`
 	}
 
 	// User info output for cached operations (re-export from domain)
 	UserInfoOutput struct {
-		Email     string `json:"email"`
-		Phone     string `json:"phone"`
-		FullName  string `json:"full_name"`
-		AvatarURL string `json:"avatar_url"`
+		UserID    string    `json:"user_id"`
+		Email     string    `json:"email"`
+		FirstName string    `json:"first_name"`
+		LastName  string    `json:"last_name"`
+		Phone     string    `json:"phone"`
+		FullName  string    `json:"full_name"`
+		AvatarURL string    `json:"avatar_url"`
+		CompanyID string    `json:"company_id"`
+		Role      string    `json:"role"`
+		IsActive  bool      `json:"is_active"`
+		CreatedAt time.Time `json:"created_at"`
+		UpdatedAt time.Time `json:"updated_at"`
 	}
 
 	// Cache statistics for monitoring
