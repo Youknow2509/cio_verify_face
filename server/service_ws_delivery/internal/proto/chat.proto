@@ -1,0 +1,166 @@
+// Sử dụng cú pháp proto3
+syntax = "proto3";
+
+package dto;
+
+option go_package = "github.com/youknow2509/cio_verify_face/server/service_ws_delivery/internal/interface/dto";
+
+import "google/protobuf/timestamp.proto";
+
+// ==========================================================================================
+//          ENUMS - Định nghĩa các loại sự kiện và trạng thái
+// ==========================================================================================
+
+// Enum cho tất cả các loại sự kiện có thể xảy ra
+enum EventType {
+  // Client-to-Server Events
+  SEND_MESSAGE = 0;
+  USER_TYPING = 1;
+  EDIT_MESSAGE = 2;
+  DELETE_MESSAGE = 3;
+  FETCH_HISTORY = 4;
+
+  // Server-to-Client Events
+  BROADCAST_MESSAGE = 100;
+  NOTIFY_USER_TYPING = 101;
+  NOTIFY_MESSAGE_EDITED = 102;
+  NOTIFY_MESSAGE_DELETED = 103;
+  HISTORY_RESPONSE = 104;
+  USER_STATUS_UPDATE = 105;
+  ERROR_RESPONSE = 106;
+}
+
+// Trạng thái của người dùng
+enum UserStatus {
+  OFFLINE = 0;
+  ONLINE = 1;
+  AWAY = 2; // Vắng mặt
+}
+
+
+// =============================================
+//  SHARED STRUCTURES - Các cấu trúc dùng chung
+// =============================================
+
+// Thông tin cơ bản về một người dùng
+message UserInfo {
+  string user_id = 1;
+  string display_name = 2;
+  string avatar_url = 3;
+}
+
+// Cấu trúc hoàn chỉnh của một tin nhắn
+message Message {
+  string message_id = 1;
+  string room_id = 2;
+  UserInfo author = 3;
+  string content = 4;
+  google.protobuf.Timestamp created_at = 5;
+  google.protobuf.Timestamp updated_at = 6;
+}
+
+
+// =============================================
+//  PAYLOADS - Dữ liệu cụ thể cho từng sự kiện
+// =============================================
+
+// C2S: Gửi một tin nhắn mới
+message SendMessageRequest {
+  string room_id = 1;
+  string content = 2;
+  string client_request_id = 3; // ID tạm do client tạo để tránh gửi trùng lặp
+}
+
+// S2C: Phát một tin nhắn mới tới mọi người
+message BroadcastMessageEvent {
+  Message message = 1;
+}
+
+// C2S & S2C: Thông tin về trạng thái gõ phím
+message UserTypingEvent {
+  string room_id = 1;
+  UserInfo user = 2;
+  bool is_typing = 3; // true = đang gõ, false = đã dừng
+}
+
+// C2S: Yêu cầu sửa tin nhắn
+message EditMessageRequest {
+  string message_id = 1;
+  string room_id = 2;
+  string new_content = 3;
+}
+
+// S2C: Thông báo tin nhắn đã được sửa
+message MessageEditedEvent {
+  string message_id = 1;
+  string room_id = 2;
+  string new_content = 3;
+  google.protobuf.Timestamp updated_at = 4;
+}
+
+// C2S: Yêu cầu xóa tin nhắn
+message DeleteMessageRequest {
+  string message_id = 1;
+  string room_id = 2;
+}
+
+// S2C: Thông báo tin nhắn đã bị xóa
+message MessageDeletedEvent {
+  string message_id = 1;
+  string room_id = 2;
+}
+
+// C2S: Yêu cầu lịch sử tin nhắn
+message FetchHistoryRequest {
+  string room_id = 1;
+  // Tùy chọn: dùng để phân trang, lấy các tin nhắn trước một thời điểm/ID nào đó
+  optional string before_message_id = 2;
+  int32 limit = 3; // Số lượng tin nhắn muốn lấy
+}
+
+// S2C: Phản hồi lịch sử tin nhắn
+message HistoryResponseEvent {
+  string room_id = 1;
+  repeated Message messages = 2; // danh sách các tin nhắn
+  bool has_more = 3; // true nếu vẫn còn tin nhắn cũ hơn để tải
+}
+
+// S2C: Cập nhật trạng thái của người dùng
+message UserStatusEvent {
+  UserInfo user = 1;
+  UserStatus status = 2;
+}
+
+// S2C: Gửi lỗi về cho client
+message ErrorResponseEvent {
+  int32 original_event_type = 1; // Loại sự kiện gốc gây ra lỗi
+  string error_message = 2;
+  int32 error_code = 3;
+}
+
+
+// =============================================
+//  WRAPPER MESSAGE - Tin nhắn bao bọc cuối cùng
+//  Đây là struct duy nhất được gửi qua WebSocket
+// =============================================
+message WebSocketMessage {
+  EventType type = 1;
+
+  oneof payload {
+    // C2S Payloads
+    SendMessageRequest send_message_request = 10;
+    UserTypingEvent user_typing_event = 11;
+    EditMessageRequest edit_message_request = 12;
+    DeleteMessageRequest delete_message_request = 13;
+    FetchHistoryRequest fetch_history_request = 14;
+
+    // S2C Payloads
+    BroadcastMessageEvent broadcast_message_event = 100;
+    // UserTypingEvent được tái sử dụng cho S2C
+    MessageEditedEvent message_edited_event = 102;
+    MessageDeletedEvent message_deleted_event = 103;
+    HistoryResponseEvent history_response_event = 104;
+    UserStatusEvent user_status_event = 105;
+    ErrorResponseEvent error_response_event = 106;
+  }
+}
