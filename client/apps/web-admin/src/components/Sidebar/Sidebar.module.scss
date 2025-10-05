@@ -1,0 +1,160 @@
+// src/components/Sidebar/Sidebar.module.scss
+
+@import '../../styles/tokens';
+@import '../../styles/mixins';
+
+.sidebar {
+  background: var(--color-surface);
+  border-right: 1px solid var(--color-border-light);
+  overflow-y: auto;
+  overflow-x: hidden;
+  @include transition(width);
+  
+  &.collapsed {
+    width: var(--sidebar-collapsed-width);
+  }
+}
+
+.nav {
+  padding: var(--sp-4) 0;
+}
+
+.menu {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.menuItem {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  margin: 0 var(--sp-2);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  text-decoration: none;
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  @include transition(all);
+  min-height: 44px; // Touch target
+  
+  &:hover {
+    background: var(--color-grey-100);
+    color: var(--color-text-primary);
+  }
+  
+  &:focus-visible {
+    @include focus-ring;
+  }
+  
+  &.active {
+    background: var(--color-primary-50);
+    color: var(--color-primary);
+    
+    &:hover {
+      background: var(--color-primary-100);
+    }
+  }
+  
+  .collapsed & {
+    justify-content: center;
+    padding: var(--sp-3);
+    margin: 0 var(--sp-2);
+    
+    .label {
+      display: none;
+    }
+  }
+  
+  // Tooltip for collapsed state
+  .collapsed & {
+    position: relative;
+    
+    &::after {
+      content: attr(title);
+      position: absolute;
+      left: calc(100% + var(--sp-2));
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--color-grey-800);
+      color: var(--color-white);
+      padding: var(--sp-2) var(--sp-3);
+      border-radius: var(--radius-sm);
+      font-size: var(--fs-xs);
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      z-index: var(--z-tooltip);
+      @include transition(opacity);
+    }
+    
+    &:hover::after {
+      opacity: 1;
+    }
+  }
+}
+
+.icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+}
+
+.label {
+  min-width: 0;
+  @include transition(opacity);
+  
+  .collapsed & {
+    opacity: 0;
+  }
+}
+
+// Mobile overlay behavior
+@media (max-width: 899px) {
+  .sidebar {
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    bottom: 0;
+    width: var(--sidebar-width);
+    z-index: var(--z-30);
+    transform: translateX(-100%);
+    @include transition(transform);
+    
+    &:not(.collapsed) {
+      transform: translateX(0);
+    }
+    
+    // Backdrop
+    &:not(.collapsed)::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: var(--sidebar-width);
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: -1;
+    }
+  }
+  
+  .menuItem {
+    .collapsed & {
+      justify-content: flex-start;
+      padding: var(--sp-3) var(--sp-4);
+      
+      .label {
+        display: block;
+        opacity: 1;
+      }
+      
+      &::after {
+        display: none;
+      }
+    }
+  }
+}

@@ -1,0 +1,138 @@
+// Attendance Page Styles
+@import '../../styles/tokens';
+@import '../../styles/mixins';
+
+.attendance {
+  @include container;
+  padding: 2rem;
+  
+  @include respond(sm) {
+    padding: 1rem;
+  }
+}
+
+.header {
+  margin-bottom: 1.5rem;
+}
+
+.title {
+  font-size: 2rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 0.25rem 0;
+}
+
+.subtitle {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+// Filter Group
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.filterLabel {
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.dateInput,
+.statusSelect {
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 2px solid transparent;
+  border-radius: 8px;
+  outline: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  
+  &:hover {
+    background: var(--border-light);
+  }
+  
+  &:focus {
+    background: var(--bg-primary);
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(25, 118, 210, 0.1);
+  }
+}
+
+.dateInput {
+  min-width: 160px;
+}
+
+.statusSelect {
+  min-width: 140px;
+}
+
+// Buttons
+.exportButton,
+.refreshButton {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  svg {
+    width: 18px;
+    height: 18px;
+  }
+  
+  &:active {
+    transform: translateY(1px);
+  }
+}
+
+.exportButton {
+  background: linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%);
+  color: white;
+  
+  &:hover {
+    box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+    transform: translateY(-1px);
+  }
+}
+
+.refreshButton {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 2px solid var(--border-light);
+  
+  &:hover {
+    background: var(--border-light);
+    border-color: var(--primary-color);
+  }
+}
+
+// Table Cells
+.employeeCode {
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.workHours {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.recordCount {
+  margin-left: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 400;
+  color: var(--text-secondary);
+}
