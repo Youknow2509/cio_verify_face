@@ -1,9 +1,8 @@
 -- +goose Up
 -- +goose StatementBegin
-CREATE TABLE IF NOT EXISTS users_session (
+CREATE TABLE IF NOT EXISTS user_sessions (
     session_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(user_id) ON DELETE CASCADE,
-    access_token TEXT NOT NULL,
     refresh_token TEXT NOT NULL,
     ip_address INET,
     user_agent TEXT,
@@ -15,5 +14,5 @@ CREATE TABLE IF NOT EXISTS users_session (
 
 -- +goose Down
 -- +goose StatementBegin
-DROP TABLE IF EXISTS users_session;
+DROP TABLE IF EXISTS user_sessions;
 -- +goose StatementEnd

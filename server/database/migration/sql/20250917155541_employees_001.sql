@@ -10,7 +10,7 @@ CREATE TABLE IF NOT EXISTS employees (
     salary DECIMAL(12,2),
     status int2 DEFAULT 0 NOT NULL CHECK (status IN (0, 1, 2)), -- 0: active, 1: inactive, 2: on leave
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 -- +goose StatementEnd
 

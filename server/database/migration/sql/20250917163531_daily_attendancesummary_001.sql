@@ -1,7 +1,7 @@
 -- +goose Up
 -- +goose StatementBegin
 CREATE TABLE IF NOT EXISTS daily_attendance_summary (
-    summary_id UUID PRIMARY KEY DEFAULT uuid_generate_v7(),
+    summary_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     employee_id UUID NOT NULL REFERENCES employees(employee_id) ON DELETE CASCADE,
     shift_id UUID REFERENCES work_shifts(shift_id),
     work_date DATE NOT NULL,
