@@ -22,7 +22,8 @@ export {
   getDevices,
   createDevice,
   updateDevice,
-  deleteDevice
+  deleteDevice,
+  syncDevice
 } from './mock/devices';
 
 // Attendance Services
