@@ -2,21 +2,17 @@
   Thực hiện ngắt kết nối một cách nguyên tử.
 
   KEYS:
-    1: user_conns_key
+    1: device_conns_key
     2: service_conns_key
-    3: conn_key
 
   ARGV:
-    1: connection_id
+    1: device_id
 --]]
 
-local user_conns_key = KEYS[1]
-local service_conns_key = KEYS[2]
-local conn_key = KEYS[3]
-local connection_id = ARGV[1]
+local device_conns_key = KEYS[1]
+local device_id = KEYS[2]
 
-redis.call('SREM', user_conns_key, connection_id)
-redis.call('SREM', service_conns_key, connection_id)
-redis.call('DEL', conn_key)
+redis.call("DEL", device_conns_key)
+redis.call("SREM", service_conns_key, device_id)
 
 return 1

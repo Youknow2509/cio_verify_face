@@ -10,17 +10,12 @@ import "fmt"
 // 	Keys cache
 // ===================================
 
-// Get user connection ws key
-func GetUserConnectionWsKey(userId string) string {
-	return fmt.Sprintf("ws:connection:%s", userId)
+// Get Device connection ws key
+func GetDeviceConnectionWsKey(deviceId string) string {
+	return fmt.Sprintf("ws:device:%s", deviceId)
 }
 
 // Get service ws connection key
 func GetServiceWsConnectionKey(serviceId string) string {
-	return fmt.Sprintf("ws:connection:%s", serviceId)
-}
-
-// Get ws connection info key
-func GetWsConnectionInfoKey(serviceId string, connectionId string) string {
-	return fmt.Sprintf("ws:connection:%s:%s", serviceId, connectionId)
+	return fmt.Sprintf("ws:service:%s", serviceId)
 }

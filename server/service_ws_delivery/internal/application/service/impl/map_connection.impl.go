@@ -23,16 +23,14 @@ func (m *MapConnectionService) RegisterConnection(ctx context.Context, input *mo
 	if _, err := domainMapConnectionRepo.CreateConnection(
 		ctx,
 		&domainModel.CreateConnectionInput{
-			UserConnectionsKey:    utilsCache.GetUserConnectionWsKey(input.UserId),
+			DeviceConnectionsKey:  utilsCache.GetDeviceConnectionWsKey(input.DeviceId),
 			ServiceConnectionsKey: utilsCache.GetServiceWsConnectionKey(global.ServerSetting.Id),
-			ConnectionKey:         utilsCache.GetWsConnectionInfoKey(global.ServerSetting.Id, input.ConnectionId),
 			ConnectionId:          input.ConnectionId,
-			UserId:                input.UserId,
+			DeviceId:              input.DeviceId,
 			ServiceId:             global.ServerSetting.Id,
-			IPAddress:             input.IPAddress,
+			IpAddress:             input.IPAddress,
 			ConnectedAt:           input.ConnectedAt,
 			UserAgent:             input.UserAgent,
-			MaxConnsPerUser:       global.ServerWsSetting.MaxConnsPerUser,
 		},
 	); err != nil {
 		global.Logger.Error("MapConnectionService.RegisterConnection", "error", err)
@@ -47,10 +45,9 @@ func (m *MapConnectionService) UnregisterConnection(ctx context.Context, input *
 	if _, err := domainMapConnectionRepo.RemoveConnection(
 		ctx,
 		&domainModel.RemoveConnectionInput{
-			UserConnectionsKey:    utilsCache.GetUserConnectionWsKey(input.UserId),
+			DeviceConnectionsKey:  utilsCache.GetDeviceConnectionWsKey(input.DeviceId),
 			ServiceConnectionsKey: utilsCache.GetServiceWsConnectionKey(global.ServerSetting.Id),
-			ConnectionKey:         utilsCache.GetWsConnectionInfoKey(global.ServerSetting.Id, input.ConnectionId),
-			ConnectionId:          input.ConnectionId,
+			DeviceId:              input.DeviceId,
 		}); err != nil {
 		global.Logger.Error("MapConnectionService.UnregisterConnection", "error", err)
 		return err
