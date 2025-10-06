@@ -10,7 +10,8 @@
 --]]
 
 local device_conns_key = KEYS[1]
-local device_id = KEYS[2]
+local service_conns_key = KEYS[2]
+local device_id = ARGV[1]
 
 redis.call("DEL", device_conns_key)
 redis.call("SREM", service_conns_key, device_id)

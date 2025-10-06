@@ -45,9 +45,9 @@ func (m *MapConnectionService) UnregisterConnection(ctx context.Context, input *
 	if _, err := domainMapConnectionRepo.RemoveConnection(
 		ctx,
 		&domainModel.RemoveConnectionInput{
+			DeviceId:              input.DeviceId,
 			DeviceConnectionsKey:  utilsCache.GetDeviceConnectionWsKey(input.DeviceId),
 			ServiceConnectionsKey: utilsCache.GetServiceWsConnectionKey(global.ServerSetting.Id),
-			DeviceId:              input.DeviceId,
 		}); err != nil {
 		global.Logger.Error("MapConnectionService.UnregisterConnection", "error", err)
 		return err

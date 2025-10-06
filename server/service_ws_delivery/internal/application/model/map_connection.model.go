@@ -14,6 +14,5 @@ type RegisterConnection struct {
 }
 
 type UnregisterConnection struct {
-	ConnectionId string `json:"connection_id"`
-	DeviceId     string `json:"device_id"`
+	DeviceId  string `json:"device_id"`
 }
