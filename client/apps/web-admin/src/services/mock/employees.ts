@@ -1,6 +1,6 @@
 // src/services/mock/employees.ts
 
-import type { Employee, FaceData, PaginatedResponse, FilterOptions, ApiResponse } from '../../types';
+import type { Employee, FaceData, PaginatedResponse, FilterOptions, ApiResponse } from '@/types';
 
 const MOCK_DELAY = 600;
 

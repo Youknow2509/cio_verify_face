@@ -1,6 +1,6 @@
 // src/services/mock/auth.ts
 
-import type { ApiResponse, User } from '../../types';
+import type { ApiResponse, User } from '@/types';
 
 const MOCK_DELAY = 500;
 

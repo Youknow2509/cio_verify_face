@@ -1,7 +1,7 @@
 // src/components/Sidebar/Sidebar.tsx
 
 import { NavLink } from 'react-router-dom';
-import { useSidebar } from '../../hooks/useSidebar';
+import { useSidebar } from '@/hooks/useSidebar';
 import styles from './Sidebar.module.scss';
 
 interface SidebarProps {

@@ -1,6 +1,6 @@
 // src/services/mock/reports.ts
 
-import type { ReportRow, FilterOptions, ApiResponse } from '../../types';
+import type { ReportRow, FilterOptions, ApiResponse } from '@/types';
 
 const MOCK_DELAY = 800;
 

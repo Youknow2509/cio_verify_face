@@ -1,7 +1,7 @@
 // src/components/Header/Header.tsx
 
 import { useState, useRef, useEffect } from 'react';
-import { useSidebar } from '../../hooks/useSidebar';
+import { useSidebar } from '@/hooks/useSidebar';
 import styles from './Header.module.scss';
 
 interface HeaderProps {

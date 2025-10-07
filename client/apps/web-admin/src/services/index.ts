@@ -7,7 +7,7 @@ export {
   getEmployeeFaceData,
   uploadFaceData,
   deleteFaceData
-} from './mock/employees';
+} from '@/services/mock/employees';
 
 // Auth Services  
 export {
@@ -15,7 +15,7 @@ export {
   logout,
   refreshToken,
   getCurrentUser
-} from './mock/auth';
+} from '@/services/mock/auth';
 
 // Device Services
 export {
@@ -24,14 +24,14 @@ export {
   updateDevice,
   deleteDevice,
   syncDevice
-} from './mock/devices';
+} from '@/services/mock/devices';
 
 // Attendance Services
 export {
   getAttendanceRecords,
   getEmployeeAttendance,
   getAttendanceChart
-} from './mock/attendance';
+} from '@/services/mock/attendance';
 
 // Shift Services
 export {
@@ -39,4 +39,4 @@ export {
   createShift,
   updateShift,
   deleteShift
-} from './mock/shifts';
+} from '@/services/mock/shifts';

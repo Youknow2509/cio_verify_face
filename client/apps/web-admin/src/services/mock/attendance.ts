@@ -1,6 +1,6 @@
 // src/services/mock/attendance.ts
 
-import type { AttendanceRecord, PaginatedResponse, FilterOptions, ApiResponse, DashboardStats, ChartData, RecentActivity } from '../../types';
+import type { AttendanceRecord, PaginatedResponse, FilterOptions, ApiResponse, DashboardStats, ChartData, RecentActivity } from '@/types';
 
 const MOCK_DELAY = 700;
 

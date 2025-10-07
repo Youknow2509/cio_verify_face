@@ -1,7 +1,7 @@
 // src/app/providers/ThemeProvider.tsx
 
 import { createContext, useContext, useEffect, useState } from 'react';
-import { usePrefersColorScheme } from '../../hooks/usePrefersColorScheme';
+import { usePrefersColorScheme } from '@/hooks/usePrefersColorScheme';
 
 interface ThemeContextType {
   theme: 'light' | 'dark';

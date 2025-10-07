@@ -1,6 +1,6 @@
 // src/services/mock/shifts.ts
 
-import type { Shift, PaginatedResponse, FilterOptions, ApiResponse } from '../../types';
+import type { Shift, PaginatedResponse, FilterOptions, ApiResponse } from '@/types';
 
 const MOCK_DELAY = 500;
 

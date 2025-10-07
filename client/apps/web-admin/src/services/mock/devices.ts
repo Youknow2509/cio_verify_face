@@ -1,6 +1,6 @@
 // src/services/mock/devices.ts
 
-import type { Device, PaginatedResponse, FilterOptions, ApiResponse } from '../../types';
+import type { Device, PaginatedResponse, FilterOptions, ApiResponse } from '@/types';
 
 const MOCK_DELAY = 500;
 

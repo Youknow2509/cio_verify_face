@@ -1,19 +1,19 @@
 // src/app/routes.tsx
 
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Layout } from '../layouts/Layout/Layout';
+import { Layout } from '@/app/layouts/Layout/Layout';
 
 // Lazy load pages for better performance
 import { lazy, Suspense } from 'react';
 
-const Dashboard = lazy(() => import('../pages/Dashboard/Dashboard'));
-const Employees = lazy(() => import('../pages/Employees/Employees'));
-const EmployeeDetail = lazy(() => import('../pages/Employees/EmployeeDetail'));
-const Devices = lazy(() => import('../pages/Devices/Devices'));
-const Attendance = lazy(() => import('../pages/Attendance/Attendance'));
-const Reports = lazy(() => import('../pages/Reports/Reports'));
-const Shifts = lazy(() => import('../pages/Shifts/Shifts'));
-const Settings = lazy(() => import('../pages/Settings/Settings'));
+const Dashboard = lazy(() => import('@/features/dashboard/Dashboard'));
+const Employees = lazy(() => import('@/features/employees/Employees'));
+const EmployeeDetail = lazy(() => import('@/features/employees/EmployeeDetail'));
+const Devices = lazy(() => import('@/features/devices/Devices'));
+const Attendance = lazy(() => import('@/features/attendance/Attendance'));
+const Reports = lazy(() => import('@/features/reports/Reports'));
+const Shifts = lazy(() => import('@/features/shifts/Shifts'));
+const Settings = lazy(() => import('@/features/settings/Settings'));
 
 function LoadingFallback() {
   return (
