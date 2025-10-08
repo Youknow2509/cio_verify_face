@@ -38,10 +38,17 @@ func (h *Worker) Run() {
 			}
 		case data := <-GetHub().HandlerReceive:
 			var dataObj dto.DataServerReceive
+			dataObj.Type = -1
 			if err := json.Unmarshal(data.Data, &dataObj); err != nil {
 				global.Logger.Warn(fmt.Sprintf("Failed to unmarshal data: %v", err))
 				continue
 			}
+			// Validate data
+			if dataObj.Type == -1 || dataObj.Payload == nil {
+				global.Logger.Warn("Invalid data received: missing type or payload")
+				continue
+			}
+			// Handler data
 			if err := handler.GetWorkerHandler().HandleDataReceive(
 				h.ctx,
 				data.ClientInfo,

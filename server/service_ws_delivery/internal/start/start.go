@@ -39,6 +39,10 @@ func StartService() error {
 	if err := initApplication(); err != nil {
 		return err
 	}
+	// Initialize validator
+	if err := initValidator(); err != nil {
+		return err
+	}
 	// Initialize WS
 	if err := initWebSocketServer(); err != nil {
 		return err
