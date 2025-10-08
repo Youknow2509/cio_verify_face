@@ -4,6 +4,7 @@ import (
 	"context"
 	"sync"
 
+	"github.com/go-playground/validator/v10"
 	libsConfig "github.com/youknow2509/cio_verify_face/server/service_ws_delivery/internal/domain/config"
 	libsPkgLogger "github.com/youknow2509/cio_verify_face/server/service_ws_delivery/internal/domain/logger"
 	libsDomainRateLimit "github.com/youknow2509/cio_verify_face/server/service_ws_delivery/internal/domain/ratelimit"
@@ -23,4 +24,5 @@ var (
 	Logger                 libsPkgLogger.ILogger
 	WsContext              context.Context
 	WaitGroup              *sync.WaitGroup
+	Validate               *validator.Validate
 )

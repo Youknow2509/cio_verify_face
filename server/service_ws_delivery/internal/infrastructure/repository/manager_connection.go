@@ -27,19 +27,27 @@ func (r *RedisManagerConnectionRepository) CreateConnection(ctx context.Context,
 	}
 	script := string(scriptBytes)
 	// Create key and arguments for the Lua script
+	// KEYS:
+	// 1: device_conns_key (ví dụ: device_conns:device123)
+	// 2: service_conns_key (ví dụ: service_conns:notif-A)
 	keys := []string{
-		input.UserConnectionsKey,
+		input.DeviceConnectionsKey,
 		input.ServiceConnectionsKey,
-		input.ConnectionKey,
 	}
+	// ARGV:
+	// 1: connection_id
+	// 2: device_id
+	// 3: service_id
+	// 4: ip_address
+	// 5: connected_at (timestamp)
+	// 6: user_agent
 	args := []interface{}{
 		input.ConnectionId,
-		input.UserId,
+		input.DeviceId,
 		input.ServiceId,
-		input.IPAddress,
+		input.IpAddress,
 		input.ConnectedAt,
 		input.UserAgent,
-		input.MaxConnsPerUser,
 	}
 	// Send script to Redis
 	res, err := r.client.Eval(ctx, script, keys, args...).Result()
@@ -61,14 +69,19 @@ func (r *RedisManagerConnectionRepository) RemoveConnection(ctx context.Context,
 		return false, errors.New("failed to read Lua script file: " + err.Error())
 	}
 	script := string(scriptBytes)
+
 	// Create key and arguments for the Lua script
+	// KEYS:
+	// 1: device_conns_key
+	// 2: service_conns_key
 	keys := []string{
-		input.UserConnectionsKey,
+		input.DeviceConnectionsKey,
 		input.ServiceConnectionsKey,
-		input.ConnectionKey,
 	}
+	// ARGV:
+	// 1: device_id
 	args := []interface{}{
-		input.ConnectionId,
+		input.DeviceId,
 	}
 	// Send script to Redis
 	res, err := r.client.Eval(ctx, script, keys, args...).Result()

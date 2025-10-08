@@ -11,16 +11,7 @@ import (
  * Send event service to Kafka
  */
 type ISendEventService interface {
-	NewMessageText(ctx context.Context, input model.NewMessageText) error
-	UserTypingStatus(ctx context.Context, input model.UserTypingStatus) error
-	MessageReadStatus(ctx context.Context, input model.MessageReadStatus) error
-	EditMessage(ctx context.Context, input model.EditMessage) error
-	DeleteMessage(ctx context.Context, input model.DeleteMessage) error
-	ReactMessage(ctx context.Context, input model.ReactMessage) error
-	CallOffer(ctx context.Context, input model.CallOffer) error
-	CallAnswer(ctx context.Context, input model.CallAnswer) error
-	CallIceCandidate(ctx context.Context, input model.CallIceCandidate) error
-	CallEnd(ctx context.Context, input model.CallEnd) error
+	SendDataVerifyFace(ctx context.Context, input *model.SendDataVerifyFace) error
 }
 
 /**

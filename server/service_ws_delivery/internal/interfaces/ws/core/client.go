@@ -21,8 +21,7 @@ import (
 // =============================================
 type Client struct {
 	// Info Client
-	SessionId       uuid.UUID
-	UserId          uuid.UUID
+	DeviceId        uuid.UUID
 	ConnId          uuid.UUID
 	ClientIpAddress string
 	ClientUserAgent string
@@ -96,8 +95,7 @@ func (c *Client) ReadPump() {
 		case GetHub().HandlerReceive <- model.ClientWriterData{
 			ClientInfo: model.ClientInfo{
 				ConnectionId: c.ConnId,
-				UserId:       c.UserId,
-				SessionId:    c.SessionId,
+				DeviceId:     c.DeviceId,
 				IpAddress:    c.ClientIpAddress,
 				UserAgent:    c.ClientUserAgent,
 			},
@@ -155,8 +153,7 @@ func (c *Client) WritePump() {
 // NewClientWS
 func NewClientWS(
 	ctx context.Context,
-	sessionId uuid.UUID,
-	userId uuid.UUID,
+	deviceId uuid.UUID,
 	clientIpAddress string,
 	clientUserAgent string,
 	conn *websocket.Conn,
@@ -168,13 +165,13 @@ func NewClientWS(
 ) *Client {
 	clientCtx, cancel := context.WithCancel(ctx)
 	return &Client{
-		SessionId:        sessionId,
-		UserId:           userId,
+		DeviceId:         deviceId,
+		ConnId:           uuid.New(),
 		ClientIpAddress:  clientIpAddress,
 		ClientUserAgent:  clientUserAgent,
-		ConnId:           uuid.New(),
 		conn:             conn,
 		sendQueue:        make([][]byte, 0, maxSendQueueSize),
+		sendQueueMutex:   sync.Mutex{},
 		maxSendQueueSize: maxSendQueueSize,
 		maxMessageSize:   maxMessageSize,
 		readWait:         readWait,

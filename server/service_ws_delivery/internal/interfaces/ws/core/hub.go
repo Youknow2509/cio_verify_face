@@ -102,8 +102,7 @@ func (h *Hub) Run(ctx context.Context) {
 			h.clients[client.ConnId] = client
 			h.clientsMutex.Unlock()
 			h.RegisterChan <- model.ClientInfo{
-				UserId:       client.UserId,
-				SessionId:    client.SessionId,
+				DeviceId:     client.DeviceId,
 				ConnectionId: client.ConnId,
 				UserAgent:    client.ClientUserAgent,
 				IpAddress:    client.ClientIpAddress,
@@ -115,8 +114,7 @@ func (h *Hub) Run(ctx context.Context) {
 			if _, ok := h.clients[client.ConnId]; ok {
 				delete(h.clients, client.ConnId)
 				h.UnregisterChan <- model.ClientInfo{
-					UserId:       client.UserId,
-					SessionId:    client.SessionId,
+					DeviceId:     client.DeviceId,
 					ConnectionId: client.ConnId,
 					UserAgent:    client.ClientUserAgent,
 					IpAddress:    client.ClientIpAddress,
