@@ -1,19 +1,20 @@
 // src/app/routes.tsx
 
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { lazy, Suspense } from 'react';
+import { Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from '@/app/layouts/Layout/Layout';
 
-// Lazy load pages for better performance
-import { lazy, Suspense } from 'react';
-
 const Dashboard = lazy(() => import('@/features/dashboard/Dashboard'));
-const Employees = lazy(() => import('@/features/employees/Employees'));
+const EmployeesPage = lazy(() => import('@/features/employees/EmployeesPage'));
 const EmployeeDetail = lazy(() => import('@/features/employees/EmployeeDetail'));
+const EmployeeEditPage = lazy(() => import('@/features/employees/EmployeeEditPage'));
 const Devices = lazy(() => import('@/features/devices/Devices'));
 const Attendance = lazy(() => import('@/features/attendance/Attendance'));
 const Reports = lazy(() => import('@/features/reports/Reports'));
 const Shifts = lazy(() => import('@/features/shifts/Shifts'));
 const Settings = lazy(() => import('@/features/settings/Settings'));
+const AccountProfilePage = lazy(() => import('@/features/account/AccountProfilePage'));
+const ChangePasswordPage = lazy(() => import('@/features/account/ChangePasswordPage'));
 
 function LoadingFallback() {
   return (
@@ -32,21 +33,24 @@ function LoadingFallback() {
 
 export function AppRoutes() {
   return (
-    <Layout>
-      <Suspense fallback={<LoadingFallback />}>
-        <Routes>
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/employees" element={<Employees />} />
-          <Route path="/employees/:id" element={<EmployeeDetail />} />
-          <Route path="/devices" element={<Devices />} />
-          <Route path="/attendance" element={<Attendance />} />
-          <Route path="/reports" element={<Reports />} />
-          <Route path="/shifts" element={<Shifts />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
-        </Routes>
-      </Suspense>
-    </Layout>
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes>
+        <Route element={<Layout />}>
+          <Route index element={<Navigate to="/dashboard" replace />} />
+          <Route path="dashboard" element={<Dashboard />} />
+          <Route path="employees" element={<EmployeesPage />} />
+          <Route path="employees/:id" element={<EmployeeDetail />} />
+          <Route path="employees/:id/edit" element={<EmployeeEditPage />} />
+          <Route path="devices" element={<Devices />} />
+          <Route path="attendance" element={<Attendance />} />
+          <Route path="reports" element={<Reports />} />
+          <Route path="shifts" element={<Shifts />} />
+          <Route path="settings" element={<Settings />} />
+          <Route path="account" element={<AccountProfilePage />} />
+          <Route path="account/password" element={<ChangePasswordPage />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </Suspense>
   );
 }

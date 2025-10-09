@@ -1,290 +1,349 @@
 // src/features/devices/Devices.tsx
 
-import { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Card } from '@/components/Card/Card';
-import { Table } from '@/components/Table/Table';
-import { Badge } from '@/components/Badge/Badge';
-import { 
-  getDevices,
-  syncDevice,
-  deleteDevice
-} from '@/services';
-import type { Device, FilterOptions, TableColumn } from '@/types';
-import styles from './Devices.module.scss';
+import Badge from 'react-bootstrap/Badge';
+import Button from 'react-bootstrap/Button';
+import Card from 'react-bootstrap/Card';
+import Col from 'react-bootstrap/Col';
+import Form from 'react-bootstrap/Form';
+import OverlayTrigger from 'react-bootstrap/OverlayTrigger';
+import Row from 'react-bootstrap/Row';
+import Stack from 'react-bootstrap/Stack';
+import Tooltip from 'react-bootstrap/Tooltip';
+import { useUi } from '@/app/providers/UiProvider';
+import { Page } from '@/ui/Page';
+import { DataTable, type DataTableColumn } from '@/ui/DataTable';
+import { getDevices, syncDevice, deleteDevice } from '@/services';
+import type { Device, FilterOptions } from '@/types';
+
+const DEFAULT_FILTER: FilterOptions = {
+  page: 1,
+  limit: 10,
+  search: '',
+  status: '',
+  sortBy: 'name',
+  sortOrder: 'asc',
+};
 
 export default function Devices() {
+  const { showToast, confirm } = useUi();
+  const [filter, setFilter] = useState<FilterOptions>(DEFAULT_FILTER);
   const [devices, setDevices] = useState<Device[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filter, setFilter] = useState<FilterOptions>({
-    page: 1,
-    limit: 20,
-    search: '',
-    status: '',
-    sortBy: 'name',
-    sortOrder: 'asc'
-  });
   const [total, setTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
   const [syncingId, setSyncingId] = useState<string | null>(null);
 
-  // Load devices data
-  const loadDevices = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const response = await getDevices(filter);
-      setDevices(response.data);
-      setTotal(response.total);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Không thể tải danh sách thiết bị');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const page = filter.page ?? 1;
+  const pageSize = filter.limit ?? 10;
 
   useEffect(() => {
-    loadDevices();
-  }, [filter]);
-
-  // Calculate statistics
-  const stats = useMemo(() => {
-    const online = devices.filter(d => d.status === 'online').length;
-    const offline = devices.filter(d => d.status === 'offline').length;
-    
-    return {
-      total: devices.length,
-      online,
-      offline
+    const loadDevices = async () => {
+      setLoading(true);
+      try {
+        const response = await getDevices(filter);
+        setDevices(response.data);
+        setTotal(response.total);
+      } catch (error) {
+        showToast({
+          variant: 'danger',
+          message:
+            error instanceof Error ? error.message : 'Không thể tải danh sách thiết bị. Vui lòng thử lại.',
+        });
+      } finally {
+        setLoading(false);
+      }
     };
-  }, [devices]);
 
-  // Handle sync device
-  const handleSync = async (deviceId: string) => {
+    loadDevices();
+  }, [filter, showToast]);
+
+  const stats = useMemo(() => {
+    const online = devices.filter((device) => device.status === 'online').length;
+    const offline = devices.filter((device) => device.status === 'offline').length;
+
+    return {
+      total: total,
+      online,
+      offline,
+    };
+  }, [devices, total]);
+
+  const handleSync = async (device: Device) => {
     try {
-      setSyncingId(deviceId);
-      await syncDevice(deviceId);
-      await loadDevices();
-    } catch (err) {
-      alert('Đồng bộ thất bại: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      setSyncingId(device.id);
+      await syncDevice(device.id);
+      setFilter((prev) => ({ ...prev }));
+      showToast({ variant: 'success', message: `Đã đồng bộ "${device.name}".` });
+    } catch (error) {
+      showToast({
+        variant: 'danger',
+        message: error instanceof Error ? error.message : 'Không thể đồng bộ thiết bị.',
+      });
     } finally {
       setSyncingId(null);
     }
   };
 
-  // Handle delete device
-  const handleDelete = async (deviceId: string, deviceName: string) => {
-    if (!confirm(`Bạn có chắc muốn xóa thiết bị "${deviceName}"?`)) {
+  const handleDelete = async (device: Device) => {
+    const shouldDelete = await confirm({
+      title: 'Xóa thiết bị',
+      message: `Thiết bị "${device.name}" sẽ bị xóa khỏi hệ thống. Bạn có chắc chắn?`,
+      confirmLabel: 'Xóa thiết bị',
+      cancelLabel: 'Hủy',
+      confirmVariant: 'danger',
+    });
+
+    if (!shouldDelete) {
       return;
     }
 
     try {
-      await deleteDevice(deviceId);
-      await loadDevices();
-    } catch (err) {
-      alert('Xóa thất bại: ' + (err instanceof Error ? err.message : 'Unknown error'));
+      await deleteDevice(device.id);
+      setFilter((prev) => ({ ...prev }));
+      showToast({ variant: 'success', message: 'Đã xóa thiết bị thành công.' });
+    } catch (error) {
+      showToast({
+        variant: 'danger',
+        message: error instanceof Error ? error.message : 'Không thể xóa thiết bị.',
+      });
     }
   };
 
-  // Table columns definition
-  const columns: TableColumn<Device>[] = [
+  const columns: DataTableColumn<Device>[] = [
     {
-      key: 'name',
-      header: 'Tên thiết bị',
-      sortable: true,
-      render: (_, device) => (
-        <Link to={`/devices/${device.id}`} className={styles.deviceName}>
-          {device.name}
-        </Link>
-      )
-    },
-    {
-      key: 'location',
-      header: 'Vị trí',
-      sortable: true,
-      render: (_, device) => (
-        <div className={styles.deviceLocation}>
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/>
-          </svg>
-          {device.location}
+      header: 'Thiết bị',
+      render: (row) => (
+        <div>
+          <Link to={`/devices/${row.id}`} className="fw-semibold text-decoration-none">
+            {row.name}
+          </Link>
+          {row.location && <p className="text-secondary small mb-0">{row.location}</p>}
         </div>
-      )
+      ),
+      className: 'text-nowrap',
     },
     {
-      key: 'model',
       header: 'Model',
-      sortable: true,
-      render: (_, device) => (
-        <span className={styles.deviceModel}>{device.model}</span>
-      )
+      render: (row) => <span className="text-secondary small">{row.model ?? '—'}</span>,
     },
     {
-      key: 'ipAddress',
       header: 'Địa chỉ IP',
-      render: (_, device) => (
-        <span className={styles.deviceIp}>{device.ipAddress}</span>
-      )
+      render: (row) => (
+        <span className="badge bg-light text-dark fw-normal">{row.ipAddress ?? '—'}</span>
+      ),
+      className: 'text-nowrap',
     },
     {
-      key: 'status',
       header: 'Trạng thái',
-      sortable: true,
-      render: (_, device) => (
-        <Badge 
-          variant={device.status === 'online' ? 'success' : 'error'}
-        >
-          {device.status === 'online' ? '● Hoạt động' : '● Ngoại tuyến'}
+      render: (row) => (
+        <Badge bg={row.status === 'online' ? 'success' : 'secondary'}>
+          {row.status === 'online' ? '● Hoạt động' : '● Ngoại tuyến'}
         </Badge>
-      )
+      ),
+      className: 'text-center',
     },
     {
-      key: 'lastSyncAt',
       header: 'Đồng bộ lần cuối',
-      sortable: true,
-      render: (_, device) => (
-        <span className={styles.lastSync}>
-          {device.lastSyncAt ? new Date(device.lastSyncAt).toLocaleString('vi-VN') : 'Chưa đồng bộ'}
+      render: (row) => (
+        <span className="text-secondary small">
+          {row.lastSyncAt
+            ? new Date(row.lastSyncAt).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })
+            : 'Chưa đồng bộ'}
         </span>
-      )
+      ),
+      className: 'text-nowrap',
     },
     {
-      key: 'actions',
       header: 'Thao tác',
-      render: (_, device) => (
-        <div className={styles.actionButtons}>
-          <button
-            className={`${styles.actionBtn} ${styles.sync}`}
-            onClick={() => handleSync(device.id)}
-            disabled={syncingId === device.id}
+      render: (row) => (
+        <Stack direction="horizontal" gap={2} className="justify-content-end">
+          <Button
+            variant="outline-primary"
+            size="sm"
+            disabled={syncingId === row.id}
+            onClick={() => handleSync(row)}
           >
-            {syncingId === device.id ? '⟳ Đang đồng bộ...' : '⟳ Đồng bộ'}
-          </button>
-          <button
-            className={`${styles.actionBtn} ${styles.delete}`}
-            onClick={() => handleDelete(device.id, device.name)}
-          >
-            🗑 Xóa
-          </button>
-        </div>
-      )
-    }
+            {syncingId === row.id ? 'Đang đồng bộ...' : 'Đồng bộ'}
+          </Button>
+          <Button variant="outline-danger" size="sm" onClick={() => handleDelete(row)}>
+            Xóa
+          </Button>
+        </Stack>
+      ),
+      className: 'text-end text-nowrap',
+    },
   ];
 
   return (
-    <div className={styles.container}>
-      {/* Header */}
-      <div className={styles.header}>
-        <h1>📱 Quản lý thiết bị</h1>
-        <div className={styles.actions}>
-          <button className={styles.refreshButton} onClick={loadDevices}>
-            🔄 Làm mới
-          </button>
-          <button className={styles.addButton}>
-            <svg viewBox="0 0 24 24" fill="currentColor">
-              <path d="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z"/>
-            </svg>
-            Thêm thiết bị
-          </button>
-        </div>
-      </div>
-
-      {/* Statistics Cards */}
-      <div className={styles.statsCards}>
-        <div className={styles.statCard}>
-          <div className={`${styles.statIcon} ${styles.total}`}>
-            📱
-          </div>
-          <div className={styles.statContent}>
-            <h3 className={styles.statValue}>{stats.total}</h3>
-            <p className={styles.statLabel}>Tổng số thiết bị</p>
-          </div>
-        </div>
-
-        <div className={styles.statCard}>
-          <div className={`${styles.statIcon} ${styles.online}`}>
-            ✓
-          </div>
-          <div className={styles.statContent}>
-            <h3 className={styles.statValue}>{stats.online}</h3>
-            <p className={styles.statLabel}>Đang hoạt động</p>
-          </div>
-        </div>
-
-        <div className={styles.statCard}>
-          <div className={`${styles.statIcon} ${styles.offline}`}>
-            ✕
-          </div>
-          <div className={styles.statContent}>
-            <h3 className={styles.statValue}>{stats.offline}</h3>
-            <p className={styles.statLabel}>Ngoại tuyến</p>
-          </div>
-        </div>
-
-
-      </div>
-
-      {/* Toolbar */}
-      <div className={styles.toolbar}>
-        <div className={styles.searchBox}>
-          <svg viewBox="0 0 24 24" fill="currentColor">
-            <path d="M15.5 14h-.79l-.28-.27C15.41 12.59 16 11.11 16 9.5 16 5.91 13.09 3 9.5 3S3 5.91 3 9.5 5.91 16 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>
-          </svg>
-          <input
-            type="text"
-            placeholder="Tìm kiếm theo tên, vị trí, IP..."
-            value={filter.search}
-            onChange={(e) => setFilter({ ...filter, search: e.target.value, page: 1 })}
+    <Page
+      title="Quản lý thiết bị"
+      subtitle="Theo dõi tình trạng kết nối và đồng bộ của toàn bộ thiết bị điểm danh"
+      breadcrumb={[{ label: 'Trang chủ', path: '/dashboard' }, { label: 'Thiết bị' }]}
+      actions={
+        <Stack direction="horizontal" gap={2}>
+          <Button variant="outline-secondary" onClick={() => setFilter((prev) => ({ ...prev }))}>
+            Làm mới
+          </Button>
+          <Button variant="primary">+ Thêm thiết bị</Button>
+        </Stack>
+      }
+    >
+      <Row className="g-3">
+        <Col md={4}>
+          <StatCard
+            title="Tổng thiết bị"
+            value={stats.total}
+            description={`Đang xem ${devices.length} trên mỗi trang`}
+            variant="primary"
           />
-        </div>
+        </Col>
+        <Col md={4}>
+          <StatCard
+            title="Đang hoạt động"
+            value={stats.online}
+            description={`${percentage(stats.online, stats.total)} trực tuyến`}
+            variant="success"
+          />
+        </Col>
+        <Col md={4}>
+          <StatCard
+            title="Ngoại tuyến"
+            value={stats.offline}
+            description={`${percentage(stats.offline, stats.total)} cần kiểm tra`}
+            variant="warning"
+          />
+        </Col>
+      </Row>
 
-        <div className={styles.filters}>
-          <select
-            className={styles.filterSelect}
-            value={filter.status || ''}
-            onChange={(e) => setFilter({ ...filter, status: e.target.value, page: 1 })}
-          >
-            <option value="">Tất cả trạng thái</option>
-            <option value="online">Hoạt động</option>
-            <option value="offline">Ngoại tuyến</option>
-          </select>
-
-          <select
-            className={styles.filterSelect}
-            value={filter.sortBy || 'name'}
-            onChange={(e) => setFilter({ ...filter, sortBy: e.target.value })}
-          >
-            <option value="name">Sắp xếp: Tên</option>
-            <option value="location">Sắp xếp: Vị trí</option>
-            <option value="status">Sắp xếp: Trạng thái</option>
-            <option value="lastSyncAt">Sắp xếp: Đồng bộ</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Error Message */}
-      {error && (
-        <div className={styles.error}>
-          ⚠️ {error}
-        </div>
-      )}
-
-      {/* Devices Table */}
-      <Card>
-        <Table
-          columns={columns}
-          data={devices}
-          loading={loading}
-          empty={<div style={{ textAlign: 'center', padding: '40px', color: 'var(--md-sys-color-on-surface-variant)' }}>Không có thiết bị nào</div>}
-        />
+      <Card className="border-0 shadow-sm">
+        <Card.Body>
+          <Row className="g-3 align-items-end">
+            <Col lg={4}>
+              <Form.Group controlId="device-search">
+                <Form.Label className="text-secondary small text-uppercase">Tìm kiếm</Form.Label>
+                <Form.Control
+                  type="search"
+                  placeholder="Tên, vị trí, model..."
+                  value={filter.search ?? ''}
+                  onChange={(event) => setFilter({ ...filter, search: event.target.value, page: 1 })}
+                />
+              </Form.Group>
+            </Col>
+            <Col lg={3}>
+              <Form.Group controlId="device-status">
+                <Form.Label className="text-secondary small text-uppercase">Trạng thái</Form.Label>
+                <Form.Select
+                  value={filter.status ?? ''}
+                  onChange={(event) => setFilter({ ...filter, status: event.target.value || undefined, page: 1 })}
+                >
+                  <option value="">Tất cả</option>
+                  <option value="online">Hoạt động</option>
+                  <option value="offline">Ngoại tuyến</option>
+                </Form.Select>
+              </Form.Group>
+            </Col>
+            <Col lg={3}>
+              <Form.Group controlId="device-sort">
+                <Form.Label className="text-secondary small text-uppercase">Sắp xếp theo</Form.Label>
+                <Form.Select
+                  value={filter.sortBy ?? 'name'}
+                  onChange={(event) => setFilter({ ...filter, sortBy: event.target.value, page: 1 })}
+                >
+                  <option value="name">Tên thiết bị</option>
+                  <option value="location">Vị trí</option>
+                  <option value="status">Trạng thái</option>
+                  <option value="lastSyncAt">Đồng bộ</option>
+                </Form.Select>
+              </Form.Group>
+            </Col>
+            <Col lg={2}>
+              <Form.Group controlId="device-limit">
+                <Form.Label className="text-secondary small text-uppercase">Hiển thị</Form.Label>
+                <Form.Select
+                  value={pageSize}
+                  onChange={(event) =>
+                    setFilter({ ...filter, limit: Number(event.target.value), page: 1 })
+                  }
+                >
+                  {[5, 10, 20, 50].map((size) => (
+                    <option key={size} value={size}>
+                      {size} thiết bị
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+            </Col>
+          </Row>
+        </Card.Body>
       </Card>
 
-      {/* Pagination info */}
-      {total > 0 && (
-        <div style={{ marginTop: '16px', textAlign: 'center', color: 'var(--md-sys-color-on-surface-variant)' }}>
-          Hiển thị {devices.length} / {total} thiết bị
-        </div>
-      )}
-    </div>
+      <Card className="border-0 shadow-sm">
+        <Card.Header className="bg-transparent border-0 pb-0">
+          <Stack direction="horizontal" className="justify-content-between align-items-center flex-wrap gap-2">
+            <div>
+              <h2 className="fs-5 fw-semibold mb-0">Danh sách thiết bị</h2>
+              <p className="text-secondary small mb-0">
+                {total} thiết bị · Cập nhật {new Date().toLocaleTimeString('vi-VN')}
+              </p>
+            </div>
+            <OverlayTrigger
+              placement="left"
+              overlay={<Tooltip id="refresh-tooltip">Tải lại dữ liệu</Tooltip>}
+            >
+              <Button variant="outline-secondary" size="sm" onClick={() => setFilter((prev) => ({ ...prev }))}>
+                Làm mới
+              </Button>
+            </OverlayTrigger>
+          </Stack>
+        </Card.Header>
+        <Card.Body className="pt-3">
+          <DataTable
+            columns={columns}
+            data={devices}
+            loading={loading}
+            page={page}
+            pageSize={pageSize}
+            total={total}
+            onPageChange={(nextPage) => setFilter({ ...filter, page: nextPage })}
+            keySelector={(row) => row.id}
+            emptyMessage="Không có thiết bị nào phù hợp với bộ lọc hiện tại"
+          />
+        </Card.Body>
+      </Card>
+    </Page>
   );
+}
+
+interface StatCardProps {
+  title: string;
+  value: number;
+  description: string;
+  variant: 'primary' | 'success' | 'warning';
+}
+
+function StatCard({ title, value, description, variant }: StatCardProps) {
+  const variantMap: Record<StatCardProps['variant'], string> = {
+    primary: 'bg-primary-subtle text-primary',
+    success: 'bg-success-subtle text-success',
+    warning: 'bg-warning-subtle text-warning',
+  };
+
+  return (
+    <Card className="border-0 shadow-sm h-100">
+      <Card.Body className="d-flex flex-column gap-2">
+        <span className="text-secondary text-uppercase small">{title}</span>
+        <h2 className="fs-2 fw-semibold mb-0">{value}</h2>
+        <span className={`badge ${variantMap[variant]} align-self-start`}>{description}</span>
+      </Card.Body>
+    </Card>
+  );
+}
+
+function percentage(value: number, total: number) {
+  if (total === 0) {
+    return '0%';
+  }
+
+  return `${Math.round((value / total) * 100)}%`;
 }

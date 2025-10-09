@@ -84,6 +84,31 @@ export interface User {
   role: UserRole;
   companyId: string;
   active: boolean;
+  avatarUrl?: string | null;
+  lastLoginAt?: string | null;
+}
+
+export interface AccountProfile {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
+  avatarUrl?: string | null;
+  lastLoginAt?: string | null;
+}
+
+export interface ChangePasswordPayload {
+  oldPassword: string;
+  newPassword: string;
+}
+
+export interface UpdateEmployeePayload {
+  code: string;
+  name: string;
+  email: string;
+  department?: string;
+  position?: string;
+  active: boolean;
 }
 
 export interface ApiResponse<T> {

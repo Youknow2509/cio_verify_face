@@ -1,5 +1,7 @@
 // src/styles/_mixins.scss
 
+@use 'sass:map';
+
 /* Breakpoints map for respond mixin */
 $bps: (
   xs: 0px,
@@ -11,7 +13,7 @@ $bps: (
 
 /* Responsive mixin */
 @mixin respond($bp) {
-  $value: map-get($bps, $bp);
+  $value: map.get($bps, $bp);
   @if $value != null {
     @media (min-width: $value) {
       @content;

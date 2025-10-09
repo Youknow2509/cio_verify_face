@@ -20,13 +20,84 @@ export class HttpError extends Error {
 
 const DEFAULT_TIMEOUT = 10000;
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api';
+const TOKEN_STORAGE_KEY = 'auth_token';
+
+let inMemoryToken: string | undefined;
+
+function readTokenFromStorage(): string | undefined {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  try {
+    const localToken = window.localStorage?.getItem(TOKEN_STORAGE_KEY) ?? undefined;
+    if (localToken) {
+      return localToken;
+    }
+  } catch {
+    // Ignore storage errors
+  }
+
+  try {
+    const sessionToken = window.sessionStorage?.getItem(TOKEN_STORAGE_KEY) ?? undefined;
+    if (sessionToken) {
+      return sessionToken;
+    }
+  } catch {
+    // Ignore storage errors
+  }
+
+  return undefined;
+}
+
+function persistToken(token?: string) {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  try {
+    if (typeof token === 'string' && token.length > 0) {
+      window.localStorage?.setItem(TOKEN_STORAGE_KEY, token);
+    } else {
+      window.localStorage?.removeItem(TOKEN_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage errors
+  }
+
+  try {
+    if (typeof token === 'string' && token.length > 0) {
+      window.sessionStorage?.setItem(TOKEN_STORAGE_KEY, token);
+    } else {
+      window.sessionStorage?.removeItem(TOKEN_STORAGE_KEY);
+    }
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function setAuthToken(token?: string) {
+  inMemoryToken = token && token.length > 0 ? token : undefined;
+  persistToken(inMemoryToken);
+}
+
+export function clearAuthToken() {
+  inMemoryToken = undefined;
+  persistToken(undefined);
+}
 
 function getAuthToken(): string | null {
-  try {
-    return localStorage.getItem('auth_token');
-  } catch {
-    return null;
+  if (inMemoryToken) {
+    return inMemoryToken;
   }
+
+  const storedToken = readTokenFromStorage();
+  if (storedToken) {
+    inMemoryToken = storedToken;
+    return storedToken;
+  }
+
+  return null;
 }
 
 function createRequestConfig(config: RequestConfig = {}): RequestInit {
@@ -38,7 +109,7 @@ function createRequestConfig(config: RequestConfig = {}): RequestInit {
   } = config;
 
   const requestHeaders: Record<string, string> = {
-    'Content-Type': 'application/json',
+    Accept: 'application/json',
     ...headers
   };
 
@@ -54,8 +125,26 @@ function createRequestConfig(config: RequestConfig = {}): RequestInit {
     signal: AbortSignal.timeout(timeout)
   };
 
-  if (body && method !== 'GET') {
-    requestConfig.body = typeof body === 'string' ? body : JSON.stringify(body);
+  if (body !== undefined && method !== 'GET') {
+    const isFormLike =
+      body instanceof FormData ||
+      body instanceof URLSearchParams ||
+      body instanceof Blob ||
+      body instanceof ArrayBuffer;
+
+    if (isFormLike) {
+      requestConfig.body = body as BodyInit;
+    } else if (typeof body === 'string') {
+      requestConfig.body = body;
+      if (!requestHeaders['Content-Type']) {
+        requestHeaders['Content-Type'] = 'text/plain;charset=UTF-8';
+      }
+    } else {
+      requestConfig.body = JSON.stringify(body);
+      if (!requestHeaders['Content-Type']) {
+        requestHeaders['Content-Type'] = 'application/json';
+      }
+    }
   }
 
   return requestConfig;

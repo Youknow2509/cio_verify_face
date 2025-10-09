@@ -1,205 +1,326 @@
 // src/features/settings/Settings.tsx
 
-import { useState } from 'react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/Card/Card';
-import styles from './Settings.module.scss';
+import { useState, type ReactNode } from 'react';
+import Button from 'react-bootstrap/Button';
+import Card from 'react-bootstrap/Card';
+import Col from 'react-bootstrap/Col';
+import Form from 'react-bootstrap/Form';
+import Nav from 'react-bootstrap/Nav';
+import Row from 'react-bootstrap/Row';
+import Stack from 'react-bootstrap/Stack';
+import Tab from 'react-bootstrap/Tab';
+import { useUi } from '@/app/providers/UiProvider';
+import { Page } from '@/ui/Page';
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState('general');
+  const { showToast } = useUi();
+  const [general, setGeneral] = useState({
+    companyName: 'Công ty ABC',
+    timezone: 'Asia/Bangkok',
+    language: 'vi',
+  });
+  const [attendance, setAttendance] = useState({
+    startTime: '08:00',
+    endTime: '17:00',
+    allowLateMinutes: 15,
+    mobileCheckIn: true,
+    requirePhoto: true,
+  });
+  const [notifications, setNotifications] = useState({
+    email: true,
+    sms: false,
+    inApp: true,
+  });
+  const [security, setSecurity] = useState({
+    twoFactor: true,
+    autoLogout: true,
+  });
+
+  const handleSave = (section: 'general' | 'attendance' | 'notifications' | 'security') => {
+    showToast({
+      variant: 'success',
+      message: `Đã lưu cài đặt ${translateSection(section)} thành công.`,
+    });
+  };
 
   return (
-    <div className={styles.settings}>
-      <div className={styles.header}>
-        <h1 className={styles.title}>Cài đặt hệ thống</h1>
-        <p className={styles.subtitle}>Cấu hình thông số cho hệ thống chấm công</p>
-      </div>
-
-      <div className={styles.settingsLayout}>
-        <div className={styles.sidebar}>
-          <nav className={styles.nav}>
-            <button
-              className={`${styles.navItem} ${activeTab === 'general' ? styles.active : ''}`}
-              onClick={() => setActiveTab('general')}
-            >
-              <SettingsIcon />
-              Cài đặt chung
-            </button>
-            <button
-              className={`${styles.navItem} ${activeTab === 'attendance' ? styles.active : ''}`}
-              onClick={() => setActiveTab('attendance')}
-            >
-              <ClockIcon />
-              Chấm công
-            </button>
-            <button
-              className={`${styles.navItem} ${activeTab === 'notification' ? styles.active : ''}`}
-              onClick={() => setActiveTab('notification')}
-            >
-              <BellIcon />
-              Thông báo
-            </button>
-            <button
-              className={`${styles.navItem} ${activeTab === 'security' ? styles.active : ''}`}
-              onClick={() => setActiveTab('security')}
-            >
-              <LockIcon />
-              Bảo mật
-            </button>
-          </nav>
-        </div>
-
-        <div className={styles.content}>
-          {activeTab === 'general' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Cài đặt chung</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Tên công ty</label>
-                  <input type="text" className={styles.input} defaultValue="Công ty ABC" />
-                </div>
-                
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Múi giờ</label>
-                  <select className={styles.select}>
-                    <option>GMT+7 (Hà Nội)</option>
-                  </select>
-                </div>
-                
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Ngôn ngữ</label>
-                  <select className={styles.select}>
-                    <option>Tiếng Việt</option>
-                    <option>English</option>
-                  </select>
-                </div>
-                
-                <button className={styles.saveButton}>Lưu thay đổi</button>
-              </CardContent>
+    <Page
+      title="Cài đặt hệ thống"
+      subtitle="Điều chỉnh các tham số vận hành, thông báo và bảo mật cho hệ thống chấm công"
+      breadcrumb={[{ label: 'Trang chủ', path: '/dashboard' }, { label: 'Cài đặt' }]}
+    >
+      <Tab.Container defaultActiveKey="general">
+        <Row className="g-3">
+          <Col xl={3} lg={4}>
+            <Card className="border-0 shadow-sm h-100">
+              <Card.Body className="p-0">
+                <Nav variant="pills" className="flex-column">
+                  <Nav.Item>
+                    <Nav.Link eventKey="general" className="py-3 px-4">
+                      Cài đặt chung
+                    </Nav.Link>
+                  </Nav.Item>
+                  <Nav.Item>
+                    <Nav.Link eventKey="attendance" className="py-3 px-4">
+                      Chấm công
+                    </Nav.Link>
+                  </Nav.Item>
+                  <Nav.Item>
+                    <Nav.Link eventKey="notifications" className="py-3 px-4">
+                      Thông báo
+                    </Nav.Link>
+                  </Nav.Item>
+                  <Nav.Item>
+                    <Nav.Link eventKey="security" className="py-3 px-4">
+                      Bảo mật
+                    </Nav.Link>
+                  </Nav.Item>
+                </Nav>
+              </Card.Body>
             </Card>
-          )}
+          </Col>
+          <Col xl={9} lg={8}>
+            <Tab.Content>
+              <Tab.Pane eventKey="general">
+                <SettingsSection
+                  title="Cài đặt chung"
+                  description="Thông tin tổ chức và ngôn ngữ hiển thị."
+                  onSave={() => handleSave('general')}
+                >
+                  <Row className="g-3">
+                    <Col md={6}>
+                      <Form.Group controlId="company-name">
+                        <Form.Label>Tên công ty</Form.Label>
+                        <Form.Control
+                          value={general.companyName}
+                          onChange={(event) =>
+                            setGeneral((prev) => ({ ...prev, companyName: event.target.value }))
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+                    <Col md={6}>
+                      <Form.Group controlId="company-timezone">
+                        <Form.Label>Múi giờ</Form.Label>
+                        <Form.Select
+                          value={general.timezone}
+                          onChange={(event) =>
+                            setGeneral((prev) => ({ ...prev, timezone: event.target.value }))
+                          }
+                        >
+                          <option value="Asia/Bangkok">GMT+7 (Hà Nội)</option>
+                          <option value="Asia/Singapore">GMT+8 (Singapore)</option>
+                          <option value="Asia/Tokyo">GMT+9 (Tokyo)</option>
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
+                    <Col md={6}>
+                      <Form.Group controlId="company-language">
+                        <Form.Label>Ngôn ngữ</Form.Label>
+                        <Form.Select
+                          value={general.language}
+                          onChange={(event) =>
+                            setGeneral((prev) => ({ ...prev, language: event.target.value }))
+                          }
+                        >
+                          <option value="vi">Tiếng Việt</option>
+                          <option value="en">English</option>
+                        </Form.Select>
+                      </Form.Group>
+                    </Col>
+                  </Row>
+                </SettingsSection>
+              </Tab.Pane>
 
-          {activeTab === 'attendance' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Cài đặt chấm công</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Giờ bắt đầu làm việc</label>
-                  <input type="time" className={styles.input} defaultValue="08:00" />
-                </div>
-                
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Giờ kết thúc làm việc</label>
-                  <input type="time" className={styles.input} defaultValue="17:00" />
-                </div>
-                
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Thời gian cho phép đi trễ (phút)</label>
-                  <input type="number" className={styles.input} defaultValue="15" />
-                </div>
-                
-                <div className={styles.checkboxGroup}>
-                  <label className={styles.checkbox}>
-                    <input type="checkbox" defaultChecked />
-                    <span>Cho phép check-in/out từ thiết bị di động</span>
-                  </label>
-                  <label className={styles.checkbox}>
-                    <input type="checkbox" defaultChecked />
-                    <span>Yêu cầu chụp ảnh khi chấm công</span>
-                  </label>
-                </div>
-                
-                <button className={styles.saveButton}>Lưu thay đổi</button>
-              </CardContent>
-            </Card>
-          )}
+              <Tab.Pane eventKey="attendance">
+                <SettingsSection
+                  title="Cài đặt chấm công"
+                  description="Thiết lập khung giờ làm việc và chính sách chấm công."
+                  onSave={() => handleSave('attendance')}
+                >
+                  <Row className="g-3">
+                    <Col md={4}>
+                      <Form.Group controlId="attendance-start">
+                        <Form.Label>Giờ bắt đầu</Form.Label>
+                        <Form.Control
+                          type="time"
+                          value={attendance.startTime}
+                          onChange={(event) =>
+                            setAttendance((prev) => ({ ...prev, startTime: event.target.value }))
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+                    <Col md={4}>
+                      <Form.Group controlId="attendance-end">
+                        <Form.Label>Giờ kết thúc</Form.Label>
+                        <Form.Control
+                          type="time"
+                          value={attendance.endTime}
+                          onChange={(event) =>
+                            setAttendance((prev) => ({ ...prev, endTime: event.target.value }))
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+                    <Col md={4}>
+                      <Form.Group controlId="attendance-late">
+                        <Form.Label>Đi trễ cho phép (phút)</Form.Label>
+                        <Form.Control
+                          type="number"
+                          min={0}
+                          max={120}
+                          value={attendance.allowLateMinutes}
+                          onChange={(event) =>
+                            setAttendance((prev) => ({ ...prev, allowLateMinutes: Number(event.target.value) }))
+                          }
+                        />
+                      </Form.Group>
+                    </Col>
+                  </Row>
+                  <Stack gap={2} className="mt-3">
+                    <Form.Check
+                      type="switch"
+                      id="mobile-checkin"
+                      label="Cho phép check-in/out từ thiết bị di động"
+                      checked={attendance.mobileCheckIn}
+                      onChange={(event) =>
+                        setAttendance((prev) => ({ ...prev, mobileCheckIn: event.target.checked }))
+                      }
+                    />
+                    <Form.Check
+                      type="switch"
+                      id="require-photo"
+                      label="Yêu cầu chụp ảnh khi chấm công"
+                      checked={attendance.requirePhoto}
+                      onChange={(event) =>
+                        setAttendance((prev) => ({ ...prev, requirePhoto: event.target.checked }))
+                      }
+                    />
+                  </Stack>
+                </SettingsSection>
+              </Tab.Pane>
 
-          {activeTab === 'notification' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Cài đặt thông báo</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className={styles.checkboxGroup}>
-                  <label className={styles.checkbox}>
-                    <input type="checkbox" defaultChecked />
-                    <span>Thông báo qua email</span>
-                  </label>
-                  <label className={styles.checkbox}>
-                    <input type="checkbox" />
-                    <span>Thông báo qua SMS</span>
-                  </label>
-                  <label className={styles.checkbox}>
-                    <input type="checkbox" defaultChecked />
-                    <span>Thông báo trong ứng dụng</span>
-                  </label>
-                </div>
-                
-                <button className={styles.saveButton}>Lưu thay đổi</button>
-              </CardContent>
-            </Card>
-          )}
+              <Tab.Pane eventKey="notifications">
+                <SettingsSection
+                  title="Cài đặt thông báo"
+                  description="Lựa chọn kênh thông báo cho sự kiện quan trọng."
+                  onSave={() => handleSave('notifications')}
+                >
+                  <Stack gap={3}>
+                    <Form.Check
+                      type="switch"
+                      id="notif-email"
+                      label="Thông báo qua email"
+                      checked={notifications.email}
+                      onChange={(event) =>
+                        setNotifications((prev) => ({ ...prev, email: event.target.checked }))
+                      }
+                    />
+                    <Form.Check
+                      type="switch"
+                      id="notif-sms"
+                      label="Thông báo qua SMS"
+                      checked={notifications.sms}
+                      onChange={(event) =>
+                        setNotifications((prev) => ({ ...prev, sms: event.target.checked }))
+                      }
+                    />
+                    <Form.Check
+                      type="switch"
+                      id="notif-inapp"
+                      label="Thông báo trong ứng dụng"
+                      checked={notifications.inApp}
+                      onChange={(event) =>
+                        setNotifications((prev) => ({ ...prev, inApp: event.target.checked }))
+                      }
+                    />
+                  </Stack>
+                </SettingsSection>
+              </Tab.Pane>
 
-          {activeTab === 'security' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Cài đặt bảo mật</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Mật khẩu mới</label>
-                  <input type="password" className={styles.input} />
-                </div>
-                
-                <div className={styles.formGroup}>
-                  <label className={styles.label}>Xác nhận mật khẩu</label>
-                  <input type="password" className={styles.input} />
-                </div>
-                
-                <div className={styles.checkboxGroup}>
-                  <label className={styles.checkbox}>
-                    <input type="checkbox" defaultChecked />
-                    <span>Yêu cầu xác thực 2 yếu tố (2FA)</span>
-                  </label>
-                  <label className={styles.checkbox}>
-                    <input type="checkbox" />
-                    <span>Tự động đăng xuất sau 30 phút không hoạt động</span>
-                  </label>
-                </div>
-                
-                <button className={styles.saveButton}>Lưu thay đổi</button>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      </div>
-    </div>
+              <Tab.Pane eventKey="security">
+                <SettingsSection
+                  title="Cài đặt bảo mật"
+                  description="Tăng cường bảo mật tài khoản và phiên đăng nhập."
+                  onSave={() => handleSave('security')}
+                >
+                  <Stack gap={3}>
+                    <Form.Group controlId="security-password">
+                      <Form.Label>Mật khẩu mới</Form.Label>
+                      <Form.Control type="password" placeholder="Nhập mật khẩu mới" />
+                    </Form.Group>
+                    <Form.Group controlId="security-password-confirm">
+                      <Form.Label>Xác nhận mật khẩu</Form.Label>
+                      <Form.Control type="password" placeholder="Nhập lại mật khẩu" />
+                    </Form.Group>
+                    <Form.Check
+                      type="switch"
+                      id="security-2fa"
+                      label="Yêu cầu xác thực 2 yếu tố (2FA)"
+                      checked={security.twoFactor}
+                      onChange={(event) =>
+                        setSecurity((prev) => ({ ...prev, twoFactor: event.target.checked }))
+                      }
+                    />
+                    <Form.Check
+                      type="switch"
+                      id="security-autologout"
+                      label="Tự động đăng xuất sau 30 phút không hoạt động"
+                      checked={security.autoLogout}
+                      onChange={(event) =>
+                        setSecurity((prev) => ({ ...prev, autoLogout: event.target.checked }))
+                      }
+                    />
+                  </Stack>
+                </SettingsSection>
+              </Tab.Pane>
+            </Tab.Content>
+          </Col>
+        </Row>
+      </Tab.Container>
+    </Page>
   );
 }
 
-const SettingsIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
-  </svg>
-);
+interface SettingsSectionProps {
+  title: string;
+  description: string;
+  children: ReactNode;
+  onSave: () => void;
+}
 
-const ClockIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67z"/>
-  </svg>
-);
+function SettingsSection({ title, description, children, onSave }: SettingsSectionProps) {
+  return (
+    <Card className="border-0 shadow-sm">
+      <Card.Header className="bg-transparent border-0 pb-0">
+        <h2 className="fs-5 fw-semibold mb-1">{title}</h2>
+        <p className="text-secondary small mb-0">{description}</p>
+      </Card.Header>
+      <Card.Body className="pt-3">
+        <Stack gap={3}>{children}</Stack>
+      </Card.Body>
+      <Card.Footer className="bg-transparent border-0 d-flex justify-content-end gap-2">
+        <Button variant="outline-secondary" onClick={onSave}>
+          Hủy
+        </Button>
+        <Button variant="primary" onClick={onSave}>
+          Lưu thay đổi
+        </Button>
+      </Card.Footer>
+    </Card>
+  );
+}
 
-const BellIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 22c1.1 0 2-.9 2-2h-4c0 1.1.89 2 2 2zm6-6v-5c0-3.07-1.64-5.64-4.5-6.32V4c0-.83-.67-1.5-1.5-1.5s-1.5.67-1.5 1.5v.68C7.63 5.36 6 7.92 6 11v5l-2 2v1h16v-1l-2-2z"/>
-  </svg>
-);
-
-const LockIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z"/>
-  </svg>
-);
+function translateSection(section: 'general' | 'attendance' | 'notifications' | 'security') {
+  switch (section) {
+    case 'general':
+      return 'chung';
+    case 'attendance':
+      return 'chấm công';
+    case 'notifications':
+      return 'thông báo';
+    case 'security':
+      return 'bảo mật';
+  }
+}
