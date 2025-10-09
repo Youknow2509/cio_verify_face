@@ -19,6 +19,7 @@ type SMTPMail struct {
 
 // SendMail implements mail.ISMTPService.
 func (s *SMTPMail) SendMail(to []string, subject string, body string) error {
+	// Format email with HTML content-type
 	msg := []byte(fmt.Sprintf(
 		"To: %s\r\n"+
 			"Subject: %s\r\n"+
@@ -27,9 +28,8 @@ func (s *SMTPMail) SendMail(to []string, subject string, body string) error {
 			"\r\n"+
 			"%s\r\n", to, subject, body,
 	))
-	addr := s.host + ":" + string(rune(s.port))
 	if err := smtp.SendMail(
-		addr,
+		fmt.Sprintf("%s:%d", s.host, s.port),
 		s.auth,
 		s.from,
 		to,

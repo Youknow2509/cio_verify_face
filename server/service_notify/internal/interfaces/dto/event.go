@@ -6,6 +6,6 @@ package dto
 //
 // ======================
 type KafkaEvent struct {
-	EventType int         `json:"event_type" validate:"required"`
+	EventType int         `json:"event_type" validate:"gte=0"`
 	Payload   interface{} `json:"payload" validate:"required"`
 }

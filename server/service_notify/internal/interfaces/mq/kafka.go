@@ -68,14 +68,12 @@ func (k *KafkaListenerData) Listener(ctx context.Context) error {
 					global.Logger.Warn("Kafka read message error", "error", err)
 					continue
 				}
-
 				// Parse message
 				var event dto.KafkaEvent
 				if err := json.Unmarshal(msg, &event); err != nil {
 					global.Logger.Warn("Kafka unmarshal message error", "error", err)
 					continue
 				}
-
 				// Validate message
 				if err := global.Validator.Struct(event); err != nil {
 					// log validation error và tiếp tục
