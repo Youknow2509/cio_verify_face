@@ -22,23 +22,23 @@ type (
 	// ================ Read message from Kafka ================
 	IKafkaRead interface {
 		// Sync read auto commit message after t time in group
-		ReadMessageAutoCommit(ctx context.Context, topic string) (interface{}, error)
+		ReadMessageAutoCommit(ctx context.Context, topic string) ([]byte, error)
 		// Sync read manual commit message in group
-		ReadMessageManual(ctx context.Context, topic string, callback func(message interface{}) error) error
+		ReadMessageManual(ctx context.Context, topic string, callback func(message []byte) error) error
 		// Sync read at offset message in group
-		ReadMessageAtOffset(ctx context.Context, topic string, partition int32, offset int64) (interface{}, error)
+		ReadMessageAtOffset(ctx context.Context, topic string, partition int32, offset int64) ([]byte, error)
 		// Sync read from timestamp message in group
-		ReadMessageFromTimestamp(ctx context.Context, topic string, partition int32, timestamp int64) (interface{}, error)
+		ReadMessageFromTimestamp(ctx context.Context, topic string, partition int32, timestamp int64) ([]byte, error)
 
 		// Sync read batch x messages manual commit in group
-		ReadMessageBatchManual(ctx context.Context, topic string, partition int32, offset int64, limit int32, callback func(message interface{}) error) error
+		ReadMessageBatchManual(ctx context.Context, topic string, partition int32, offset int64, limit int32, callback func(message []byte) error) error
 		// Sync read batch x messages at offset manual commit in group
-		ReadMessageBatchAtOffsetManual(ctx context.Context, topic string, partition int32, offset int64, limit int32, callback func(message interface{}) error) error
+		ReadMessageBatchAtOffsetManual(ctx context.Context, topic string, partition int32, offset int64, limit int32, callback func(message []byte) error) error
 		// Sync read batch x messages at timestamp manual commit in group
-		ReadMessageBatchFromTimestampManual(ctx context.Context, topic string, partition int32, timestamp int64, limit int32, callback func(message interface{}) error) error
+		ReadMessageBatchFromTimestampManual(ctx context.Context, topic string, partition int32, timestamp int64, limit int32, callback func(message []byte) error) error
 
 		// Listen topic 
-		ReadListenTopicManual(ctx context.Context, topic string, callback func(message interface{}) error) error
+		ReadListenTopicManual(ctx context.Context, topic string, callback func(message []byte) error) error
 
 		// ================ Help ================
 		// Commit message

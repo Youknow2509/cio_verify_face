@@ -34,7 +34,7 @@ type (
 // ==========================================================
 // RateLimitPolicySetting
 type RateLimitPolicySetting struct {
-	Policies []RateLimitPolicy 
+	Policies []RateLimitPolicy
 }
 type RateLimitPolicy struct {
 	Name   string `mapstructure:"name"`
@@ -173,6 +173,7 @@ type KafkaProducer struct {
 // Cấu hình consumer Kafka
 type KafkaConsumer struct {
 	GroupID             string `mapstructure:"group_id"`              // ID của consumer group
+	Threads             int    `mapstructure:"threads"`               // Số luồng xử lý message
 	CommitIntervalMs    int    `mapstructure:"commit_interval_ms"`    // 0 = sync commit, >0 = auto commit theo thời gian (ms)
 	MinBytes            int    `mapstructure:"min_bytes"`             // 10KB: Minimum data per fetch
 	MaxBytes            int    `mapstructure:"max_bytes"`             // 1MB: Maximum fetch size
@@ -289,10 +290,15 @@ type LogstashSetting struct {
 
 // smtp
 type SMTPSetting struct {
-	Host     string `mapstructure:"host"`
-	Port     int    `mapstructure:"port"`
-	Username string `mapstructure:"username"`
-	Password string `mapstructure:"password"`
+	Host        string `mapstructure:"host"`
+	Port        int    `mapstructure:"port"`
+	Username    string `mapstructure:"username"`
+	Password    string `mapstructure:"password"`
+	From        string `mapstructure:"from"`
+	FromName    string `mapstructure:"from_name"`
+	UseTLS      bool   `mapstructure:"use_tls"`
+	UseStartTLS bool   `mapstructure:"use_starttls"`
+	SkipVerify  bool   `mapstructure:"skip_verify"`
 }
 
 // jwt

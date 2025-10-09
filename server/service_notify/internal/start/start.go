@@ -1,6 +1,10 @@
 package start
 
-import "github.com/youknow2509/cio_verify_face/server/service_notify/internal/global"
+import (
+	"context"
+
+	"github.com/youknow2509/cio_verify_face/server/service_notify/internal/global"
+)
 
 /**
  * Start service
@@ -32,13 +36,23 @@ func StartService() error {
 	if err := initApplication(); err != nil {
 		return err
 	}
+	// Initialize Validator
+	if err := initValidator(); err != nil {
+		return err
+	}
+	// Context system
+	global.ContextSystem, global.CancelFunc = context.WithCancel(context.Background())
+	// Initialize Consumer Kafka
+	if err := initConsumerKafka(); err != nil {
+		return err
+	}
 	// Initialize Grpc Server
 	// if err := initServerGrpc(); err != nil {
 	// 	return err
 	// }
 	// Initialize Gin Engine
-	if err := initGinRouter(&setting.Server); err != nil {
-		return err
-	}
+	// if err := initGinRouter(&setting.Server); err != nil {
+	// 	return err
+	// }
 	return nil
 }

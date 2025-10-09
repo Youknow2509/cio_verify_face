@@ -12,32 +12,13 @@ const (
 
 // Topic name
 const (
-	KAFKA_TOPIC_NOTIFICATION             = "notification_requests"
-	KAFKA_TOPIC_NEW_MESSAGE              = "new_messages"
-	KAFKA_TOPIC_MESSAGE_ACKNOWLEDGEMENTS = "message_acknowledgements"
-	KAFKA_TOPIC_MESSAGE_DELIVERIES       = "message_deliveries"
-	KAFKA_TOPIC_MESSAGE_READ_STATUS      = "message_read_status"
-	KAFKA_TOPIC_MESSAGE_REACT            = "message_react"
-	KAFKA_TOPIC_MESSAGE_EDIT             = "message_edit"
-	KAFKA_TOPIC_MESSAGE_DELETE           = "message_delete"
-	KAFKA_TOPIC_MESSAGE_ACTION           = "message_action"
-	KAFKA_TOPIC_USER_PRESENCE_EVENTS     = "user_presence_events"
-	KAFKA_TOPIC_USER_TYPING_EVENTS       = "user_typing_events"
-	KAFKA_TOPIC_USER_CALL_EVENTS         = "user_call_events"
-	KAFKA_TOPIC_MESSAGE_MODIFICATIONS    = "message_modifications"
-	KAFKA_TOPIC_MEDIA_PROCESSING_JOBS    = "media_processing_jobs"
-	KAFKA_TOPIC_AUDIT_EVENTS             = "audit_events"
-	KAFKA_TOPIC_DB_REPLICATION_EVENTS    = "db_replication_events"
+	KAFKA_TOPIC_NOTIFICATION             = "notification_requests"	
 	// v.v
 )
 
 // type event notification
 const (
-	KAFKA_EVENT_TYPE_SEND_OTP_REGISTER                = 1 // Send OTP for registration
-	KAFKA_EVENT_TYPE_PUSH_NOTIFICATION                = 2 // Push notification event
-	KAFKA_EVENT_TYPE_SEND_TOKEN_RESET_PASSWORD        = 3 // Send reset password event
-	KAFKA_EVENT_TYPE_PUSH_NOTIFICATION_FRIEND_REQUEST = 4 // Push notification for friend request
-	// v.v
+	KAFKA_EVENT_TYPE_SEND_TOKEN_RESET_PASSWORD = iota
 )
 
 // SASL Mechanism
