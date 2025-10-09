@@ -29,6 +29,14 @@ func initConnectionToInfrastructure(setting *domainConfig.Setting) error {
 		setting.JWT.Subject,
 		setting.JWT.Audience,
 	)
+	// initialize smtp
+	if err := initSmtpClient(&setting.SMTP); err != nil {
+		return err
+	}
+	// initialize kafka
+	if err := initKafkaSecurity(&setting.Kafka); err != nil {
+		return err
+	}
 	// v.v
 
 	return nil
@@ -37,6 +45,22 @@ func initConnectionToInfrastructure(setting *domainConfig.Setting) error {
 // Get TokenService returns the token service
 func GetTokenService() domainToken.ITokenService {
 	return _tokenService
+}
+
+func initSmtpClient(setting *domainConfig.SMTPSetting) error {
+	err := infraConn.InitSmtpClient(setting)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func initKafkaSecurity(setting *domainConfig.KafkaSetting) error {
+	err := infraConn.InitializeKafkaSecurity(setting)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func initRedisDistributedCache(setting *domainConfig.RedisSetting) error {
