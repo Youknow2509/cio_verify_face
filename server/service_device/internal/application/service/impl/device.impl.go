@@ -12,6 +12,21 @@ import (
 // =================================================
 type DeviceService struct{}
 
+// UpdateInfoDevice implements service.IDeviceService.
+func (d *DeviceService) UpdateInfoDevice(ctx context.Context, input *model.UpdateInfoDeviceInput) *applicationError.Error {
+	panic("unimplemented")
+}
+
+// UpdateLocationDevice implements service.IDeviceService.
+func (d *DeviceService) UpdateLocationDevice(ctx context.Context, input *model.UpdateLocationDeviceInput) *applicationError.Error {
+	panic("unimplemented")
+}
+
+// UpdateNameDevice implements service.IDeviceService.
+func (d *DeviceService) UpdateNameDevice(ctx context.Context, input *model.UpdateNameDeviceInput) *applicationError.Error {
+	panic("unimplemented")
+}
+
 // CreateNewDevice implements service.IDeviceService.
 func (d *DeviceService) CreateNewDevice(ctx context.Context, input *model.CreateNewDeviceInput) (*model.CreateNewDeviceOutput, *applicationError.Error) {
 	panic("unimplemented")

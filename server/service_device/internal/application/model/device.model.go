@@ -82,3 +82,45 @@ type DeleteDeviceInput struct {
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
 }
+
+// UpdateLocationDevice
+type UpdateLocationDeviceInput struct {
+	// Info req
+	DeviceId      uuid.UUID `json:"device_id"`
+	NewLocationId uuid.UUID `json:"location_id"`
+	NewAddress    string    `json:"address"`
+	// Info client req
+	UserId      uuid.UUID `json:"user_id"`
+	Role        int       `json:"role"` // 0: ADMIN, 1: Admin company, 2: STAFF
+	SessionId   uuid.UUID `json:"session_id"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+}
+
+// UpdateNameDeviceInput
+type UpdateNameDeviceInput struct {
+	// Info req
+	DeviceId uuid.UUID `json:"device_id"`
+	NewName  string    `json:"device_name"`
+	// Info client req
+	UserId      uuid.UUID `json:"user_id"`
+	Role        int       `json:"role"` // 0: ADMIN, 1: Admin company, 2: STAFF
+	SessionId   uuid.UUID `json:"session_id"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+}
+
+// UpdateInfoDeviceInput
+type UpdateInfoDeviceInput struct {
+	// Info req
+	DeviceId        uuid.UUID `json:"device_id"`
+	NewDeviceType   int       `json:"device_type"` // 0: FACE_TERMINAL, 1: MOBILE_APP, 2: WEB_CAMERA, 3: IOT_SENSOR
+	NewSerialNumber string    `json:"serial_number"`
+	NewMacAddress   string    `json:"mac_address"`
+	// Info client req
+	UserId      uuid.UUID `json:"user_id"`
+	Role        int       `json:"role"` // 0: ADMIN, 1: Admin company, 2: STAFF
+	SessionId   uuid.UUID `json:"session_id"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+}

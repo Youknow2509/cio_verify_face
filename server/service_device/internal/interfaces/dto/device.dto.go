@@ -58,3 +58,25 @@ type ListDevicesRequest struct {
 	Size      int    `json:"size" validate:"omitempty,min=1,max=100"`
 	Page      int    `json:"page" validate:"omitempty,min=1"`
 }
+
+// UpdateLocationDeviceRequest
+type UpdateLocationDeviceRequest struct {
+	DeviceId      string `json:"device_id" validate:"required"`
+	NewLocationId string `json:"location_id" validate:"required"`
+	NewAddress    string `json:"address" validate:"required,max=255"`
+}
+
+// Update name device request
+type UpdateNameDeviceRequest struct {
+	DeviceId string `json:"device_id" validate:"required"`
+	NewName  string `json:"device_name" validate:"required,min=3,max=100"`
+}
+
+// Update info device request
+type UpdateInfoDeviceRequest struct {
+	DeviceId        string `json:"device_id" validate:"required"`
+	NewDeviceType   int    `json:"device_type" validate:"omitempty,oneof=0 1 2 3"` // 0: FACE_TERMINAL, 1: MOBILE_APP, 2: WEB_CAMERA, 3: IOT_SENSOR
+	NewSerialNumber string `json:"serial_number" validate:"omitempty,max=100"`
+	NewMacAddress   string `json:"mac_address" validate:"omitempty,mac"`
+}
+

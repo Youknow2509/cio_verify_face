@@ -17,6 +17,9 @@ type IDeviceService interface {
 	GetDeviceById(ctx context.Context, input *model.GetDeviceByIdInput) (*model.GetDeviceByIdOutput, *applicationError.Error)
 	UpdateDeviceById(ctx context.Context, input *model.UpdateDeviceInput) (*model.UpdateDeviceOutput, *applicationError.Error)
 	DeleteDeviceById(ctx context.Context, input *model.DeleteDeviceInput) *applicationError.Error
+	UpdateLocationDevice(ctx context.Context, input *model.UpdateLocationDeviceInput) *applicationError.Error
+	UpdateNameDevice(ctx context.Context, input *model.UpdateNameDeviceInput) *applicationError.Error
+	UpdateInfoDevice(ctx context.Context, input *model.UpdateInfoDeviceInput) *applicationError.Error
 }
 
 /**
