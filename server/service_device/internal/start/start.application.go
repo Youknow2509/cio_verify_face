@@ -7,9 +7,9 @@ import (
 
 // initialize application services
 func initApplication() error {
-	// Init ICoreAuthService
-	coreAuthServiceImpl := applicationServiceImpl.NewCoreAuthService()
-	if err := applicationService.SetCoreAuthService(coreAuthServiceImpl); err != nil {
+	// Init IDeviceService
+	deviceServiceImpl := applicationServiceImpl.NewDeviceService()
+	if err := applicationService.SetDeviceService(deviceServiceImpl); err != nil {
 		return err
 	}
 	return nil
