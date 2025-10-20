@@ -1,10 +1,9 @@
 package repository
 
 import (
-	"context"
 	"errors"
 
-	"github.com/google/uuid"
+	"context"
 	"github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/model"
 )
 
@@ -12,29 +11,7 @@ import (
  * Interface for user repository
  */
 type IUserRepository interface {
-	// ======================================
-	// 			Use for core auth
-	// ======================================
-	// Get user info with id
-	GetUserInfoByID(ctx context.Context, userID uuid.UUID) (*model.UserInfoOutput, error)
-	// Get user base info by ID
-	GetUserBaseByID(ctx context.Context, userID uuid.UUID) (*model.UserBaseInfoOutput, error)
-	// Get user base by phone
-	GetUserBaseByEmail(ctx context.Context, email string) (*model.UserBaseInfoOutput, error)
-	// Create user session
-	CreateUserSession(ctx context.Context, data *model.CreateUserSessionInput) error
-	// Remove user session
-	RemoveUserSession(ctx context.Context, data *model.RemoveUserSessionInput) error
-	// Get user session by ID
-	GetUserSessionByID(ctx context.Context, sessionID uuid.UUID) (*model.UserSessionOutput, error)
-	// Refresh user session
-	RefreshSession(ctx context.Context, data *model.RefreshSessionInput) error
-	// v.v
-
-	// ======================================================
-	//
-	// ======================================================
-
+	UserExistsInCompany(ctx context.Context, input *model.UserExistsInCompanyInput) (bool, error)
 }
 
 /**
