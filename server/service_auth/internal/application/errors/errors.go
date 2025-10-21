@@ -34,7 +34,7 @@ func GetError(code int) *Error {
 	for k, v := range mapAuthErrors {
 		data[k] = v
 	}
-	for k, v := range mapCompanyErrors {
+	for k, v := range mapDeviceErrors {
 		data[k] = v
 	}
 	// v.v
