@@ -19,13 +19,12 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthService_ValidateToken_FullMethodName         = "/auth.AuthService/ValidateToken"
-	AuthService_GetUserInfo_FullMethodName           = "/auth.AuthService/GetUserInfo"
-	AuthService_CheckUserPermission_FullMethodName   = "/auth.AuthService/CheckUserPermission"
-	AuthService_CheckDeviceInCompany_FullMethodName  = "/auth.AuthService/CheckDeviceInCompany"
-	AuthService_ValidateDeviceSession_FullMethodName = "/auth.AuthService/ValidateDeviceSession"
-	AuthService_GetUserCompany_FullMethodName        = "/auth.AuthService/GetUserCompany"
-	AuthService_BatchValidateTokens_FullMethodName   = "/auth.AuthService/BatchValidateTokens"
+	AuthService_CreateUserToken_FullMethodName    = "/auth.AuthService/CreateUserToken"
+	AuthService_CreateServiceToken_FullMethodName = "/auth.AuthService/CreateServiceToken"
+	AuthService_CreateDeviceToken_FullMethodName  = "/auth.AuthService/CreateDeviceToken"
+	AuthService_ParseUserToken_FullMethodName     = "/auth.AuthService/ParseUserToken"
+	AuthService_ParseServiceToken_FullMethodName  = "/auth.AuthService/ParseServiceToken"
+	AuthService_ParseDeviceToken_FullMethodName   = "/auth.AuthService/ParseDeviceToken"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -34,20 +33,12 @@ const (
 //
 // Auth service for inter-service communication
 type AuthServiceClient interface {
-	// Validate access token
-	ValidateToken(ctx context.Context, in *ValidateTokenRequest, opts ...grpc.CallOption) (*ValidateTokenResponse, error)
-	// Get user information
-	GetUserInfo(ctx context.Context, in *GetUserInfoRequest, opts ...grpc.CallOption) (*GetUserInfoResponse, error)
-	// Check user permission in company
-	CheckUserPermission(ctx context.Context, in *CheckUserPermissionRequest, opts ...grpc.CallOption) (*CheckUserPermissionResponse, error)
-	// Check if device belongs to company
-	CheckDeviceInCompany(ctx context.Context, in *CheckDeviceInCompanyRequest, opts ...grpc.CallOption) (*CheckDeviceInCompanyResponse, error)
-	// Validate device session
-	ValidateDeviceSession(ctx context.Context, in *ValidateDeviceSessionRequest, opts ...grpc.CallOption) (*ValidateDeviceSessionResponse, error)
-	// Get company information by user
-	GetUserCompany(ctx context.Context, in *GetUserCompanyRequest, opts ...grpc.CallOption) (*GetUserCompanyResponse, error)
-	// Batch validate multiple tokens
-	BatchValidateTokens(ctx context.Context, in *BatchValidateTokensRequest, opts ...grpc.CallOption) (*BatchValidateTokensResponse, error)
+	CreateUserToken(ctx context.Context, in *CreateUserTokenRequest, opts ...grpc.CallOption) (*CreateUserTokenResponse, error)
+	CreateServiceToken(ctx context.Context, in *CreateServiceTokenRequest, opts ...grpc.CallOption) (*CreateServiceTokenResponse, error)
+	CreateDeviceToken(ctx context.Context, in *CreateDeviceTokenRequest, opts ...grpc.CallOption) (*CreateDeviceTokenResponse, error)
+	ParseUserToken(ctx context.Context, in *ParseUserTokenRequest, opts ...grpc.CallOption) (*ParseUserTokenResponse, error)
+	ParseServiceToken(ctx context.Context, in *ParseServiceTokenRequest, opts ...grpc.CallOption) (*ParseServiceTokenResponse, error)
+	ParseDeviceToken(ctx context.Context, in *ParseDeviceTokenRequest, opts ...grpc.CallOption) (*ParseDeviceTokenResponse, error)
 }
 
 type authServiceClient struct {
@@ -58,70 +49,60 @@ func NewAuthServiceClient(cc grpc.ClientConnInterface) AuthServiceClient {
 	return &authServiceClient{cc}
 }
 
-func (c *authServiceClient) ValidateToken(ctx context.Context, in *ValidateTokenRequest, opts ...grpc.CallOption) (*ValidateTokenResponse, error) {
+func (c *authServiceClient) CreateUserToken(ctx context.Context, in *CreateUserTokenRequest, opts ...grpc.CallOption) (*CreateUserTokenResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ValidateTokenResponse)
-	err := c.cc.Invoke(ctx, AuthService_ValidateToken_FullMethodName, in, out, cOpts...)
+	out := new(CreateUserTokenResponse)
+	err := c.cc.Invoke(ctx, AuthService_CreateUserToken_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *authServiceClient) GetUserInfo(ctx context.Context, in *GetUserInfoRequest, opts ...grpc.CallOption) (*GetUserInfoResponse, error) {
+func (c *authServiceClient) CreateServiceToken(ctx context.Context, in *CreateServiceTokenRequest, opts ...grpc.CallOption) (*CreateServiceTokenResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetUserInfoResponse)
-	err := c.cc.Invoke(ctx, AuthService_GetUserInfo_FullMethodName, in, out, cOpts...)
+	out := new(CreateServiceTokenResponse)
+	err := c.cc.Invoke(ctx, AuthService_CreateServiceToken_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *authServiceClient) CheckUserPermission(ctx context.Context, in *CheckUserPermissionRequest, opts ...grpc.CallOption) (*CheckUserPermissionResponse, error) {
+func (c *authServiceClient) CreateDeviceToken(ctx context.Context, in *CreateDeviceTokenRequest, opts ...grpc.CallOption) (*CreateDeviceTokenResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CheckUserPermissionResponse)
-	err := c.cc.Invoke(ctx, AuthService_CheckUserPermission_FullMethodName, in, out, cOpts...)
+	out := new(CreateDeviceTokenResponse)
+	err := c.cc.Invoke(ctx, AuthService_CreateDeviceToken_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *authServiceClient) CheckDeviceInCompany(ctx context.Context, in *CheckDeviceInCompanyRequest, opts ...grpc.CallOption) (*CheckDeviceInCompanyResponse, error) {
+func (c *authServiceClient) ParseUserToken(ctx context.Context, in *ParseUserTokenRequest, opts ...grpc.CallOption) (*ParseUserTokenResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CheckDeviceInCompanyResponse)
-	err := c.cc.Invoke(ctx, AuthService_CheckDeviceInCompany_FullMethodName, in, out, cOpts...)
+	out := new(ParseUserTokenResponse)
+	err := c.cc.Invoke(ctx, AuthService_ParseUserToken_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *authServiceClient) ValidateDeviceSession(ctx context.Context, in *ValidateDeviceSessionRequest, opts ...grpc.CallOption) (*ValidateDeviceSessionResponse, error) {
+func (c *authServiceClient) ParseServiceToken(ctx context.Context, in *ParseServiceTokenRequest, opts ...grpc.CallOption) (*ParseServiceTokenResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ValidateDeviceSessionResponse)
-	err := c.cc.Invoke(ctx, AuthService_ValidateDeviceSession_FullMethodName, in, out, cOpts...)
+	out := new(ParseServiceTokenResponse)
+	err := c.cc.Invoke(ctx, AuthService_ParseServiceToken_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *authServiceClient) GetUserCompany(ctx context.Context, in *GetUserCompanyRequest, opts ...grpc.CallOption) (*GetUserCompanyResponse, error) {
+func (c *authServiceClient) ParseDeviceToken(ctx context.Context, in *ParseDeviceTokenRequest, opts ...grpc.CallOption) (*ParseDeviceTokenResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetUserCompanyResponse)
-	err := c.cc.Invoke(ctx, AuthService_GetUserCompany_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *authServiceClient) BatchValidateTokens(ctx context.Context, in *BatchValidateTokensRequest, opts ...grpc.CallOption) (*BatchValidateTokensResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(BatchValidateTokensResponse)
-	err := c.cc.Invoke(ctx, AuthService_BatchValidateTokens_FullMethodName, in, out, cOpts...)
+	out := new(ParseDeviceTokenResponse)
+	err := c.cc.Invoke(ctx, AuthService_ParseDeviceToken_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -134,20 +115,12 @@ func (c *authServiceClient) BatchValidateTokens(ctx context.Context, in *BatchVa
 //
 // Auth service for inter-service communication
 type AuthServiceServer interface {
-	// Validate access token
-	ValidateToken(context.Context, *ValidateTokenRequest) (*ValidateTokenResponse, error)
-	// Get user information
-	GetUserInfo(context.Context, *GetUserInfoRequest) (*GetUserInfoResponse, error)
-	// Check user permission in company
-	CheckUserPermission(context.Context, *CheckUserPermissionRequest) (*CheckUserPermissionResponse, error)
-	// Check if device belongs to company
-	CheckDeviceInCompany(context.Context, *CheckDeviceInCompanyRequest) (*CheckDeviceInCompanyResponse, error)
-	// Validate device session
-	ValidateDeviceSession(context.Context, *ValidateDeviceSessionRequest) (*ValidateDeviceSessionResponse, error)
-	// Get company information by user
-	GetUserCompany(context.Context, *GetUserCompanyRequest) (*GetUserCompanyResponse, error)
-	// Batch validate multiple tokens
-	BatchValidateTokens(context.Context, *BatchValidateTokensRequest) (*BatchValidateTokensResponse, error)
+	CreateUserToken(context.Context, *CreateUserTokenRequest) (*CreateUserTokenResponse, error)
+	CreateServiceToken(context.Context, *CreateServiceTokenRequest) (*CreateServiceTokenResponse, error)
+	CreateDeviceToken(context.Context, *CreateDeviceTokenRequest) (*CreateDeviceTokenResponse, error)
+	ParseUserToken(context.Context, *ParseUserTokenRequest) (*ParseUserTokenResponse, error)
+	ParseServiceToken(context.Context, *ParseServiceTokenRequest) (*ParseServiceTokenResponse, error)
+	ParseDeviceToken(context.Context, *ParseDeviceTokenRequest) (*ParseDeviceTokenResponse, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -158,26 +131,23 @@ type AuthServiceServer interface {
 // pointer dereference when methods are called.
 type UnimplementedAuthServiceServer struct{}
 
-func (UnimplementedAuthServiceServer) ValidateToken(context.Context, *ValidateTokenRequest) (*ValidateTokenResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ValidateToken not implemented")
+func (UnimplementedAuthServiceServer) CreateUserToken(context.Context, *CreateUserTokenRequest) (*CreateUserTokenResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateUserToken not implemented")
 }
-func (UnimplementedAuthServiceServer) GetUserInfo(context.Context, *GetUserInfoRequest) (*GetUserInfoResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetUserInfo not implemented")
+func (UnimplementedAuthServiceServer) CreateServiceToken(context.Context, *CreateServiceTokenRequest) (*CreateServiceTokenResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateServiceToken not implemented")
 }
-func (UnimplementedAuthServiceServer) CheckUserPermission(context.Context, *CheckUserPermissionRequest) (*CheckUserPermissionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CheckUserPermission not implemented")
+func (UnimplementedAuthServiceServer) CreateDeviceToken(context.Context, *CreateDeviceTokenRequest) (*CreateDeviceTokenResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method CreateDeviceToken not implemented")
 }
-func (UnimplementedAuthServiceServer) CheckDeviceInCompany(context.Context, *CheckDeviceInCompanyRequest) (*CheckDeviceInCompanyResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method CheckDeviceInCompany not implemented")
+func (UnimplementedAuthServiceServer) ParseUserToken(context.Context, *ParseUserTokenRequest) (*ParseUserTokenResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ParseUserToken not implemented")
 }
-func (UnimplementedAuthServiceServer) ValidateDeviceSession(context.Context, *ValidateDeviceSessionRequest) (*ValidateDeviceSessionResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ValidateDeviceSession not implemented")
+func (UnimplementedAuthServiceServer) ParseServiceToken(context.Context, *ParseServiceTokenRequest) (*ParseServiceTokenResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ParseServiceToken not implemented")
 }
-func (UnimplementedAuthServiceServer) GetUserCompany(context.Context, *GetUserCompanyRequest) (*GetUserCompanyResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetUserCompany not implemented")
-}
-func (UnimplementedAuthServiceServer) BatchValidateTokens(context.Context, *BatchValidateTokensRequest) (*BatchValidateTokensResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method BatchValidateTokens not implemented")
+func (UnimplementedAuthServiceServer) ParseDeviceToken(context.Context, *ParseDeviceTokenRequest) (*ParseDeviceTokenResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ParseDeviceToken not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
@@ -200,128 +170,110 @@ func RegisterAuthServiceServer(s grpc.ServiceRegistrar, srv AuthServiceServer) {
 	s.RegisterService(&AuthService_ServiceDesc, srv)
 }
 
-func _AuthService_ValidateToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ValidateTokenRequest)
+func _AuthService_CreateUserToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateUserTokenRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AuthServiceServer).ValidateToken(ctx, in)
+		return srv.(AuthServiceServer).CreateUserToken(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AuthService_ValidateToken_FullMethodName,
+		FullMethod: AuthService_CreateUserToken_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServiceServer).ValidateToken(ctx, req.(*ValidateTokenRequest))
+		return srv.(AuthServiceServer).CreateUserToken(ctx, req.(*CreateUserTokenRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuthService_GetUserInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetUserInfoRequest)
+func _AuthService_CreateServiceToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateServiceTokenRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AuthServiceServer).GetUserInfo(ctx, in)
+		return srv.(AuthServiceServer).CreateServiceToken(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AuthService_GetUserInfo_FullMethodName,
+		FullMethod: AuthService_CreateServiceToken_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServiceServer).GetUserInfo(ctx, req.(*GetUserInfoRequest))
+		return srv.(AuthServiceServer).CreateServiceToken(ctx, req.(*CreateServiceTokenRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuthService_CheckUserPermission_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CheckUserPermissionRequest)
+func _AuthService_CreateDeviceToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateDeviceTokenRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AuthServiceServer).CheckUserPermission(ctx, in)
+		return srv.(AuthServiceServer).CreateDeviceToken(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AuthService_CheckUserPermission_FullMethodName,
+		FullMethod: AuthService_CreateDeviceToken_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServiceServer).CheckUserPermission(ctx, req.(*CheckUserPermissionRequest))
+		return srv.(AuthServiceServer).CreateDeviceToken(ctx, req.(*CreateDeviceTokenRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuthService_CheckDeviceInCompany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CheckDeviceInCompanyRequest)
+func _AuthService_ParseUserToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ParseUserTokenRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AuthServiceServer).CheckDeviceInCompany(ctx, in)
+		return srv.(AuthServiceServer).ParseUserToken(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AuthService_CheckDeviceInCompany_FullMethodName,
+		FullMethod: AuthService_ParseUserToken_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServiceServer).CheckDeviceInCompany(ctx, req.(*CheckDeviceInCompanyRequest))
+		return srv.(AuthServiceServer).ParseUserToken(ctx, req.(*ParseUserTokenRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuthService_ValidateDeviceSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ValidateDeviceSessionRequest)
+func _AuthService_ParseServiceToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ParseServiceTokenRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AuthServiceServer).ValidateDeviceSession(ctx, in)
+		return srv.(AuthServiceServer).ParseServiceToken(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AuthService_ValidateDeviceSession_FullMethodName,
+		FullMethod: AuthService_ParseServiceToken_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServiceServer).ValidateDeviceSession(ctx, req.(*ValidateDeviceSessionRequest))
+		return srv.(AuthServiceServer).ParseServiceToken(ctx, req.(*ParseServiceTokenRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AuthService_GetUserCompany_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetUserCompanyRequest)
+func _AuthService_ParseDeviceToken_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ParseDeviceTokenRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(AuthServiceServer).GetUserCompany(ctx, in)
+		return srv.(AuthServiceServer).ParseDeviceToken(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: AuthService_GetUserCompany_FullMethodName,
+		FullMethod: AuthService_ParseDeviceToken_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServiceServer).GetUserCompany(ctx, req.(*GetUserCompanyRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _AuthService_BatchValidateTokens_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(BatchValidateTokensRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(AuthServiceServer).BatchValidateTokens(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: AuthService_BatchValidateTokens_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(AuthServiceServer).BatchValidateTokens(ctx, req.(*BatchValidateTokensRequest))
+		return srv.(AuthServiceServer).ParseDeviceToken(ctx, req.(*ParseDeviceTokenRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -334,32 +286,28 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 	HandlerType: (*AuthServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "ValidateToken",
-			Handler:    _AuthService_ValidateToken_Handler,
+			MethodName: "CreateUserToken",
+			Handler:    _AuthService_CreateUserToken_Handler,
 		},
 		{
-			MethodName: "GetUserInfo",
-			Handler:    _AuthService_GetUserInfo_Handler,
+			MethodName: "CreateServiceToken",
+			Handler:    _AuthService_CreateServiceToken_Handler,
 		},
 		{
-			MethodName: "CheckUserPermission",
-			Handler:    _AuthService_CheckUserPermission_Handler,
+			MethodName: "CreateDeviceToken",
+			Handler:    _AuthService_CreateDeviceToken_Handler,
 		},
 		{
-			MethodName: "CheckDeviceInCompany",
-			Handler:    _AuthService_CheckDeviceInCompany_Handler,
+			MethodName: "ParseUserToken",
+			Handler:    _AuthService_ParseUserToken_Handler,
 		},
 		{
-			MethodName: "ValidateDeviceSession",
-			Handler:    _AuthService_ValidateDeviceSession_Handler,
+			MethodName: "ParseServiceToken",
+			Handler:    _AuthService_ParseServiceToken_Handler,
 		},
 		{
-			MethodName: "GetUserCompany",
-			Handler:    _AuthService_GetUserCompany_Handler,
-		},
-		{
-			MethodName: "BatchValidateTokens",
-			Handler:    _AuthService_BatchValidateTokens_Handler,
+			MethodName: "ParseDeviceToken",
+			Handler:    _AuthService_ParseDeviceToken_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

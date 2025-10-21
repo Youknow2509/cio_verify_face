@@ -32,10 +32,10 @@ func StartService() error {
 	if err := initApplication(); err != nil {
 		return err
 	}
-	// Initialize Grpc Server
-	// if err := initServerGrpc(); err != nil {
-	// 	return err
-	// }
+	// Initialize Grpc Client
+	if err := initClientGrpc(); err != nil {
+		return err
+	}
 	// Initialize Gin Engine
 	if err := initGinRouter(&setting.Server); err != nil {
 		return err

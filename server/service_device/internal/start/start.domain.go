@@ -2,8 +2,10 @@ package start
 
 import (
 	domainRepository "github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/repository"
+	domainToken "github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/token"
 	infraConn "github.com/youknow2509/cio_verify_face/server/service_device/internal/infrastructure/conn"
 	infraRepository "github.com/youknow2509/cio_verify_face/server/service_device/internal/infrastructure/repository"
+	infraToken "github.com/youknow2509/cio_verify_face/server/service_device/internal/infrastructure/token"
 )
 
 func initDomain() error {
@@ -26,6 +28,12 @@ func initDomain() error {
 	// initialize IDeviceRepository
 	if err := domainRepository.SetDeviceRepository(
 		infraRepository.NewDeviceRepository(postgres),
+	); err != nil {
+		return err
+	}
+	// initialize token service
+	if err := domainToken.SetTokenService(
+		infraToken.NewTokenService(grpcClient),
 	); err != nil {
 		return err
 	}

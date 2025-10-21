@@ -20,15 +20,7 @@ type ITokenService interface {
 	 * @param input *model.TokenUserJwtInput
 	 * @return string, error - jwt token, error
 	 */
-	CreateUserToken(ctx context.Context, input *model.TokenUserJwtInput) (string, error)
-
-	/**
-	 * Create a service token - Service token use for internal communication
-	 * @param ctx context.Context
-	 * @param input *model.TokenServiceJwtInput
-	 * @return string, error - jwt token, error
-	 */
-	CreateServiceToken(ctx context.Context, input *model.TokenServiceJwtInput) (string, error)
+	CreateUserToken(ctx context.Context, input *model.TokenUserJwtInput) (*model.UserTokenOutput, error)
 
 	/**
 	 * Create a device token - Device token use for device authentication
@@ -37,31 +29,6 @@ type ITokenService interface {
 	 * @return string, error - jwt token, error
 	 */
 	CreateDeviceToken(ctx context.Context, input *model.TokenDeviceJwtInput) (string, error)
-
-	/**
-	 * Create a user refresh token
-	 * @param ctx context.Context
-	 * @param input *model.TokenUserRefreshInput
-	 * @return string, error
-	 */
-	CreateUserRefreshToken(ctx context.Context, input *model.TokenUserRefreshInput) (string, error)
-
-	/**
-	 * Create a device refresh token
-	 * @param ctx context.Context
-	 * @param input *model.TokenDeviceRefreshInput
-	 * @return string, error
-	 */
-	CreateDeviceRefreshToken(ctx context.Context, input *model.TokenDeviceRefreshInput) (string, error)
-
-	/**
-	 * Create a service refresh token
-	 * @param ctx context.Context
-	 * @param input *model.TokenServiceJwtInput
-	 * @return string, error
-	 */
-	CreateServiceRefreshToken(ctx context.Context, input *model.ServiceRefreshTokenInput) (string, error)
-
 	/**
 	 * Parse a user token
 	 * @param ctx context.Context
@@ -79,20 +46,12 @@ type ITokenService interface {
 	ParseUserRefreshToken(ctx context.Context, token string) (*model.TokenUserRefreshOutput, *domainErrors.TokenValidationError)
 
 	/**
-	 * Parse a service token
-	 * @param ctx context.Context
-	 * @param token string - jwt token
-	 * @return *model.TokenServiceJwtOutput, *domainErrors.TokenValidationError
-	 */
-	ParseServiceToken(ctx context.Context, token string) (*model.TokenServiceJwtOutput, *domainErrors.TokenValidationError)
-
-	/**
-	 * Parse a device token
+	 * Check device token
 	 * @param ctx context.Context
 	 * @param token string - jwt token
 	 * @return *model.TokenDeviceJwtOutput, *domainErrors.TokenValidationError
 	 */
-	ParseDeviceToken(ctx context.Context, token string) (*model.TokenDeviceJwtOutput, *domainErrors.TokenValidationError)
+	CheckDeviceToken(ctx context.Context, token string) (bool, *domainErrors.TokenValidationError)
 	// v.v
 }
 

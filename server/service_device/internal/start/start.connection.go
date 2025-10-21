@@ -6,7 +6,6 @@ import (
 	domainToken "github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/token"
 	infraCache "github.com/youknow2509/cio_verify_face/server/service_device/internal/infrastructure/cache"
 	infraConn "github.com/youknow2509/cio_verify_face/server/service_device/internal/infrastructure/conn"
-	infraToken "github.com/youknow2509/cio_verify_face/server/service_device/internal/infrastructure/token"
 )
 
 var (
@@ -22,13 +21,6 @@ func initConnectionToInfrastructure(setting *domainConfig.Setting) error {
 	if err := initConnectionPostgreSQL(&setting.Postgres); err != nil {
 		return err
 	}
-	// initialize token service
-	_tokenService = infraToken.NewTokenService(
-		setting.JWT.Secret,
-		setting.JWT.Issuer,
-		setting.JWT.Subject,
-		setting.JWT.Audience,
-	)
 	// v.v
 
 	return nil
