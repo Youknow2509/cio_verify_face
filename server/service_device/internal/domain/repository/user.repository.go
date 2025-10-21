@@ -11,6 +11,7 @@ import (
  * Interface for user repository
  */
 type IUserRepository interface {
+	UserPermissionDevice(ctx context.Context, input *model.UserPermissionDeviceInput) (bool, error)
 	UserExistsInCompany(ctx context.Context, input *model.UserExistsInCompanyInput) (bool, error)
 }
 

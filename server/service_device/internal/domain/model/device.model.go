@@ -2,6 +2,11 @@ package model
 
 import "github.com/google/uuid"
 
+// DeviceExist
+type DeviceExistInput struct {
+	DeviceId uuid.UUID `json:"device_id"`
+}
+
 // UpdateDeviceInfo
 type UpdateDeviceInfoInput struct {
 	DeviceId        uuid.UUID `json:"device_id"`

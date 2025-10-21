@@ -11,6 +11,7 @@ import (
  * Interface for device repository
  */
 type IDeviceRepository interface {
+	DeviceExist(ctx context.Context, input *model.DeviceExistInput) (bool, error)
 	CreateNewDevice(ctx context.Context, input *model.NewDevice) error
 	DeviceInfoBase(ctx context.Context, input *model.DeviceInfoBaseInput) (*model.DeviceInfoBaseOutput, error)
 	DeviceInfo(ctx context.Context, input *model.DeviceInfoInput) (*model.DeviceInfoOutput, error)

@@ -178,7 +178,7 @@ func (h *Handler) DeleteDeviceById(c *gin.Context) {
 // @Param        id   path string  true  "Device ID"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/devices/{id} [delete]
+// @Router       /api/v1/devices/{id} [get]
 func (h *Handler) GetDeviceById(c *gin.Context) {
 	// Get id device from path
 	idDeviceStr := c.Param("id")

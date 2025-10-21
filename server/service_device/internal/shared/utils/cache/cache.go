@@ -7,6 +7,16 @@ import "fmt"
 //	Define key cache
 //
 // =================================
+// Key info list device in company
+func GetKeyListDeviceInCompany(companyHashId string, limit int, size int) string {
+	return fmt.Sprintf("company:device:list:%s:%d:%d", companyHashId, limit, size)
+}
+
+// Key device info base
+func GetKeyDeviceBase(deviceHashId string) string {
+	return fmt.Sprintf("device:info:base:%s", deviceHashId)
+}
+
 // Key user register OTP value
 func GetKeyUserRegisterOTP(mailHash string) string {
 	return fmt.Sprintf("user:register:otp:%s", mailHash)

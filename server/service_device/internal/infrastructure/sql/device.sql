@@ -1,3 +1,10 @@
+-- name: CheckDeviceExist :one
+SELECT EXISTS (
+    SELECT 1
+    FROM devices
+    WHERE device_id = $1
+) AS exist;
+
 -- name: UpdateDeviceInfo :exec
 UPDATE devices
 SET serial_number = $2,

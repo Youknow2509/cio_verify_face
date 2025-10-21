@@ -19,6 +19,24 @@ type UserRepository struct {
 	db *database.Queries
 }
 
+// UserPermissionDevice implements repository.IUserRepository.
+func (u *UserRepository) UserPermissionDevice(ctx context.Context, input *model.UserPermissionDeviceInput) (bool, error) {
+	ok, err := u.db.UserPermissionDevice(
+		ctx,
+		database.UserPermissionDeviceParams{
+			DeviceID:   pgtype.UUID{Valid: true, Bytes: input.DeviceID},
+			EmployeeID: pgtype.UUID{Valid: true, Bytes: input.UserID},
+		},
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return ok, nil
+}
+
 // UserExistsInCompany implements repository.IUserRepository.
 func (u *UserRepository) UserExistsInCompany(ctx context.Context, input *model.UserExistsInCompanyInput) (bool, error) {
 	exists, err := u.db.CheckUserExistInCompany(

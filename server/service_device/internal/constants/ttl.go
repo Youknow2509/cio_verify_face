@@ -18,6 +18,7 @@ const (
 	TTL_LIST_FRIEND_REQUEST_TO_USER = 60 * 3            // 3 minutes
 	TTL_LIST_FRIENDS_OF_USER        = 60 * 10           // 10 minutes
 	TTL_TOKEN_DEVICE                = 60 * 60 * 24 * 30 // 30 days
+	TTL_DEVICE_INFO                 = 60 * 30           // 30 minutes
 
 	// Local cache TTLs (shorter for faster invalidation)
 	TTL_LOCAL_USER_INFO_VIEW  = 60 * 2 // 2 minutes

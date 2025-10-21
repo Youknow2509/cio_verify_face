@@ -28,3 +28,23 @@ func (q *Queries) CheckUserExistInCompany(ctx context.Context, arg CheckUserExis
 	err := row.Scan(&column_1)
 	return column_1, err
 }
+
+const userPermissionDevice = `-- name: UserPermissionDevice :one
+SELECT EXISTS (
+    SELECT 1
+    FROM devices d JOIN employees e ON d.company_id = e.company_id
+WHERE e.employee_id = $1 AND d.device_id = $2
+) AS exist
+`
+
+type UserPermissionDeviceParams struct {
+	EmployeeID pgtype.UUID
+	DeviceID   pgtype.UUID
+}
+
+func (q *Queries) UserPermissionDevice(ctx context.Context, arg UserPermissionDeviceParams) (bool, error) {
+	row := q.db.QueryRow(ctx, userPermissionDevice, arg.EmployeeID, arg.DeviceID)
+	var exist bool
+	err := row.Scan(&exist)
+	return exist, err
+}

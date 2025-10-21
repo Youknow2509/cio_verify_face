@@ -1,6 +1,8 @@
 package model
 
-import "github.com/google/uuid"
+import (
+	"github.com/google/uuid"
+)
 
 // =================================================
 // Device model
@@ -22,7 +24,14 @@ type CreateNewDeviceInput struct {
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
 }
-type CreateNewDeviceOutput struct{}
+type CreateNewDeviceOutput struct {
+	DeviceId     string `json:"device_id"`
+	CompanyId    string `json:"company_id"`
+	Name         string `json:"name"`
+	Address      string `json:"address"`
+	SerialNumber string `json:"serial_number"`
+	MacAddress   string `json:"mac_address"`
+}
 
 // ListDevices
 type ListDevicesInput struct {
@@ -37,7 +46,9 @@ type ListDevicesInput struct {
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
 }
-type ListDevicesOutput struct{}
+type ListDevicesOutput struct {
+	Devices []*GetDeviceByIdOutput `json:"devices"`
+}
 
 // GetDeviceById
 type GetDeviceByIdInput struct {
@@ -50,7 +61,16 @@ type GetDeviceByIdInput struct {
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
 }
-type GetDeviceByIdOutput struct{}
+type GetDeviceByIdOutput struct {
+	DeviceId     string `json:"device_id"`
+	CompanyId    string `json:"company_id"`
+	Name         string `json:"name"`
+	Address      string `json:"address"`
+	SerialNumber string `json:"serial_number"`
+	MacAddress   string `json:"mac_address"`
+	CreateAt     string `json:"create_at"`
+	UpdateAt     string `json:"update_at"`
+}
 
 // UpdateDevice
 type UpdateDeviceInput struct {

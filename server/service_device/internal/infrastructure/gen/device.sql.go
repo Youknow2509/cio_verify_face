@@ -12,6 +12,21 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const checkDeviceExist = `-- name: CheckDeviceExist :one
+SELECT EXISTS (
+    SELECT 1
+    FROM devices
+    WHERE device_id = $1
+) AS exist
+`
+
+func (q *Queries) CheckDeviceExist(ctx context.Context, deviceID pgtype.UUID) (bool, error) {
+	row := q.db.QueryRow(ctx, checkDeviceExist, deviceID)
+	var exist bool
+	err := row.Scan(&exist)
+	return exist, err
+}
+
 const createNewDevice = `-- name: CreateNewDevice :exec
 INSERT INTO devices (
     device_id,

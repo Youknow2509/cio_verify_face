@@ -1,14 +1,34 @@
 basePath: /api
 definitions:
-  dto.DeleteDeviceRequest:
+  dto.CreateDeviceRequest:
     properties:
+      address:
+        maxLength: 255
+        type: string
       company_id:
         type: string
-      device_id:
+      device_name:
+        maxLength: 100
+        minLength: 3
+        type: string
+      device_type:
+        description: '0: FACE_TERMINAL, 1: MOBILE_APP, 2: WEB_CAMERA, 3: IOT_SENSOR'
+        enum:
+        - 0
+        - 1
+        - 2
+        - 3
+        type: integer
+      location_id:
+        type: string
+      mac_address:
+        type: string
+      serial_number:
+        maxLength: 100
         type: string
     required:
     - company_id
-    - device_id
+    - device_name
     type: object
   dto.ErrResponseData:
     properties:
@@ -20,25 +40,19 @@ definitions:
       error:
         type: string
     type: object
-  dto.LoginRequest:
+  dto.ListDevicesRequest:
     properties:
-      password:
-        minLength: 8
+      company_id:
         type: string
-      username:
-        maxLength: 100
-        minLength: 2
-        type: string
+      page:
+        minimum: 1
+        type: integer
+      size:
+        maximum: 100
+        minimum: 1
+        type: integer
     required:
-    - password
-    - username
-    type: object
-  dto.RefreshTokenRequest:
-    properties:
-      refresh_token:
-        type: string
-    required:
-    - refresh_token
+    - company_id
     type: object
   dto.ResponseData:
     properties:
@@ -53,21 +67,82 @@ definitions:
     type: object
   dto.UpdateDeviceRequest:
     properties:
-      company_id:
+      address:
+        maxLength: 255
         type: string
+      device_name:
+        maxLength: 100
+        minLength: 3
+        type: string
+      device_type:
+        description: '0: FACE_TERMINAL, 1: MOBILE_APP, 2: WEB_CAMERA, 3: IOT_SENSOR'
+        enum:
+        - 0
+        - 1
+        - 2
+        - 3
+        type: integer
+      location_id:
+        type: string
+      mac_address:
+        type: string
+      serial_number:
+        maxLength: 100
+        type: string
+      status:
+        description: '0: OFFLINE, 1: ONLINE, 2: MAINTENANCE, 3: ERROR'
+        enum:
+        - 0
+        - 1
+        - 2
+        - 3
+        type: integer
+    type: object
+  dto.UpdateInfoDeviceRequest:
+    properties:
+      device_id:
+        type: string
+      device_type:
+        description: '0: FACE_TERMINAL, 1: MOBILE_APP, 2: WEB_CAMERA, 3: IOT_SENSOR'
+        enum:
+        - 0
+        - 1
+        - 2
+        - 3
+        type: integer
+      mac_address:
+        type: string
+      serial_number:
+        maxLength: 100
+        type: string
+    required:
+    - device_id
+    type: object
+  dto.UpdateLocationDeviceRequest:
+    properties:
+      address:
+        maxLength: 255
+        type: string
+      device_id:
+        type: string
+      location_id:
+        type: string
+    required:
+    - address
+    - device_id
+    - location_id
+    type: object
+  dto.UpdateNameDeviceRequest:
+    properties:
       device_id:
         type: string
       device_name:
         maxLength: 100
-        minLength: 2
+        minLength: 3
         type: string
-      device_type:
-        type: integer
     required:
-    - company_id
     - device_id
     - device_name
-    - device_type
     type: object
 externalDocs:
   description: OpenAPI
@@ -86,23 +161,23 @@ info:
   title: Swagger Chat Service Auth REST API
   version: "1.0"
 paths:
-  /v1/auth/device:
-    delete:
+  /api/v1/devices:
+    get:
       consumes:
       - application/json
-      description: Delete session device
+      description: Get list of devices
       parameters:
-      - description: Authorization Bearer token
+      - description: Bearer <token>
         in: header
-        name: Authorization
+        name: authorization
         required: true
         type: string
-      - description: Request body delete device
+      - description: Request body list devices
         in: body
-        name: body
+        name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.DeleteDeviceRequest'
+          $ref: '#/definitions/dto.ListDevicesRequest'
       produces:
       - application/json
       responses:
@@ -114,17 +189,47 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/dto.ErrResponseData'
-      summary: Delete session device
+      summary: Get list of devices
       tags:
-      - Core Auth
+      - Core Device
     post:
       consumes:
       - application/json
-      description: Update session device
+      description: Create new device
       parameters:
-      - description: Authorization Bearer token
+      - description: Bearer <token>
         in: header
-        name: Authorization
+        name: authorization
+        required: true
+        type: string
+      - description: Request body create device
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateDeviceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Create new device
+      tags:
+      - Core Device
+    put:
+      consumes:
+      - application/json
+      description: Update device by ID
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
         required: true
         type: string
       - description: Request body update device
@@ -144,70 +249,23 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/dto.ErrResponseData'
-      summary: Update session device
+      summary: Update device by ID
       tags:
-      - Core Auth
-  /v1/auth/login:
-    post:
+      - Core Device
+  /api/v1/devices/{id}:
+    delete:
       consumes:
       - application/json
-      description: User login for user
+      description: Delete device by ID
       parameters:
-      - description: Request body login
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.LoginRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.ResponseData'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrResponseData'
-      summary: User login
-      tags:
-      - Core Auth
-  /v1/auth/login/admin:
-    post:
-      consumes:
-      - application/json
-      description: User login for admin
-      parameters:
-      - description: Request body login
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.LoginRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.ResponseData'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrResponseData'
-      summary: Admin login
-      tags:
-      - Core Auth
-  /v1/auth/logout:
-    post:
-      consumes:
-      - application/json
-      description: User logout
-      parameters:
-      - description: Authorization Bearer token
+      - description: Bearer <token>
         in: header
-        name: Authorization
+        name: authorization
+        required: true
+        type: string
+      - description: Device ID
+        in: path
+        name: id
         required: true
         type: string
       produces:
@@ -221,18 +279,22 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/dto.ErrResponseData'
-      summary: User logout
+      summary: Delete device by ID
       tags:
-      - Core Auth
-  /v1/auth/me:
-    post:
+      - Core Device
+    get:
       consumes:
       - application/json
-      description: User get base info
+      description: Delete device by ID
       parameters:
-      - description: Authorization Bearer token
+      - description: Bearer <token>
         in: header
-        name: Authorization
+        name: authorization
+        required: true
+        type: string
+      - description: Device ID
+        in: path
+        name: id
         required: true
         type: string
       produces:
@@ -246,26 +308,26 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/dto.ErrResponseData'
-      summary: User get base info
+      summary: Delete device by ID
       tags:
-      - Core Auth
-  /v1/auth/refresh:
+      - Core Device
+  /api/v1/devices/info:
     post:
       consumes:
       - application/json
-      description: User refresh token
+      description: Update info device
       parameters:
-      - description: Authorization Bearer token
+      - description: Bearer <token>
         in: header
-        name: Authorization
+        name: authorization
         required: true
         type: string
-      - description: Request body refresh token
+      - description: Request body update device
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.RefreshTokenRequest'
+          $ref: '#/definitions/dto.UpdateInfoDeviceRequest'
       produces:
       - application/json
       responses:
@@ -277,9 +339,69 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/dto.ErrResponseData'
-      summary: User refresh token
       tags:
-      - Core Auth
+      - Core Device
+  /api/v1/devices/location:
+    post:
+      consumes:
+      - application/json
+      description: Update location
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Request body update device
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateLocationDeviceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Update location
+      tags:
+      - Core Device
+  /api/v1/devices/name:
+    post:
+      consumes:
+      - application/json
+      description: Update name device
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Request body update device
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateNameDeviceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      tags:
+      - Core Device
 securityDefinitions:
   BasicAuth:
     type: basic
