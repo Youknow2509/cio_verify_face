@@ -12,9 +12,9 @@ func initApplication() error {
 	if err := applicationService.SetShiftService(shiftServiceImpl); err != nil {
 		return err
 	}
-	// Init IScheduleService
-	scheduleServiceImpl := applicationServiceImpl.NewScheduleService()
-	if err := applicationService.SetScheduleService(scheduleServiceImpl); err != nil {
+	// Init IShiftEmployeeService
+	shiftEmployeeServiceImpl := applicationServiceImpl.NewShiftEmployeeService()
+	if err := applicationService.SetShiftEmployeeService(shiftEmployeeServiceImpl); err != nil {
 		return err
 	}
 	return nil

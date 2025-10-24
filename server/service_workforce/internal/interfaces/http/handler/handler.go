@@ -22,13 +22,13 @@ type iHandler interface {
 	GetDetailShiftUser(*gin.Context)
 	EditShiftUser(*gin.Context)
 	DeleteShiftUser(*gin.Context)
-
-	// For schedule
-	GetInfoScheduleUser(*gin.Context)
-	CreateScheduleUser(*gin.Context)
-	GetDetailScheduleUser(*gin.Context)
-	EditScheduleUser(*gin.Context)
-	DeleteScheduleUser(*gin.Context)
+	// For shift employee
+	GetShiftForUserWithEffectiveDate(*gin.Context)
+	EditShiftForUserWithEffectiveDate(*gin.Context)
+	EnableShiftForUser(*gin.Context)
+	DisableShiftForUser(*gin.Context)
+	DeleteShiftForUser(*gin.Context)
+	AddShiftEmployee(*gin.Context)
 }
 
 /**
@@ -36,8 +36,33 @@ type iHandler interface {
  */
 type Handler struct{}
 
-// CreateScheduleUser implements iHandler.
-func (h *Handler) CreateScheduleUser(*gin.Context) {
+// AddShiftEmployee implements iHandler.
+func (h *Handler) AddShiftEmployee(*gin.Context) {
+	panic("unimplemented")
+}
+
+// DeleteShiftForUser implements iHandler.
+func (h *Handler) DeleteShiftForUser(*gin.Context) {
+	panic("unimplemented")
+}
+
+// DisableShiftForUser implements iHandler.
+func (h *Handler) DisableShiftForUser(*gin.Context) {
+	panic("unimplemented")
+}
+
+// EditShiftForUserWithEffectiveDate implements iHandler.
+func (h *Handler) EditShiftForUserWithEffectiveDate(*gin.Context) {
+	panic("unimplemented")
+}
+
+// EnableShiftForUser implements iHandler.
+func (h *Handler) EnableShiftForUser(*gin.Context) {
+	panic("unimplemented")
+}
+
+// GetShiftForUserWithEffectiveDate implements iHandler.
+func (h *Handler) GetShiftForUserWithEffectiveDate(*gin.Context) {
 	panic("unimplemented")
 }
 
@@ -46,18 +71,8 @@ func (h *Handler) CreateShiftUser(*gin.Context) {
 	panic("unimplemented")
 }
 
-// DeleteScheduleUser implements iHandler.
-func (h *Handler) DeleteScheduleUser(*gin.Context) {
-	panic("unimplemented")
-}
-
 // DeleteShiftUser implements iHandler.
 func (h *Handler) DeleteShiftUser(*gin.Context) {
-	panic("unimplemented")
-}
-
-// EditScheduleUser implements iHandler.
-func (h *Handler) EditScheduleUser(*gin.Context) {
 	panic("unimplemented")
 }
 
@@ -66,18 +81,8 @@ func (h *Handler) EditShiftUser(*gin.Context) {
 	panic("unimplemented")
 }
 
-// GetDetailScheduleUser implements iHandler.
-func (h *Handler) GetDetailScheduleUser(*gin.Context) {
-	panic("unimplemented")
-}
-
 // GetDetailShiftUser implements iHandler.
 func (h *Handler) GetDetailShiftUser(*gin.Context) {
-	panic("unimplemented")
-}
-
-// GetInfoScheduleUser implements iHandler.
-func (h *Handler) GetInfoScheduleUser(*gin.Context) {
 	panic("unimplemented")
 }
 

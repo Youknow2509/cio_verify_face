@@ -8,29 +8,29 @@ import (
 )
 
 // =================================================
-// Schedule application interface service
+// ShiftEmployee application interface service
 // =================================================
-type IScheduleService interface {
+type IShiftEmployeeService interface {
 }
 
 /**
  * Managet instance
  */
-var _vIScheduleService IScheduleService
+var _vIShiftEmployeeService IShiftEmployeeService
 
 /**
  * Getter and setter instance
  */
-func GetScheduleService() IScheduleService {
-	return _vIScheduleService
+func GetShiftEmployeeService() IShiftEmployeeService {
+	return _vIShiftEmployeeService
 }
-func SetScheduleService(s IScheduleService) error {
+func SetShiftEmployeeService(s IShiftEmployeeService) error {
 	if s == nil {
-		return errors.New("invalid schedule service")
+		return errors.New("invalid shiftEmployee service")
 	}
-	if _vIScheduleService != nil {
-		return errors.New("schedule service already set")
+	if _vIShiftEmployeeService != nil {
+		return errors.New("shiftEmployee service already set")
 	}
-	_vIScheduleService = s
+	_vIShiftEmployeeService = s
 	return nil
 }

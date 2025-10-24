@@ -26,13 +26,14 @@ func (r *HttpRouterManager) InitRoutes(group *gin.RouterGroup) {
 		shiftRouterV1.DELETE("/:id", handler.NewHandler().DeleteShiftUser) // Xoa ca lam viec
 	}
 
-	scheduleRouterV1 := group.Group("/schedule")
-	scheduleRouterV1.Use(infraMiddleware.GetAuthAccessTokenJwtMiddleware().Apply())
+	shiftEmployeeRouterV1 := group.Group("/employee/shift")
+	shiftEmployeeRouterV1.Use(infraMiddleware.GetAuthAccessTokenJwtMiddleware().Apply())
 	{
-		scheduleRouterV1.GET("", handler.NewHandler().GetInfoScheduleUser)       // Lay lich lam viec
-		scheduleRouterV1.POST("", handler.NewHandler().CreateScheduleUser)       // Phan ca/ lich lam viec
-		scheduleRouterV1.GET("/:id", handler.NewHandler().GetDetailScheduleUser) // Xem chi tiet lich lam viec
-		scheduleRouterV1.POST("/edit", handler.NewHandler().EditScheduleUser)    // Chinh sua lich lam viec
-		scheduleRouterV1.DELETE("/:id", handler.NewHandler().DeleteScheduleUser) // Xoa lich lam viec
+		shiftEmployeeRouterV1.POST("/user", nil)                // Get shift for user with effective date
+		shiftEmployeeRouterV1.POST("/user/edit/effective", nil) // Edit shift for user with effective date
+		shiftEmployeeRouterV1.POST("/user/enable", nil)         // Enable shift for user
+		shiftEmployeeRouterV1.POST("/user/disable", nil)        // Disable shift for user
+		shiftEmployeeRouterV1.DELETE("", nil) 					// Delete shift for user
+		shiftEmployeeRouterV1.GET("/user/add", nil)             // Add shift employee
 	}
 }

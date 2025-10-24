@@ -7,12 +7,12 @@ import (
 )
 
 // =================================================
-// Schedule service implementation interface
+// ShiftEmployee service implementation interface
 // =================================================
-type ScheduleService struct {
+type ShiftEmployeeService struct {
 }
 
 // New instance
-func NewScheduleService() service.IScheduleService {
-	return &ScheduleService{}
+func NewShiftEmployeeService() service.IShiftEmployeeService {
+	return &ShiftEmployeeService{}
 }
