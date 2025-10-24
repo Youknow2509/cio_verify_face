@@ -7,9 +7,14 @@ import (
 
 // initialize application services
 func initApplication() error {
-	// Init IDeviceService
-	deviceServiceImpl := applicationServiceImpl.NewDeviceService()
-	if err := applicationService.SetDeviceService(deviceServiceImpl); err != nil {
+	// Init IShiftService
+	shiftServiceImpl := applicationServiceImpl.NewShiftService()
+	if err := applicationService.SetShiftService(shiftServiceImpl); err != nil {
+		return err
+	}
+	// Init IScheduleService
+	scheduleServiceImpl := applicationServiceImpl.NewScheduleService()
+	if err := applicationService.SetScheduleService(scheduleServiceImpl); err != nil {
 		return err
 	}
 	return nil

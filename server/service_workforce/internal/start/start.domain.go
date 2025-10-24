@@ -25,12 +25,6 @@ func initDomain() error {
 	); err != nil {
 		return err
 	}
-	// initialize IDeviceRepository
-	if err := domainRepository.SetDeviceRepository(
-		infraRepository.NewDeviceRepository(postgres),
-	); err != nil {
-		return err
-	}
 	// initialize token service
 	if err := domainToken.SetTokenService(
 		infraToken.NewTokenService(grpcClient),
