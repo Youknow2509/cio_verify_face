@@ -2,15 +2,22 @@ package service
 
 import (
 	// "context"
+	"context"
 	"errors"
-	// applicationError "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/application/error"
-	// "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/application/model"
+	applicationError "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/application/error"
+	model "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/application/model"
 )
 
 // =================================================
 // ShiftEmployee application interface service
 // =================================================
 type IShiftEmployeeService interface {
+	AddShiftEmployee(ctx context.Context, input *model.AddShiftEmployeeInput) (**model.AddShiftEmployeeOutput, *applicationError.Error)
+	DeleteShiftUser(ctx context.Context, input *model.DeleteShiftUserInput) *applicationError.Error
+	DisableShiftUser(ctx context.Context, input *model.DisableShiftUserInput) *applicationError.Error
+	EditShiftForUserWithEffectiveDate(ctx context.Context, input *model.EditShiftForUserWithEffectiveDateInput) *applicationError.Error
+	EnableShiftUser(ctx context.Context, input *model.EnableShiftUserInput) *applicationError.Error
+	GetShiftForUserWithEffectiveDate(ctx context.Context, input *model.GetShiftForUserWithEffectiveDateInput) (*model.GetShiftForUserWithEffectiveDateOutput, *applicationError.Error)
 }
 
 /**

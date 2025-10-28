@@ -20,7 +20,7 @@ INSERT INTO work_shifts (
 ) VALUES (
     $1, $2, $3, $4, $5,
     $6, $7, $8,
-    $9, $10
+    $9, TRUE
 )
 RETURNING shift_id
 `
@@ -35,7 +35,6 @@ type CreateShiftParams struct {
 	GracePeriodMinutes    pgtype.Int4
 	EarlyDepartureMinutes pgtype.Int4
 	WorkDays              []int32
-	IsActive              pgtype.Bool
 }
 
 // CREATE TABLE IF NOT EXISTS work_shifts (
@@ -66,7 +65,6 @@ func (q *Queries) CreateShift(ctx context.Context, arg CreateShiftParams) (pgtyp
 		arg.GracePeriodMinutes,
 		arg.EarlyDepartureMinutes,
 		arg.WorkDays,
-		arg.IsActive,
 	)
 	var shift_id pgtype.UUID
 	err := row.Scan(&shift_id)

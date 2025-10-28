@@ -99,7 +99,6 @@ func (q *Queries) DisableEmployeeShift(ctx context.Context, employeeShiftID pgty
 }
 
 const editEffectiveShiftForEmployee = `-- name: EditEffectiveShiftForEmployee :exec
-
 UPDATE employee_shifts
 SET effective_from = $2,
     effective_to = $3
@@ -112,15 +111,6 @@ type EditEffectiveShiftForEmployeeParams struct {
 	EffectiveTo     pgtype.Date
 }
 
-// Table: employee_shifts
-// employee_shift_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-// employee_id UUID NOT NULL REFERENCES employees(employee_id) ON DELETE CASCADE,
-// shift_id UUID NOT NULL REFERENCES work_shifts(shift_id) ON DELETE CASCADE,
-// effective_from DATE NOT NULL,
-// effective_to DATE,
-// is_active BOOLEAN DEFAULT TRUE,
-// created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-// UNIQUE(employee_id, shift_id, effective_from, effective_to)
 func (q *Queries) EditEffectiveShiftForEmployee(ctx context.Context, arg EditEffectiveShiftForEmployeeParams) error {
 	_, err := q.db.Exec(ctx, editEffectiveShiftForEmployee, arg.EmployeeShiftID, arg.EffectiveFrom, arg.EffectiveTo)
 	return err
@@ -135,4 +125,75 @@ WHERE employee_shift_id = $1
 func (q *Queries) EnableEmployeeShift(ctx context.Context, employeeShiftID pgtype.UUID) error {
 	_, err := q.db.Exec(ctx, enableEmployeeShift, employeeShiftID)
 	return err
+}
+
+const getShiftEmployeeWithEffectiveDate = `-- name: GetShiftEmployeeWithEffectiveDate :many
+
+SELECT 
+    employee_shift_id,
+    shift_id,
+    effective_from,
+    effective_to,
+    is_active
+FROM employee_shifts
+WHERE employee_id = $1 AND
+    effective_from <= $2 AND
+    (effective_to IS NULL OR effective_to >= $2)
+ORDER BY effective_from DESC
+LIMIT $3 OFFSET $4
+`
+
+type GetShiftEmployeeWithEffectiveDateParams struct {
+	EmployeeID    pgtype.UUID
+	EffectiveFrom pgtype.Date
+	Limit         int32
+	Offset        int32
+}
+
+type GetShiftEmployeeWithEffectiveDateRow struct {
+	EmployeeShiftID pgtype.UUID
+	ShiftID         pgtype.UUID
+	EffectiveFrom   pgtype.Date
+	EffectiveTo     pgtype.Date
+	IsActive        pgtype.Bool
+}
+
+// Table: employee_shifts
+// employee_shift_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+// employee_id UUID NOT NULL REFERENCES employees(employee_id) ON DELETE CASCADE,
+// shift_id UUID NOT NULL REFERENCES work_shifts(shift_id) ON DELETE CASCADE,
+// effective_from DATE NOT NULL,
+// effective_to DATE,
+// is_active BOOLEAN DEFAULT TRUE,
+// created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+// UNIQUE(employee_id, shift_id, effective_from, effective_to)
+func (q *Queries) GetShiftEmployeeWithEffectiveDate(ctx context.Context, arg GetShiftEmployeeWithEffectiveDateParams) ([]GetShiftEmployeeWithEffectiveDateRow, error) {
+	rows, err := q.db.Query(ctx, getShiftEmployeeWithEffectiveDate,
+		arg.EmployeeID,
+		arg.EffectiveFrom,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetShiftEmployeeWithEffectiveDateRow
+	for rows.Next() {
+		var i GetShiftEmployeeWithEffectiveDateRow
+		if err := rows.Scan(
+			&i.EmployeeShiftID,
+			&i.ShiftID,
+			&i.EffectiveFrom,
+			&i.EffectiveTo,
+			&i.IsActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }

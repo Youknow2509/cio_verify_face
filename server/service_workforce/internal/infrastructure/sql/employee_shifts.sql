@@ -8,6 +8,20 @@
 -- created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 -- UNIQUE(employee_id, shift_id, effective_from, effective_to)
 
+-- name: GetShiftEmployeeWithEffectiveDate :many
+SELECT 
+    employee_shift_id,
+    shift_id,
+    effective_from,
+    effective_to,
+    is_active
+FROM employee_shifts
+WHERE employee_id = $1 AND
+    effective_from <= $2 AND
+    (effective_to IS NULL OR effective_to >= $2)
+ORDER BY effective_from DESC
+LIMIT $3 OFFSET $4;
+
 -- name: EditEffectiveShiftForEmployee :exec
 UPDATE employee_shifts
 SET effective_from = $2,
