@@ -434,5 +434,3 @@ const ChartComponent = lazy(() => import('./Chart'));
 - **Bundle analysis:** Regular monitoring với webpack-bundle-analyzer
 
 ---
-
-Tài liệu này cung cấp hướng dẫn chi tiết về cách các trang giao diện tương tác với nhau, quy trình người dùng, và các pattern UX/UI được sử dụng trong hệ thống Face Attendance SaaS. Nó bổ sung cho tài liệu mô tả trang chính và cung cấp góc nhìn kỹ thuật về implementation.

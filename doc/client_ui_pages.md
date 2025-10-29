@@ -602,7 +602,7 @@ Hệ thống Face Attendance SaaS bao gồm 3 giao diện client chính:
 
 ---
 
-## **5. TECHNICAL SPECIFICATIONS**
+## **5. TECHNICAL SPECIFICATIONS - Bias**
 
 ### **5.1. Frontend Technology Stack**
 
@@ -622,7 +622,7 @@ Hệ thống Face Attendance SaaS bao gồm 3 giao diện client chính:
 
 **Utilities:**
 - **Axios** cho HTTP requests
-- **Socket.io-client** cho WebSocket
+- **Socket custom** cho WebSocket
 - **Date-fns** cho date manipulation
 - **React-hook-form** / **VeeValidate** cho forms
 
@@ -724,5 +724,3 @@ Hệ thống Face Attendance SaaS bao gồm 3 giao diện client chính:
 - Number format localization
 
 ---
-
-Tài liệu này cung cấp mô tả chi tiết về tất cả các trang giao diện client trong hệ thống Face Attendance SaaS, bao gồm chức năng, layout, và technical requirements. Mỗi trang được thiết kế để tối ưu trải nghiệm người dùng và đáp ứng các yêu cầu nghiệp vụ của hệ thống chấm công thông minh.

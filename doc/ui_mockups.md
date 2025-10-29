@@ -304,5 +304,3 @@
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
-
-Những mockup này cung cấp hình ảnh trực quan về giao diện người dùng được mô tả trong tài liệu, giúp developer và designer có cái nhìn rõ ràng về layout và flow của từng trang trong hệ thống Face Attendance SaaS.

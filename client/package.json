@@ -1,0 +1,17 @@
+{
+  "name": "face-attendance-saas",
+  "version": "1.0.0",
+  "description": "Monorepo for Face Attendance SaaS Client Applications",
+  "private": true,
+  "scripts": {
+    "dev:web-admin": "cd apps/web-admin && pnpm dev",
+    "dev:device-app": "cd apps/device-app && pnpm dev",
+    "dev:system-admin": "cd apps/system-admin && pnpm dev",
+    "dev:employee-portal": "cd apps/employee-portal && pnpm dev",
+    "build:web-admin": "cd apps/web-admin && pnpm build",
+    "build:device-app": "cd apps/device-app && pnpm build",
+    "build:system-admin": "cd apps/system-admin && pnpm build",
+    "build:employee-portal": "cd apps/employee-portal && pnpm build"
+  },
+  "packageManager": "pnpm@8.0.0"
+}
