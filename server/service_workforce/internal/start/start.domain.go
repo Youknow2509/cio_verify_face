@@ -25,6 +25,18 @@ func initDomain() error {
 	); err != nil {
 		return err
 	}
+	// initialize IShiftRepository
+	if err := domainRepository.SetShiftRepository(
+		infraRepository.NewShiftRepository(postgres),
+	); err != nil {
+		return err
+	}
+	// initialize IShiftUserRepository
+	if err := domainRepository.SetShiftUserRepository(
+		infraRepository.NewShiftUserRepository(postgres),
+	); err != nil {
+		return err
+	}
 	// initialize token service
 	if err := domainToken.SetTokenService(
 		infraToken.NewTokenService(grpcClient),
