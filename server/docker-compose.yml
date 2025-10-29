@@ -1,0 +1,61 @@
+# Docker compose service
+
+networks:
+    nw-dev-0:
+        driver: bridge
+
+services:
+    # WS Delivery Service
+    service_ws_delivery:
+        image: cio_verify_face_service_ws_delivery:latest
+        ports:
+            - '8084:8080'
+            - '50055:50051'
+        networks:
+            - nw-dev-0
+        volumes:
+            - ./config/config_service_ws_delivery.yaml:/prod/config/config.yaml:ro
+
+    # Workforce Service
+    service_workforce:
+        image: cio_verify_face_service_workforce:latest
+        ports:
+            - '8083:8080'
+            - '50054:50051'
+        networks:
+            - nw-dev-0
+        volumes:
+            - ./config/config_service_workforce.yaml:/prod/config/config.yaml:ro
+            
+    # Notification Service
+    service_notification:
+        image: cio_verify_face_service_notify:latest
+        ports:
+            - '8082:8080'
+            - '50053:50051'
+        networks:
+            - nw-dev-0
+        volumes:
+            - ./config/config_service_notify.yaml:/prod/config/config.yaml:ro
+
+    # Device Service
+    service_device:
+        image: cio_verify_face_service_device:latest
+        ports:
+            - '8081:8080'
+            - '50052:50051'
+        networks:
+            - nw-dev-0
+        volumes:
+            - ./config/config_service_device.yaml:/prod/config/config.yaml:ro
+            
+    # Authentication Service
+    service_auth:
+        image: cio_verify_face_service_auth:latest
+        ports:
+            - '8080:8080'
+            - '50051:50051'
+        networks:
+            - nw-dev-0
+        volumes:
+            - ./config/config_service_auth.yaml:/prod/config/config.yaml:ro
