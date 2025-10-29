@@ -5,5 +5,5 @@
 # Logs
 **/*.log
 
-# config run services
-server/config/*.yaml
+.vscode/
+
