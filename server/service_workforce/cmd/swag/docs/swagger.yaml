@@ -1,0 +1,468 @@
+basePath: /api
+definitions:
+  dto.AddShiftEmployeeReq:
+    properties:
+      effective_from:
+        type: integer
+      effective_to:
+        type: integer
+      employee_id:
+        type: string
+      shift_id:
+        type: string
+    required:
+    - effective_from
+    - effective_to
+    - employee_id
+    - shift_id
+    type: object
+  dto.CreateShiftReq:
+    properties:
+      break_duration_minutes:
+        type: integer
+      company_id:
+        type: string
+      description:
+        type: string
+      early_departure_minutes:
+        type: integer
+      end_time:
+        type: integer
+      grace_period_minutes:
+        type: integer
+      name:
+        type: string
+      start_time:
+        type: integer
+      work_days:
+        items:
+          type: integer
+        type: array
+    required:
+    - break_duration_minutes
+    - company_id
+    - early_departure_minutes
+    - end_time
+    - grace_period_minutes
+    - name
+    - start_time
+    - work_days
+    type: object
+  dto.DisableShiftForUserReq:
+    properties:
+      shift_user_id:
+        type: string
+    required:
+    - shift_user_id
+    type: object
+  dto.EditShiftReq:
+    properties:
+      break_duration_minutes:
+        type: integer
+      company_id:
+        type: string
+      description:
+        type: string
+      early_departure_minutes:
+        type: integer
+      end_time:
+        type: integer
+      grace_period_minutes:
+        type: integer
+      name:
+        type: string
+      shift_id:
+        type: string
+      start_time:
+        type: integer
+      work_days:
+        items:
+          type: integer
+        type: array
+    required:
+    - break_duration_minutes
+    - company_id
+    - early_departure_minutes
+    - end_time
+    - grace_period_minutes
+    - name
+    - shift_id
+    - start_time
+    - work_days
+    type: object
+  dto.EnableShiftForUserReq:
+    properties:
+      shift_user_id:
+        type: string
+    required:
+    - shift_user_id
+    type: object
+  dto.ErrResponseData:
+    properties:
+      code:
+        description: Ma status code
+        type: integer
+      detail:
+        description: Thong bao loi
+      error:
+        type: string
+    type: object
+  dto.ResponseData:
+    properties:
+      code:
+        description: Ma status code
+        type: integer
+      data:
+        description: Du lieu duoc return
+      message:
+        description: Thong bao loi
+        type: string
+    type: object
+  dto.ShiftEmployeeEditEffectiveDateReq:
+    properties:
+      new_effective_from:
+        type: integer
+      new_effective_to:
+        type: integer
+      shift_user_id:
+        type: string
+    required:
+    - new_effective_from
+    - new_effective_to
+    - shift_user_id
+    type: object
+  dto.ShiftEmployeeEffectiveDateReq:
+    properties:
+      effective_from:
+        type: integer
+      effective_to:
+        type: integer
+      page:
+        type: integer
+      size:
+        type: integer
+      user_id:
+        type: string
+    required:
+    - effective_from
+    - effective_to
+    - page
+    - size
+    type: object
+externalDocs:
+  description: OpenAPI
+  url: https://swagger.io/resources/open-api/
+host: localhost:8080
+info:
+  contact:
+    email: lytranvinh.work@gmail.com
+    name: API Support
+    url: https://github.com/Youknow2509/
+  description: This is a REST API for the Chat Service Auth.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Swagger Chat Service Auth REST API
+  version: "1.0"
+paths:
+  /api/v1/employee/shift:
+    post:
+      consumes:
+      - application/json
+      description: Get shift user effective date information for company
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Get Shift For User With Effective Date Request
+        in: body
+        name: dto
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ShiftEmployeeEffectiveDateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Get shift user effective date information
+      tags:
+      - Shift
+  /api/v1/employee/shift/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete shift employee information for company
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Delete shift employee
+      tags:
+      - Shift
+  /api/v1/employee/shift/add:
+    post:
+      consumes:
+      - application/json
+      description: Create shift information for company
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Create Shift Request
+        in: body
+        name: dto
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AddShiftEmployeeReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Create shift information
+      tags:
+      - Shift
+  /api/v1/employee/shift/disable:
+    post:
+      consumes:
+      - application/json
+      description: Disable shift for user information for company
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Disable Shift For User Request
+        in: body
+        name: dto
+        required: true
+        schema:
+          $ref: '#/definitions/dto.DisableShiftForUserReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Disable shift for user
+      tags:
+      - Shift
+  /api/v1/employee/shift/enable:
+    post:
+      consumes:
+      - application/json
+      description: Enable shift for user information for company
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Enable Shift For User Request
+        in: body
+        name: dto
+        required: true
+        schema:
+          $ref: '#/definitions/dto.EnableShiftForUserReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Enable shift for user
+      tags:
+      - Shift
+  /api/v1/shift:
+    post:
+      consumes:
+      - application/json
+      description: Create shift information for company
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Create Shift Request
+        in: body
+        name: dto
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateShiftReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Create shift information
+      tags:
+      - Shift
+  /api/v1/shift/{id}:
+    delete:
+      consumes:
+      - application/json
+      description: Delete shift information for company
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Delete shift
+      tags:
+      - Shift
+    get:
+      consumes:
+      - application/json
+      description: Get shift detail information for company
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Shift ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Get shift detail information
+      tags:
+      - Shift
+  /api/v1/shift/edit:
+    post:
+      consumes:
+      - application/json
+      description: Edit shift information for company
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Edit Shift Request
+        in: body
+        name: dto
+        required: true
+        schema:
+          $ref: '#/definitions/dto.EditShiftReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Edit shift information
+      tags:
+      - Shift
+  /api/v1/user/edit/effective:
+    post:
+      consumes:
+      - application/json
+      description: Edit shift employee effective date information
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Edit Shift Request
+        in: body
+        name: dto
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ShiftEmployeeEditEffectiveDateReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Edit shift employee effective date information
+      tags:
+      - Shift
+securityDefinitions:
+  BasicAuth:
+    type: basic
+swagger: "2.0"
