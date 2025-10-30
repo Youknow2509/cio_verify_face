@@ -403,7 +403,7 @@ func (c *CoreAuthService) LoginAdmin(ctx context.Context, input *applicationMode
 		&domainModel.TokenUserJwtInput{
 			UserId:  response.UserID,
 			TokenId: tokenId.String(),
-			Role:    domainModel.RoleAdmin,
+			Role:    domainModel.RoleManager,
 			Expires: time.Now().Add(timeTtlAccessToken),
 		},
 	)
