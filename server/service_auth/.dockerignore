@@ -1,0 +1,9 @@
+# Config and key
+**/.env
+**/config/config.yml
+
+# Logs
+**/*.log
+
+.vscode/
+

@@ -5,4 +5,5 @@ package constants
 // ===================================
 const (
 	RandomTokenResetPasswordLength = 32
+	RandomTokenDeviceLength        = 64
 )

@@ -10,8 +10,7 @@ import (
  * Client info
  */
 type ClientInfo struct {
-	UserId       uuid.UUID `json:"user_id"`
-	SessionId    uuid.UUID `json:"session_id"`
+	DeviceId     uuid.UUID `json:"device_id"`
 	ConnectionId uuid.UUID `json:"connection_id"`
 	IpAddress    string    `json:"ip_address"`
 	UserAgent    string    `json:"user_agent"`

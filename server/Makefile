@@ -1,5 +1,6 @@
 .PHONY: help
 .PHONY: goose_create goose_up goose_down goose_status goose_fix goose_redo goose_reset goose_clean goose_up_by_one
+.PHONY: docker_compose_up
 
 .ALL: help
 
@@ -46,7 +47,15 @@ help:
 	@echo "\t migrate_drop \t Drop all migrations"
 	@echo "\t migrate_force \t Force a migration to a specific version"
 
+	@echo "\nDocker Compose Commands:"
+	@echo "\t docker_compose_up \t Docker compose up"
+
 	@echo "  help - Show this help message"
+
+# Docker Compose - Up
+docker_compose_up:
+	@echo "Starting Docker Compose"
+	docker-compose -f docker-compose.yml -p cio_verify_face up -d
 
 # Create keyspace scylladb
 cmd_create_keyspace:

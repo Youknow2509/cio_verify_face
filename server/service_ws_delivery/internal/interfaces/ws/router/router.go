@@ -44,13 +44,11 @@ func (b *BaseRouter) Initialize(g *gin.Engine) {
 			return
 		}
 		// Get data user after auth
-		sessionId, _ := uuid.NewUUID() // TODO: fix in prod
-		userId, _ := uuid.NewUUID()    // TODO: fix in prod
+		deviceId, _ := uuid.NewUUID() // TODO: fix in prod
 		// Create client info
 		clientInfo := core.NewClientWS(
 			c,
-			sessionId,
-			userId,
+			deviceId,
 			c.ClientIP(),
 			c.Request.UserAgent(),
 			conn,

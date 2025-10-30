@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS employee_shifts (
     effective_to DATE,
     is_active BOOLEAN DEFAULT TRUE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    UNIQUE(employee_id, shift_id, effective_from)
+    UNIQUE(employee_id, shift_id, effective_from, effective_to)
 );
 -- +goose StatementEnd
 
