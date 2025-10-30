@@ -24,7 +24,7 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/api/v1/devices": {
+        "/v1/device": {
             "get": {
                 "description": "Get list of devices",
                 "consumes": [
@@ -46,13 +46,18 @@ const docTemplate = `{
                         "required": true
                     },
                     {
-                        "description": "Request body list devices",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.ListDevicesRequest"
-                        }
+                        "type": "string",
+                        "format": "int",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "format": "int",
+                        "description": "Page size",
+                        "name": "size",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -161,7 +166,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/devices/info": {
+        "/v1/device/info": {
             "post": {
                 "description": "Update info device",
                 "consumes": [
@@ -207,7 +212,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/devices/location": {
+        "/v1/device/location": {
             "post": {
                 "description": "Update location",
                 "consumes": [
@@ -254,7 +259,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/devices/name": {
+        "/v1/device/name": {
             "post": {
                 "description": "Update name device",
                 "consumes": [
@@ -300,7 +305,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/devices/{id}": {
+        "/v1/device/{device_id}": {
             "get": {
                 "description": "Delete device by ID",
                 "consumes": [
@@ -324,7 +329,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Device ID",
-                        "name": "id",
+                        "name": "device_id",
                         "in": "path",
                         "required": true
                     }
@@ -367,7 +372,7 @@ const docTemplate = `{
                     {
                         "type": "string",
                         "description": "Device ID",
-                        "name": "id",
+                        "name": "device_id",
                         "in": "path",
                         "required": true
                     }
@@ -443,26 +448,6 @@ const docTemplate = `{
                 },
                 "error": {
                     "type": "string"
-                }
-            }
-        },
-        "dto.ListDevicesRequest": {
-            "type": "object",
-            "required": [
-                "company_id"
-            ],
-            "properties": {
-                "company_id": {
-                    "type": "string"
-                },
-                "page": {
-                    "type": "integer",
-                    "minimum": 1
-                },
-                "size": {
-                    "type": "integer",
-                    "maximum": 100,
-                    "minimum": 1
                 }
             }
         },

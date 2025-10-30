@@ -61,6 +61,7 @@ type GetDeviceByIdInput struct {
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
 }
+
 type GetDeviceByIdOutput struct {
 	DeviceId     string `json:"device_id"`
 	CompanyId    string `json:"company_id"`

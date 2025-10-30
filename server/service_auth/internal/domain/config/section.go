@@ -34,7 +34,7 @@ type (
 // ==========================================================
 // RateLimitPolicySetting
 type RateLimitPolicySetting struct {
-	Policies []RateLimitPolicy 
+	Policies []RateLimitPolicy
 }
 type RateLimitPolicy struct {
 	Name   string `mapstructure:"name"`
@@ -57,6 +57,7 @@ type ServerSetting struct {
 // grpc server
 type GrpcSetting struct {
 	Network string `mapstructure:"network"`
+	Host    string `mapstructure:"host"`
 	Port    int    `mapstructure:"port"`
 	Tls     struct {
 		Enabled  bool   `mapstructure:"enabled"`

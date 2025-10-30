@@ -13,18 +13,17 @@ import (
 )
 
 const checkDeviceExist = `-- name: CheckDeviceExist :one
-SELECT EXISTS (
-    SELECT 1
-    FROM devices
-    WHERE device_id = $1
-) AS exist
+SELECT device_id
+FROM devices
+WHERE device_id = $1
+LIMIT 1
 `
 
-func (q *Queries) CheckDeviceExist(ctx context.Context, deviceID pgtype.UUID) (bool, error) {
+func (q *Queries) CheckDeviceExist(ctx context.Context, deviceID pgtype.UUID) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, checkDeviceExist, deviceID)
-	var exist bool
-	err := row.Scan(&exist)
-	return exist, err
+	var device_id pgtype.UUID
+	err := row.Scan(&device_id)
+	return device_id, err
 }
 
 const createNewDevice = `-- name: CreateNewDevice :exec

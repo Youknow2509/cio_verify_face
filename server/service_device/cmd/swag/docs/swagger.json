@@ -18,7 +18,7 @@
     "host": "localhost:8080",
     "basePath": "/api",
     "paths": {
-        "/api/v1/devices": {
+        "/v1/device": {
             "get": {
                 "description": "Get list of devices",
                 "consumes": [
@@ -40,13 +40,18 @@
                         "required": true
                     },
                     {
-                        "description": "Request body list devices",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.ListDevicesRequest"
-                        }
+                        "type": "string",
+                        "format": "int",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "format": "int",
+                        "description": "Page size",
+                        "name": "size",
+                        "in": "query"
                     }
                 ],
                 "responses": {
@@ -155,7 +160,7 @@
                 }
             }
         },
-        "/api/v1/devices/info": {
+        "/v1/device/info": {
             "post": {
                 "description": "Update info device",
                 "consumes": [
@@ -201,7 +206,7 @@
                 }
             }
         },
-        "/api/v1/devices/location": {
+        "/v1/device/location": {
             "post": {
                 "description": "Update location",
                 "consumes": [
@@ -248,7 +253,7 @@
                 }
             }
         },
-        "/api/v1/devices/name": {
+        "/v1/device/name": {
             "post": {
                 "description": "Update name device",
                 "consumes": [
@@ -294,7 +299,7 @@
                 }
             }
         },
-        "/api/v1/devices/{id}": {
+        "/v1/device/{device_id}": {
             "get": {
                 "description": "Delete device by ID",
                 "consumes": [
@@ -318,7 +323,7 @@
                     {
                         "type": "string",
                         "description": "Device ID",
-                        "name": "id",
+                        "name": "device_id",
                         "in": "path",
                         "required": true
                     }
@@ -361,7 +366,7 @@
                     {
                         "type": "string",
                         "description": "Device ID",
-                        "name": "id",
+                        "name": "device_id",
                         "in": "path",
                         "required": true
                     }
@@ -437,26 +442,6 @@
                 },
                 "error": {
                     "type": "string"
-                }
-            }
-        },
-        "dto.ListDevicesRequest": {
-            "type": "object",
-            "required": [
-                "company_id"
-            ],
-            "properties": {
-                "company_id": {
-                    "type": "string"
-                },
-                "page": {
-                    "type": "integer",
-                    "minimum": 1
-                },
-                "size": {
-                    "type": "integer",
-                    "maximum": 100,
-                    "minimum": 1
                 }
             }
         },

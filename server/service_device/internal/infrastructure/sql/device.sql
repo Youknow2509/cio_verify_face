@@ -1,9 +1,8 @@
 -- name: CheckDeviceExist :one
-SELECT EXISTS (
-    SELECT 1
-    FROM devices
-    WHERE device_id = $1
-) AS exist;
+SELECT device_id
+FROM devices
+WHERE device_id = $1
+LIMIT 1;
 
 -- name: UpdateDeviceInfo :exec
 UPDATE devices

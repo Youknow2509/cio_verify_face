@@ -235,7 +235,7 @@ const docTemplate = `{
             }
         },
         "/v1/auth/me": {
-            "post": {
+            "get": {
                 "description": "User get base info",
                 "consumes": [
                     "application/json"

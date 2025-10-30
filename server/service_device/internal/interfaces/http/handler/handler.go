@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"strconv"
+
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
@@ -42,7 +44,7 @@ type Handler struct{}
 // @Param        request   body dto.CreateDeviceRequest  true  "Request body create device"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/devices [post]
+// @Router       /v1/device [post]
 func (h *Handler) CreateNewDevice(c *gin.Context) {
 	// Get req and parse
 	var req dto.CreateDeviceRequest
@@ -126,13 +128,13 @@ func (h *Handler) CreateNewDevice(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param		 authorization header string true "Bearer <token>"
-// @Param        id   path string  true  "Device ID"
+// @Param        device_id   path string  true  "Device ID"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/devices/{id} [delete]
+// @Router       /v1/device/{device_id} [delete]
 func (h *Handler) DeleteDeviceById(c *gin.Context) {
 	// Get id device from path
-	idDeviceStr := c.Param("id")
+	idDeviceStr := c.Param("device_id")
 	idDevice, err := uuidShared.ParseUUID(idDeviceStr)
 	if err != nil {
 		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid device ID")
@@ -158,7 +160,7 @@ func (h *Handler) DeleteDeviceById(c *gin.Context) {
 			SessionId:   sessionUuid,
 		},
 	); err != nil {
-		if err.ErrorClient == "" {
+		if err.ErrorSystem != nil {
 			response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 			return
 		}
@@ -175,13 +177,13 @@ func (h *Handler) DeleteDeviceById(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param		 authorization header string true "Bearer <token>"
-// @Param        id   path string  true  "Device ID"
+// @Param        device_id   path string  true  "Device ID"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/devices/{id} [get]
+// @Router       /v1/device/{device_id} [get]
 func (h *Handler) GetDeviceById(c *gin.Context) {
 	// Get id device from path
-	idDeviceStr := c.Param("id")
+	idDeviceStr := c.Param("device_id")
 	idDevice, err := uuidShared.ParseUUID(idDeviceStr)
 	if err != nil {
 		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid device ID")
@@ -221,32 +223,26 @@ func (h *Handler) GetDeviceById(c *gin.Context) {
 // @Accept       json
 // @Produce      json
 // @Param		 authorization header string true "Bearer <token>"
-// @Param        request   body dto.ListDevicesRequest  true  "Request body list devices"
+// @Param        page    query     string  false  "Page number"  Format(int)
+// @Param        size    query     string  false  "Page size"  Format(int)
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/devices [get]
+// @Router       /v1/device [get]
 func (h *Handler) GetListDevices(c *gin.Context) {
-	// Get req and parse
-	var req dto.ListDevicesRequest
-	if err := c.ShouldBindQuery(&req); err != nil {
-		response.ErrorResponse(c, response.ErrorCodeBindRequest, "Invalid request body")
+	// Get query params
+	page := c.DefaultQuery("page", "1")
+	size := c.DefaultQuery("size", "10")
+	companyId := c.DefaultQuery("company_id", "")
+	// validate query params
+	var err error
+	pageInt, err := strconv.Atoi(page)
+	if err != nil || pageInt <= 0 {
+		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid page")
 		return
 	}
-	// Validate req
-	validateMiddleware, ok := c.Get(constants.MIDDLEWARE_VALIDATE_SERVICE_NAME)
-	if !ok {
-		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
-		return
-	}
-	validate, ok := validateMiddleware.(*validator.Validate)
-	if !ok {
-		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
-		return
-	}
-	err := validate.Struct(req)
-	if err != nil {
-		validationErrors := err.(validator.ValidationErrors)
-		response.ErrorResponse(c, response.ErrorCodeValidateRequest, validationErrors.Error())
+	sizeInt, err := strconv.Atoi(size)
+	if err != nil || sizeInt <= 0 || sizeInt > 100 {
+		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid size")
 		return
 	}
 	// Get data auth from token
@@ -258,18 +254,21 @@ func (h *Handler) GetListDevices(c *gin.Context) {
 	// Parse uuid
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
-	companyUuid, err := uuidShared.ParseUUID(req.CompanyId)
-	if err != nil {
-		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid company_id")
-		return
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, err = uuidShared.ParseUUID(companyId)
+		if err != nil {
+			response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid company_id")
+			return
+		}
 	}
 	// Call to application handler
 	resp, errReq := applicationService.GetDeviceService().GetListDevices(
 		c,
 		&applicationModel.ListDevicesInput{
 			CompanyId: companyUuid,
-			Page:      req.Page,
-			Size:      req.Size,
+			Page:      pageInt,
+			Size:      sizeInt,
 			//
 			UserId:      userUuid,
 			Role:        userRole,
@@ -299,7 +298,7 @@ func (h *Handler) GetListDevices(c *gin.Context) {
 // @Param        request   body dto.UpdateDeviceRequest  true  "Request body update device"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/devices [put]
+// @Router       /v1/device [put]
 func (h *Handler) UpdateDeviceById(c *gin.Context) {
 	// Get req and parse
 	var req dto.UpdateDeviceRequest
@@ -378,7 +377,7 @@ func (h *Handler) UpdateDeviceById(c *gin.Context) {
 // @Param        request   body dto.UpdateLocationDeviceRequest  true  "Request body update device"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/devices/location [post]
+// @Router       /v1/device/location [post]
 func (h *Handler) UpdateLocationDevice(c *gin.Context) {
 	// Get req and parse
 	var req dto.UpdateLocationDeviceRequest
@@ -457,7 +456,7 @@ func (h *Handler) UpdateLocationDevice(c *gin.Context) {
 // @Param        request   body dto.UpdateNameDeviceRequest  true  "Request body update device"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/devices/name [post]
+// @Router       /v1/device/name [post]
 func (h *Handler) UpdateNameDevice(c *gin.Context) {
 	// Get req and parse
 	var req dto.UpdateNameDeviceRequest
@@ -510,7 +509,7 @@ func (h *Handler) UpdateNameDevice(c *gin.Context) {
 		},
 	)
 	if errReq != nil {
-		if errReq.ErrorClient == "" {
+		if errReq.ErrorSystem != nil {
 			response.ErrorResponse(c, 500, "Internal server error")
 			return
 		}
@@ -529,7 +528,7 @@ func (h *Handler) UpdateNameDevice(c *gin.Context) {
 // @Param        request   body dto.UpdateInfoDeviceRequest  true  "Request body update device"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/devices/info [post]
+// @Router       /v1/device/info [post]
 func (h *Handler) UpdateInfoDevice(c *gin.Context) {
 	// Get req and parse
 	var req dto.UpdateInfoDeviceRequest

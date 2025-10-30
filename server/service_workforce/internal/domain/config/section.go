@@ -57,6 +57,7 @@ type ServerSetting struct {
 // grpc server
 type GrpcSetting struct {
 	Network string `mapstructure:"network"`
+	Host    string `mapstructure:"host"`
 	Port    int    `mapstructure:"port"`
 	Tls     struct {
 		Enabled  bool   `mapstructure:"enabled"`
