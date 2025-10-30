@@ -20,6 +20,10 @@ func StartService() error {
 	if err := initLocalCache(); err != nil {
 		return err
 	}
+	// Initialize Grpc Client
+	if err := initClientGrpc(); err != nil {
+		return err
+	}
 	// Initialize connection to infrastructure
 	if err := initConnectionToInfrastructure(setting); err != nil {
 		return err
@@ -30,10 +34,6 @@ func StartService() error {
 	}
 	// Initialize application
 	if err := initApplication(); err != nil {
-		return err
-	}
-	// Initialize Grpc Client
-	if err := initClientGrpc(); err != nil {
 		return err
 	}
 	// Initialize Gin Engine

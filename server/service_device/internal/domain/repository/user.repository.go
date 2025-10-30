@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"context"
+
 	"github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/model"
 )
 
@@ -13,6 +14,7 @@ import (
 type IUserRepository interface {
 	UserPermissionDevice(ctx context.Context, input *model.UserPermissionDeviceInput) (bool, error)
 	UserExistsInCompany(ctx context.Context, input *model.UserExistsInCompanyInput) (bool, error)
+	GetCompanyIdOfUser(ctx context.Context, input *model.GetCompanyIdOfUserInput) (*model.GetCompanyIdOfUserOutput, error)
 }
 
 /**

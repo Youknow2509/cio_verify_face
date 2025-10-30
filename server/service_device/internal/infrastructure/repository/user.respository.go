@@ -19,9 +19,26 @@ type UserRepository struct {
 	db *database.Queries
 }
 
+// GetCompanyIdOfUser implements repository.IUserRepository.
+func (u *UserRepository) GetCompanyIdOfUser(ctx context.Context, input *model.GetCompanyIdOfUserInput) (*model.GetCompanyIdOfUserOutput, error) {
+	reps, err := u.db.GetIdCompanyByUserId(
+		ctx,
+		pgtype.UUID{Valid: true, Bytes: input.UserID},
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &model.GetCompanyIdOfUserOutput{
+		CompanyID: reps.Bytes,
+	}, nil
+}
+
 // UserPermissionDevice implements repository.IUserRepository.
 func (u *UserRepository) UserPermissionDevice(ctx context.Context, input *model.UserPermissionDeviceInput) (bool, error) {
-	ok, err := u.db.UserPermissionDevice(
+	_, err := u.db.UserPermissionDevice(
 		ctx,
 		database.UserPermissionDeviceParams{
 			DeviceID:   pgtype.UUID{Valid: true, Bytes: input.DeviceID},
@@ -34,7 +51,7 @@ func (u *UserRepository) UserPermissionDevice(ctx context.Context, input *model.
 		}
 		return false, err
 	}
-	return ok, nil
+	return true, nil
 }
 
 // UserExistsInCompany implements repository.IUserRepository.

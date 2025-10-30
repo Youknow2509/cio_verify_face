@@ -21,7 +21,7 @@ type DeviceRepository struct {
 
 // DeviceExist implements repository.IDeviceRepository.
 func (d *DeviceRepository) DeviceExist(ctx context.Context, input *model.DeviceExistInput) (bool, error) {
-	exist, err := d.db.CheckDeviceExist(
+	_, err := d.db.CheckDeviceExist(
 		ctx,
 		pgtype.UUID{Valid: true, Bytes: input.DeviceId},
 	)
@@ -31,7 +31,8 @@ func (d *DeviceRepository) DeviceExist(ctx context.Context, input *model.DeviceE
 		}
 		return false, err
 	}
-	return exist, nil
+
+	return true, nil
 }
 
 // CreateNewDevice implements repository.IDeviceRepository.

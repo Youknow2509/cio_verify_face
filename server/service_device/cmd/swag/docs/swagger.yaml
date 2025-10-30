@@ -40,20 +40,6 @@ definitions:
       error:
         type: string
     type: object
-  dto.ListDevicesRequest:
-    properties:
-      company_id:
-        type: string
-      page:
-        minimum: 1
-        type: integer
-      size:
-        maximum: 100
-        minimum: 1
-        type: integer
-    required:
-    - company_id
-    type: object
   dto.ResponseData:
     properties:
       code:
@@ -161,7 +147,7 @@ info:
   title: Swagger Chat Service Auth REST API
   version: "1.0"
 paths:
-  /api/v1/devices:
+  /v1/device:
     get:
       consumes:
       - application/json
@@ -172,12 +158,16 @@ paths:
         name: authorization
         required: true
         type: string
-      - description: Request body list devices
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.ListDevicesRequest'
+      - description: Page number
+        format: int
+        in: query
+        name: page
+        type: string
+      - description: Page size
+        format: int
+        in: query
+        name: size
+        type: string
       produces:
       - application/json
       responses:
@@ -252,7 +242,7 @@ paths:
       summary: Update device by ID
       tags:
       - Core Device
-  /api/v1/devices/{id}:
+  /v1/device/{device_id}:
     delete:
       consumes:
       - application/json
@@ -265,7 +255,7 @@ paths:
         type: string
       - description: Device ID
         in: path
-        name: id
+        name: device_id
         required: true
         type: string
       produces:
@@ -294,7 +284,7 @@ paths:
         type: string
       - description: Device ID
         in: path
-        name: id
+        name: device_id
         required: true
         type: string
       produces:
@@ -311,7 +301,7 @@ paths:
       summary: Delete device by ID
       tags:
       - Core Device
-  /api/v1/devices/info:
+  /v1/device/info:
     post:
       consumes:
       - application/json
@@ -341,7 +331,7 @@ paths:
             $ref: '#/definitions/dto.ErrResponseData'
       tags:
       - Core Device
-  /api/v1/devices/location:
+  /v1/device/location:
     post:
       consumes:
       - application/json
@@ -372,7 +362,7 @@ paths:
       summary: Update location
       tags:
       - Core Device
-  /api/v1/devices/name:
+  /v1/device/name:
     post:
       consumes:
       - application/json
