@@ -53,10 +53,17 @@ export function Sidebar({ className = '' }: SidebarProps) {
     </svg>
   );
 
+  const FaceRegIcon = () => (
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
+      <path d="M10 2a4 4 0 00-4 4v1H5a3 3 0 00-3 3v3a3 3 0 003 3h10a3 3 0 003-3v-3a3 3 0 00-3-3h-1V6a4 4 0 00-4-4zM8 6a2 2 0 114 0v1H8V6zM5 11a3 3 0 006 0H5z" />
+    </svg>
+  );
+
   const menuItems = [
     { to: '/dashboard', label: 'Dashboard', icon: DashboardIcon },
     { to: '/employees', label: 'Nhân viên', icon: EmployeesIcon },
     { to: '/devices', label: 'Thiết bị', icon: DevicesIcon },
+    { to: '/face-registration', label: 'Đăng ký khuôn mặt', icon: FaceRegIcon },
     { to: '/attendance', label: 'Chấm công', icon: AttendanceIcon },
     { to: '/reports', label: 'Báo cáo', icon: ReportsIcon },
     { to: '/shifts', label: 'Ca làm việc', icon: ShiftsIcon },

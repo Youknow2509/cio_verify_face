@@ -184,7 +184,7 @@ export default function Employees() {
       render: (_, record) => (
         <div className={styles.actions}>
           <Link 
-            to={`/employees/${record.id}`}
+            to={`/employees/${record.id}/edit`}
             className={styles.actionButton}
             aria-label={`Edit employee ${record.name}`}
           >

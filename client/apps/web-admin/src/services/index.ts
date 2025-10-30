@@ -4,6 +4,7 @@ export {
   createEmployee,
   updateEmployee,
   deleteEmployee,
+  getEmployee,
   getEmployeeFaceData,
   uploadFaceData,
   deleteFaceData

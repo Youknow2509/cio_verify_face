@@ -8,7 +8,8 @@ import Spinner from 'react-bootstrap/Spinner';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useUi } from '@/app/providers/UiProvider';
 import { Page } from '@/ui/Page';
-import { fetchEmployeeById, updateEmployeeById } from '@/services/api/employees';
+import { getEmployee, updateEmployee } from '@/services';
+import { clearAuthToken, HttpError } from '@/services/http';
 import type { Employee, UpdateEmployeePayload } from '@/types';
 
 interface FormState {
@@ -50,6 +51,7 @@ export default function EmployeeEditPage() {
     active: true,
   });
   const [formErrors, setFormErrors] = useState<FormErrors>({});
+  const [original, setOriginal] = useState<Employee | null>(null);
 
   useEffect(() => {
     if (!id) {
@@ -62,15 +64,24 @@ export default function EmployeeEditPage() {
     const loadEmployee = async () => {
       try {
         setLoading(true);
-        const employee = await fetchEmployeeById(id);
-        if (!isMounted) {
+        const res = await getEmployee(id);
+        if (!isMounted) return;
+        if (res.error) {
+          showToast({ variant: 'warning', title: 'Không tìm thấy', message: res.error });
+          navigate('/employees', { replace: true });
           return;
         }
+        const employee = res.data;
         setFormState(toFormState(employee));
+        setOriginal(employee);
       } catch (error) {
-        if (!isMounted) {
+        if (!isMounted) return;
+        if (error instanceof HttpError && error.status === 401) {
+          clearAuthToken();
+          navigate('/login', { replace: true });
           return;
         }
+
         showToast({
           variant: 'danger',
           title: 'Lỗi',
@@ -78,9 +89,7 @@ export default function EmployeeEditPage() {
         });
         navigate('/employees', { replace: true });
       } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+        if (isMounted) setLoading(false);
       }
     };
 
@@ -90,6 +99,18 @@ export default function EmployeeEditPage() {
       isMounted = false;
     };
   }, [id, navigate, showToast]);
+
+  const isDirty = useMemo(() => {
+    if (!original) return true;
+    return (
+      original.code !== formState.code ||
+      original.name !== formState.name ||
+      original.email !== formState.email ||
+      (original.department ?? '') !== (formState.department ?? '') ||
+      (original.position ?? '') !== (formState.position ?? '') ||
+      !!original.active !== !!formState.active
+    );
+  }, [original, formState]);
 
   const validateForm = useCallback(() => {
     const errors: FormErrors = {};
@@ -138,7 +159,11 @@ export default function EmployeeEditPage() {
           position: formState.position.trim() || undefined,
           active: formState.active,
         };
-        await updateEmployeeById(id, payload);
+        const res = await updateEmployee(id, payload);
+        if (res.error) {
+          showToast({ variant: 'danger', title: 'Lỗi', message: res.error });
+          return;
+        }
         showToast({
           variant: 'success',
           title: 'Thành công',
@@ -270,7 +295,7 @@ export default function EmployeeEditPage() {
                 <Button variant="outline-secondary" onClick={handleCancel} disabled={submitting}>
                   Hủy
                 </Button>
-                <Button type="submit" variant="primary" disabled={submitting}>
+                <Button type="submit" variant="primary" disabled={submitting || !isDirty}>
                   {submitting ? (
                     <span className="d-inline-flex align-items-center gap-2">
                       <Spinner animation="border" size="sm" role="status" aria-hidden />

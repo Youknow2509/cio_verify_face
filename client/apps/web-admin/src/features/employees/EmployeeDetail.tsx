@@ -6,10 +6,11 @@ import Col from 'react-bootstrap/Col';
 import Row from 'react-bootstrap/Row';
 import Spinner from 'react-bootstrap/Spinner';
 import Stack from 'react-bootstrap/Stack';
+import Form from 'react-bootstrap/Form';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useUi } from '@/app/providers/UiProvider';
 import { Page } from '@/ui/Page';
-import { fetchEmployeeById } from '@/services/api/employees';
+import { getEmployee, updateEmployee } from '@/services';
 import { clearAuthToken, HttpError } from '@/services/http';
 import { formatDateTime } from '@/lib/format';
 import type { Employee } from '@/types';
@@ -18,15 +19,34 @@ export default function EmployeeDetail() {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { showToast } = useUi();
+
   const [employee, setEmployee] = useState<Employee | null>(null);
   const [loading, setLoading] = useState(true);
   const [reloading, setReloading] = useState(false);
 
+  // Edit state
+  const [isEditing, setIsEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<Partial<Employee>>({});
+
   const loadEmployee = useCallback(async (employeeId: string) => {
     try {
       setLoading(true);
-      const result = await fetchEmployeeById(employeeId);
-      setEmployee(result);
+      const res = await getEmployee(employeeId);
+      if (res.error) {
+        showToast({ variant: 'warning', title: 'Không tìm thấy', message: 'Nhân viên không tồn tại hoặc đã bị xóa' });
+        navigate('/employees', { replace: true });
+        return;
+      }
+
+      setEmployee(res.data);
+      setForm({
+        name: res.data.name,
+        email: res.data.email,
+        department: res.data.department,
+        position: res.data.position,
+        active: res.data.active,
+      });
     } catch (error) {
       if (error instanceof HttpError) {
         if (error.status === 401) {
@@ -34,23 +54,9 @@ export default function EmployeeDetail() {
           navigate('/login', { replace: true });
           return;
         }
-
-        if (error.status === 404) {
-          showToast({
-            variant: 'warning',
-            title: 'Không tìm thấy',
-            message: 'Nhân viên không tồn tại hoặc đã bị xóa',
-          });
-          navigate('/employees', { replace: true });
-          return;
-        }
       }
 
-      showToast({
-        variant: 'danger',
-        title: 'Lỗi',
-        message: 'Không thể tải chi tiết nhân viên',
-      });
+      showToast({ variant: 'danger', title: 'Lỗi', message: 'Không thể tải chi tiết nhân viên' });
     } finally {
       setLoading(false);
       setReloading(false);
@@ -66,19 +72,42 @@ export default function EmployeeDetail() {
     void loadEmployee(id);
   }, [id, loadEmployee, navigate]);
 
-  const breadcrumb = useMemo(() => (
-    [
-      { label: 'Trang chủ', path: '/dashboard' },
-      { label: 'Nhân viên', path: '/employees' },
-      { label: employee ? employee.name : 'Chi tiết' },
-    ]
-  ), [employee]);
+  const breadcrumb = useMemo(() => [
+    { label: 'Trang chủ', path: '/dashboard' },
+    { label: 'Nhân viên', path: '/employees' },
+    { label: employee ? employee.name : 'Chi tiết' },
+  ], [employee]);
 
   const handleRefresh = useCallback(() => {
     if (!id) return;
     setReloading(true);
     void loadEmployee(id);
   }, [id, loadEmployee]);
+
+  const handleSave = useCallback(async () => {
+    if (!id) return;
+    setSaving(true);
+    try {
+      const res = await updateEmployee(id, form);
+      if (res.error) {
+        showToast({ variant: 'danger', title: 'Lỗi', message: res.error });
+        return;
+      }
+
+      setEmployee(res.data);
+      setIsEditing(false);
+      showToast({ variant: 'success', title: 'Đã lưu', message: 'Thông tin nhân viên đã được cập nhật' });
+    } catch (err) {
+      if (err instanceof HttpError && err.status === 401) {
+        clearAuthToken();
+        navigate('/login', { replace: true });
+        return;
+      }
+      showToast({ variant: 'danger', title: 'Lỗi', message: 'Không thể lưu thay đổi' });
+    } finally {
+      setSaving(false);
+    }
+  }, [id, form, navigate, showToast]);
 
   const pageActions = useMemo(() => (
     <Stack direction="horizontal" gap={2}>
@@ -95,14 +124,47 @@ export default function EmployeeDetail() {
           </span>
         )}
       </Button>
-      {id && (
-        <Button variant="primary" onClick={() => navigate(`/employees/${id}/edit`)}>
+
+      {id && !isEditing && (
+        <Button variant="primary" onClick={() => setIsEditing(true)}>
           <i className="bi bi-pencil-square me-2" aria-hidden />
           Chỉnh sửa
         </Button>
       )}
+
+      {isEditing && (
+        <>
+          <Button variant="success" onClick={handleSave} disabled={saving}>
+            {saving ? (
+              <span className="d-inline-flex align-items-center gap-2">
+                <Spinner animation="border" size="sm" role="status" aria-hidden />
+                Lưu
+              </span>
+            ) : (
+              <span>
+                <i className="bi bi-save me-2" />
+                Lưu
+              </span>
+            )}
+          </Button>
+          <Button variant="outline-secondary" onClick={() => {
+            // cancel edits
+            setForm({
+              name: employee?.name,
+              email: employee?.email,
+              department: employee?.department,
+              position: employee?.position,
+              active: employee?.active,
+            });
+            setIsEditing(false);
+          }} disabled={saving}>
+            Hủy
+          </Button>
+        </>
+      )}
+
     </Stack>
-  ), [handleRefresh, id, loading, reloading]);
+  ), [handleRefresh, id, loading, reloading, isEditing, saving, handleSave, employee]);
 
   const renderContent = () => {
     if (loading) {
@@ -116,9 +178,7 @@ export default function EmployeeDetail() {
 
     if (!employee) {
       return (
-        <div className="py-5 text-center text-secondary">
-          Không có dữ liệu nhân viên để hiển thị.
-        </div>
+        <div className="py-5 text-center text-secondary">Không có dữ liệu nhân viên để hiển thị.</div>
       );
     }
 
@@ -138,14 +198,32 @@ export default function EmployeeDetail() {
               </Col>
               <Col>
                 <Stack gap={1}>
-                  <h2 className="fs-4 mb-0">{employee.name}</h2>
-                  <div className="text-secondary">Mã nhân viên: <strong>{employee.code}</strong></div>
-                  <div className="text-secondary">Email: <strong>{employee.email}</strong></div>
-                  <div>
-                    <Badge bg={employee.active ? 'success' : 'secondary'}>
-                      {employee.active ? 'Đang hoạt động' : 'Tạm dừng'}
-                    </Badge>
-                  </div>
+                  {!isEditing ? (
+                    <>
+                      <h2 className="fs-4 mb-0">{employee.name}</h2>
+                      <div className="text-secondary">Mã nhân viên: <strong>{employee.code}</strong></div>
+                      <div className="text-secondary">Email: <strong>{employee.email}</strong></div>
+                      <div>
+                        <Badge bg={employee.active ? 'success' : 'secondary'}>
+                          {employee.active ? 'Đang hoạt động' : 'Tạm dừng'}
+                        </Badge>
+                      </div>
+                    </>
+                  ) : (
+                    <Form>
+                      <Form.Group className="mb-2" controlId="name">
+                        <Form.Label className="small text-uppercase">Họ và tên</Form.Label>
+                        <Form.Control type="text" value={form.name ?? ''} onChange={e => setForm(prev => ({ ...prev, name: e.target.value }))} />
+                      </Form.Group>
+                      <Form.Group className="mb-2" controlId="email">
+                        <Form.Label className="small text-uppercase">Email</Form.Label>
+                        <Form.Control type="email" value={form.email ?? ''} onChange={e => setForm(prev => ({ ...prev, email: e.target.value }))} />
+                      </Form.Group>
+                      <Form.Group className="mb-2" controlId="active">
+                        <Form.Check type="checkbox" label="Đang hoạt động" checked={!!form.active} onChange={e => setForm(prev => ({ ...prev, active: e.target.checked }))} />
+                      </Form.Group>
+                    </Form>
+                  )}
                 </Stack>
               </Col>
               <Col xs={12} md="auto">
@@ -173,16 +251,10 @@ export default function EmployeeDetail() {
                     <InfoRow label="Chức vụ" value={employee.position ?? 'Chưa cập nhật'} />
                   </Col>
                   <Col md={6}>
-                    <InfoRow
-                      label="Ngày tạo"
-                      value={formatDateTime(employee.createdAt)}
-                    />
+                    <InfoRow label="Ngày tạo" value={formatDateTime(employee.createdAt)} />
                   </Col>
                   <Col md={6}>
-                    <InfoRow
-                      label="Cập nhật lần cuối"
-                      value={formatDateTime(employee.updatedAt)}
-                    />
+                    <InfoRow label="Cập nhật lần cuối" value={formatDateTime(employee.updatedAt)} />
                   </Col>
                 </Row>
               </Card.Body>
@@ -196,20 +268,24 @@ export default function EmployeeDetail() {
                   <Button
                     variant="outline-primary"
                     onClick={() => {
-                      if (id) {
-                        navigate(`/employees/${id}/edit`);
-                      } else {
-                        navigate('/employees');
-                      }
+                      if (id) navigate(`/employees/${id}/edit`);
+                      else navigate('/employees');
                     }}
                   >
                     <i className="bi bi-pencil me-2" aria-hidden />
                     Chỉnh sửa thông tin
                   </Button>
                   <Button
-                    variant="outline-secondary"
-                    onClick={() => navigate('/employees')}
+                    variant="outline-success"
+                    onClick={() => {
+                      if (id) navigate(`/face-registration?employeeId=${id}`);
+                      else navigate('/face-registration');
+                    }}
                   >
+                    <i className="bi bi-person-plus me-2" aria-hidden />
+                    Đăng ký khuôn mặt
+                  </Button>
+                  <Button variant="outline-secondary" onClick={() => navigate('/employees')}>
                     <i className="bi bi-arrow-left me-2" aria-hidden />
                     Quay lại danh sách
                   </Button>
