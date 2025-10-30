@@ -308,7 +308,7 @@ func (h *AuthBaseHandler) RefreshToken(c *gin.Context) {
 // @Param        Authorization header string true "Authorization Bearer token"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /v1/auth/me [post]
+// @Router       /v1/auth/me [get]
 func (h *AuthBaseHandler) GetMyInfo(c *gin.Context) {
 	// Get data auth from context
 	userIdStr, _, role, exists := utilsContext.GetSessionFromContext(c)

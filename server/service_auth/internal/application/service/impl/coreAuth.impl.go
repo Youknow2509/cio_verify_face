@@ -380,7 +380,7 @@ func (c *CoreAuthService) LoginAdmin(ctx context.Context, input *applicationMode
 		return nil, errors.GetError(errors.UserNotFoundErrorCode)
 	}
 	// Check role
-	if response.Role != domainModel.RoleAdmin {
+	if response.Role != domainModel.RoleManager {
 		// Role not match
 		return nil, errors.GetError(errors.UserNotFoundErrorCode)
 	}
