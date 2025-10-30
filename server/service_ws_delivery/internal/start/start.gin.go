@@ -2,11 +2,12 @@ package start
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	libsMiddleware "github.com/youknow2509/cio_verify_face/server/service_ws_delivery/internal/infrastructure/middleware"
 	"github.com/youknow2509/cio_verify_face/server/service_ws_delivery/internal/global"
+	libsMiddleware "github.com/youknow2509/cio_verify_face/server/service_ws_delivery/internal/infrastructure/middleware"
 	httpRouter "github.com/youknow2509/cio_verify_face/server/service_ws_delivery/internal/interfaces/http/routes"
 	wsRouter "github.com/youknow2509/cio_verify_face/server/service_ws_delivery/internal/interfaces/ws/router"
 )
@@ -36,7 +37,7 @@ func initGinRouter() error {
 
 func initRouter(ginEngine *gin.Engine) error {
 	// Global middleware
-	ginEngine.Use(cors.Default()) // TODO: customize CORS settings - Now allow all origins
+	ginEngine.Use(getConfigCors()) // TODO: customize CORS settings - Now allow all origins
 	ginEngine.Use(libsMiddleware.GetValidateMiddleware().Apply())
 	// Initialize ws routes
 	wsRouter.GetBaseRouter().Initialize(ginEngine)
@@ -44,4 +45,16 @@ func initRouter(ginEngine *gin.Engine) error {
 	apiGroup := ginEngine.Group("/api")
 	httpRouter.GetRouteManager().HealthRoute.InitHealthRoute(apiGroup)
 	return nil
+}
+
+func getConfigCors() gin.HandlerFunc {
+	corsConfig := cors.Config{
+		AllowAllOrigins:  true,
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+		AllowHeaders:     []string{"*"}, // allow all request headers
+		ExposeHeaders:    []string{"Content-Length", "Content-Type", "Authorization"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}
+	return cors.New(corsConfig)
 }
