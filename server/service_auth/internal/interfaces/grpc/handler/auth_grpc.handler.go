@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"errors"
+
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/application/model"
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/application/service"
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/logger"
@@ -99,7 +100,6 @@ func (a *AuthGRPCHandler) ParseUserToken(ctx context.Context, req *pb.ParseUserT
 	if err != nil {
 		return nil, status.Errorf(codes.Unauthenticated, "parse user token failed: %v", err)
 	}
-
 	resp, err := toPbParseUserTokenResponse(out)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "response mapping failed: %v", err)
@@ -185,6 +185,8 @@ func toPbParseUserTokenResponse(out *model.ParseTokenUserOutput) (*pb.ParseUserT
 	return &pb.ParseUserTokenResponse{
 		UserId: out.UserId,
 		Roles:  int32(out.Role),
+		TokenId: out.TokenId,
+		ExpriresAt: out.Expires.Unix(),
 	}, nil
 }
 
