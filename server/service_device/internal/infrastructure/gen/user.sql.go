@@ -29,12 +29,25 @@ func (q *Queries) CheckUserExistInCompany(ctx context.Context, arg CheckUserExis
 	return column_1, err
 }
 
+const getIdCompanyByUserId = `-- name: GetIdCompanyByUserId :one
+SELECT company_id
+FROM employees
+WHERE employee_id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetIdCompanyByUserId(ctx context.Context, employeeID pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getIdCompanyByUserId, employeeID)
+	var company_id pgtype.UUID
+	err := row.Scan(&company_id)
+	return company_id, err
+}
+
 const userPermissionDevice = `-- name: UserPermissionDevice :one
-SELECT EXISTS (
-    SELECT 1
-    FROM devices d JOIN employees e ON d.company_id = e.company_id
+SELECT e.employee_id
+FROM devices d JOIN employees e ON d.company_id = e.company_id
 WHERE e.employee_id = $1 AND d.device_id = $2
-) AS exist
+LIMIT 1
 `
 
 type UserPermissionDeviceParams struct {
@@ -42,9 +55,9 @@ type UserPermissionDeviceParams struct {
 	DeviceID   pgtype.UUID
 }
 
-func (q *Queries) UserPermissionDevice(ctx context.Context, arg UserPermissionDeviceParams) (bool, error) {
+func (q *Queries) UserPermissionDevice(ctx context.Context, arg UserPermissionDeviceParams) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, userPermissionDevice, arg.EmployeeID, arg.DeviceID)
-	var exist bool
-	err := row.Scan(&exist)
-	return exist, err
+	var employee_id pgtype.UUID
+	err := row.Scan(&employee_id)
+	return employee_id, err
 }

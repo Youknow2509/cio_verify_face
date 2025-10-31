@@ -2,6 +2,7 @@ package start
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -60,13 +61,14 @@ func initRouter(ginEngine *gin.Engine) error {
 	return nil
 }
 
-func getConfigCors() gin.HandlerFunc{
+func getConfigCors() gin.HandlerFunc {
 	corsConfig := cors.Config{
 		AllowAllOrigins:  true,
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Length", "Content-Type", "Authorization", "Bearer"},
-		ExposeHeaders:    []string{"Content-Length"},
+		AllowHeaders:     []string{"*"}, // allow all request headers
+		ExposeHeaders:    []string{"Content-Length", "Content-Type", "Authorization"},
 		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
 	}
 	return cors.New(corsConfig)
 }

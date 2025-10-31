@@ -225,7 +225,7 @@ paths:
       tags:
       - Core Auth
   /v1/auth/me:
-    post:
+    get:
       consumes:
       - application/json
       description: User get base info

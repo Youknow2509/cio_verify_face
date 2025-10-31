@@ -12,5 +12,10 @@ func initApplication() error {
 	if err := applicationService.SetCoreAuthService(coreAuthServiceImpl); err != nil {
 		return err
 	}
+	// Init ITokenService
+	tokenServiceImpl := applicationServiceImpl.NewTokenService()
+	if err := applicationService.SetTokenService(tokenServiceImpl); err != nil {
+		return err
+	}
 	return nil
 }

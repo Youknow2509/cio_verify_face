@@ -8,8 +8,17 @@ type UserPermissionDeviceInput struct {
 	UserID   uuid.UUID `json:"user_id"`
 }
 
-// user exists in company 
+// user exists in company
 type UserExistsInCompanyInput struct {
 	CompanyID uuid.UUID `json:"company_id"`
 	UserID    uuid.UUID `json:"user_id"`
+}
+
+// for GetCompanyIdOfUser
+type GetCompanyIdOfUserInput struct {
+	UserID uuid.UUID `json:"user_id"`
+}
+
+type GetCompanyIdOfUserOutput struct {
+	CompanyID uuid.UUID `json:"company_id"`
 }

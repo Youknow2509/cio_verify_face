@@ -16,7 +16,7 @@ type HttpRouterManager struct {
  * Initialize routes
  */
 func (r *HttpRouterManager) InitRoutes(group *gin.RouterGroup) {
-	shiftRouterV1 := group.Group("/shift")
+	shiftRouterV1 := group.Group("/v1/shift")
 	shiftRouterV1.Use(infraMiddleware.GetAuthAdminAccessTokenJwtMiddleware().Apply())
 	{
 		shiftRouterV1.POST("", handler.NewHandler().CreateShift)       // Tao ca lam viec
@@ -25,7 +25,7 @@ func (r *HttpRouterManager) InitRoutes(group *gin.RouterGroup) {
 		shiftRouterV1.DELETE("/:id", handler.NewHandler().DeleteShift) // Xoa ca lam viec
 	}
 
-	shiftEmployeeRouterV1 := group.Group("/employee/shift")
+	shiftEmployeeRouterV1 := group.Group("/v1/employee/shift")
 	shiftEmployeeRouterV1.Use(infraMiddleware.GetAuthAdminAccessTokenJwtMiddleware().Apply())
 	{
 		shiftEmployeeRouterV1.POST("", handler.NewHandler().GetShiftForUserWithEffectiveDate)                 // Get shift for user with effective date

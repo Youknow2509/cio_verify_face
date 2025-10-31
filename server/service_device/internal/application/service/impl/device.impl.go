@@ -33,7 +33,7 @@ func (d *DeviceService) UpdateInfoDevice(ctx context.Context, input *model.Updat
 			ErrorClient: "System is busy now. Please try again later.",
 		}
 	}
-	if input.Role >= 1 {
+	if input.Role > 1 {
 		return &applicationError.Error{
 			ErrorSystem: nil,
 			ErrorClient: "You don't have permission to update device info.",
@@ -86,10 +86,7 @@ func (d *DeviceService) UpdateInfoDevice(ctx context.Context, input *model.Updat
 		}
 	}
 
-	return &applicationError.Error{
-		ErrorSystem: nil,
-		ErrorClient: "",
-	}
+	return nil
 }
 
 // UpdateLocationDevice implements service.IDeviceService.
@@ -103,7 +100,7 @@ func (d *DeviceService) UpdateLocationDevice(ctx context.Context, input *model.U
 			ErrorClient: "System is busy now. Please try again later.",
 		}
 	}
-	if input.Role >= 1 {
+	if input.Role > 1 {
 		return &applicationError.Error{
 			ErrorSystem: nil,
 			ErrorClient: "You don't have permission to update device info.",
@@ -159,10 +156,7 @@ func (d *DeviceService) UpdateLocationDevice(ctx context.Context, input *model.U
 			ErrorClient: "System is busy now. Please try again later.",
 		}
 	}
-	return &applicationError.Error{
-		ErrorSystem: nil,
-		ErrorClient: "",
-	}
+	return nil
 }
 
 // UpdateNameDevice implements service.IDeviceService.
@@ -176,7 +170,7 @@ func (d *DeviceService) UpdateNameDevice(ctx context.Context, input *model.Updat
 			ErrorClient: "System is busy now. Please try again later.",
 		}
 	}
-	if input.Role >= 1 {
+	if input.Role > 1 {
 		return &applicationError.Error{
 			ErrorSystem: nil,
 			ErrorClient: "You don't have permission to update device info.",
@@ -231,10 +225,7 @@ func (d *DeviceService) UpdateNameDevice(ctx context.Context, input *model.Updat
 			ErrorClient: "System is busy now. Please try again later.",
 		}
 	}
-	return &applicationError.Error{
-		ErrorSystem: nil,
-		ErrorClient: "",
-	}
+	return nil
 }
 
 // CreateNewDevice implements service.IDeviceService.
@@ -248,7 +239,7 @@ func (d *DeviceService) CreateNewDevice(ctx context.Context, input *model.Create
 			ErrorClient: "System is busy now. Please try again later.",
 		}
 	}
-	if input.Role >= 1 {
+	if input.Role > 1 {
 		return nil, &applicationError.Error{
 			ErrorSystem: nil,
 			ErrorClient: "You don't have permission to update device info.",
@@ -326,7 +317,7 @@ func (d *DeviceService) DeleteDeviceById(ctx context.Context, input *model.Delet
 			ErrorClient: "System is busy now. Please try again later.",
 		}
 	}
-	if input.Role >= 1 {
+	if input.Role > 1 {
 		return &applicationError.Error{
 			ErrorSystem: nil,
 			ErrorClient: "You don't have permission to update device info.",
@@ -380,16 +371,13 @@ func (d *DeviceService) DeleteDeviceById(ctx context.Context, input *model.Delet
 			ErrorClient: "System is busy now. Please try again later.",
 		}
 	}
-	return &applicationError.Error{
-		ErrorSystem: nil,
-		ErrorClient: "",
-	}
+	return nil
 }
 
 // GetDeviceById implements service.IDeviceService.
 func (d *DeviceService) GetDeviceById(ctx context.Context, input *model.GetDeviceByIdInput) (*model.GetDeviceByIdOutput, *applicationError.Error) {
 	// Check user have permission to get device info
-	if input.Role >= 1 {
+	if input.Role > 1 {
 		return nil, &applicationError.Error{
 			ErrorSystem: nil,
 			ErrorClient: "You don't have permission to get device info.",
@@ -408,10 +396,12 @@ func (d *DeviceService) GetDeviceById(ctx context.Context, input *model.GetDevic
 			ErrorClient: "System is busy now. Please try again later.",
 		}
 	}
+	var unMarshal bool = false
 	if err := json.Unmarshal([]byte(deviceInfoCacheStr), &deviceInfoCache); err != nil {
 		global.Logger.Error("Error when unmarshal device info from cache", "err", err)
+		unMarshal = true
 	}
-	if deviceInfoCache.DeviceId == input.DeviceId {
+	if unMarshal {
 		deviceInfo, err := deviceRepo.DeviceInfoBase(
 			ctx,
 			&domainModel.DeviceInfoBaseInput{
@@ -454,7 +444,7 @@ func (d *DeviceService) GetDeviceById(ctx context.Context, input *model.GetDevic
 			ErrorClient: "System is busy now. Please try again later.",
 		}
 	}
-	if !userInfo || input.Role != 0 {
+	if !userInfo && input.Role == domainModel.RoleManager {
 		return nil, &applicationError.Error{
 			ErrorSystem: nil,
 			ErrorClient: "You don't have permission to get device info.",
@@ -474,11 +464,35 @@ func (d *DeviceService) GetDeviceById(ctx context.Context, input *model.GetDevic
 // GetListDevices implements service.IDeviceService.
 func (d *DeviceService) GetListDevices(ctx context.Context, input *model.ListDevicesInput) (*model.ListDevicesOutput, *applicationError.Error) {
 	// Check user have permission to get device info
-	if input.Role >= 1 {
+	if input.Role > 1 {
 		return nil, &applicationError.Error{
 			ErrorSystem: nil,
 			ErrorClient: "You don't have permission to get device info.",
 		}
+	}
+	// Get company if not input
+	if input.CompanyId == uuid.Nil || input.CompanyId.String() == "" {
+		userRepo, _ := domainRepo.GetUserRepository()
+		companyInfo, err := userRepo.GetCompanyIdOfUser(
+			ctx,
+			&domainModel.GetCompanyIdOfUserInput{
+				UserID: input.UserId,
+			},
+		)
+		if err != nil {
+			global.Logger.Error("Error when get company id of user", "err", err)
+			return nil, &applicationError.Error{
+				ErrorSystem: err,
+				ErrorClient: "System is busy now. Please try again later.",
+			}
+		}
+		if companyInfo == nil {
+			return nil, &applicationError.Error{
+				ErrorSystem: nil,
+				ErrorClient: "you don't have permission to get device info.",
+			}
+		}
+		input.CompanyId = companyInfo.CompanyID
 	}
 	// Get device info
 	deviceRepo, _ := domainRepo.GetDeviceRepository()
@@ -495,10 +509,12 @@ func (d *DeviceService) GetListDevices(ctx context.Context, input *model.ListDev
 			ErrorClient: "System is busy now. Please try again later.",
 		}
 	}
+	var unMarshal bool = false
 	if err := json.Unmarshal([]byte(deviceInfoCacheStr), &deviceInfoCache); err != nil {
 		global.Logger.Error("Error when unmarshal device info from cache", "err", err)
+		unMarshal = true
 	}
-	if len(deviceInfoCache.Devices) > 0 {
+	if len(deviceInfoCache.Devices) == 0 || unMarshal {
 		deviceInfo, err := deviceRepo.ListDeviceInCompany(
 			ctx,
 			&domainModel.ListDeviceInCompanyInput{
@@ -538,7 +554,7 @@ func (d *DeviceService) GetListDevices(ctx context.Context, input *model.ListDev
 		ctx,
 		&domainModel.UserExistsInCompanyInput{
 			UserID:    input.UserId,
-			CompanyID: deviceInfoCache.Devices[0].CompanyId,
+			CompanyID: input.CompanyId,
 		},
 	)
 	if err != nil {

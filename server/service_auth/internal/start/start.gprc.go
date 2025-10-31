@@ -1,11 +1,9 @@
 package start
 
 import (
-	"context"
 	"fmt"
 	"net"
 	"os"
-	"time"
 
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/application/service"
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/logger"
@@ -23,7 +21,8 @@ func initServerGrpc() error {
 
 	// Initialize the gRPC server
 	lis, err := net.Listen(
-		"tcp", fmt.Sprintf(":%d", config.Port),
+		config.Network,
+		fmt.Sprintf("%s:%d", config.Host, config.Port),
 	)
 	if err != nil {
 		global.Logger.Error("failed to listen", "error", err)
@@ -57,38 +56,6 @@ func initServerGrpc() error {
 		opts = []grpc.ServerOption{grpc.Creds(creds)}
 	}
 
-	// Add middleware interceptors
-	loggerService := logger.GetLogger()
-
-	// Recovery interceptor
-	recoveryInterceptor := func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		defer func() {
-			if r := recover(); r != nil {
-				loggerService.Error("gRPC handler panicked", "method", info.FullMethod, "panic", r)
-			}
-		}()
-		return handler(ctx, req)
-	}
-
-	// Logging interceptor
-	loggingInterceptor := func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (interface{}, error) {
-		start := time.Now()
-		loggerService.Info("gRPC request started", "method", info.FullMethod)
-		resp, err := handler(ctx, req)
-		duration := time.Since(start)
-		if err != nil {
-			loggerService.Error("gRPC request failed", "method", info.FullMethod, "duration", duration.String(), "error", err.Error())
-		} else {
-			loggerService.Info("gRPC request completed", "method", info.FullMethod, "duration", duration.String())
-		}
-		return resp, err
-	}
-
-	// Chain interceptors using ChainUnaryInterceptor
-	opts = append(opts, grpc.ChainUnaryInterceptor(
-		recoveryInterceptor,
-		loggingInterceptor,
-	)) // init server
 	grpcServer := grpc.NewServer(opts...)
 
 	// Get services
