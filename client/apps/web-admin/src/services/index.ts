@@ -1,43 +1,44 @@
-// Employee Services
-export {
-  getEmployees,
-  createEmployee,
-  updateEmployee,
-  deleteEmployee,
-  getEmployee,
-  getEmployeeFaceData,
-  uploadFaceData,
-  deleteFaceData
-} from '@/services/mock/employees';
+/**
+ * Services Module
+ * 
+ * Main entry point for all services:
+ * - API services (src/services/api/)
+ * - HTTP client (src/services/http.ts)
+ * - Error handling (src/services/error-handler.ts)
+ * - Mock services (src/services/mock/) - for fallback/testing
+ */
 
-// Auth Services  
-export {
-  login,
-  logout,
-  refreshToken,
-  getCurrentUser
-} from '@/services/mock/auth';
+// === API Services ===
+// These are the main services to use for API calls
 
-// Device Services
-export {
-  getDevices,
-  createDevice,
-  updateDevice,
-  deleteDevice,
-  syncDevice
-} from '@/services/mock/devices';
+export * from '@/services/api';
+export { http, setAuthToken, clearAuthToken } from '@/services/http';
+export type { RequestConfig, HttpError } from '@/services/http';
 
-// Attendance Services
+// === Error Handling ===
 export {
-  getAttendanceRecords,
-  getEmployeeAttendance,
-  getAttendanceChart
-} from '@/services/mock/attendance';
+  handleApiError,
+  isAuthError,
+  isValidationError,
+  isNotFoundError,
+  isServerError,
+  getUserFriendlyMessage,
+  type ErrorInfo
+} from '@/services/error-handler';
 
-// Shift Services
+// === HTTP Interceptor ===
 export {
-  getShifts,
-  createShift,
-  updateShift,
-  deleteShift
-} from '@/services/mock/shifts';
+  configureHttpInterceptor,
+  logRequest,
+  logResponse,
+  logError,
+  isRetryableError,
+  getRetryDelay,
+  sleep,
+  type InterceptorConfig
+} from '@/services/http-interceptor';
+
+// === Mock Services (Legacy) ===
+// Import from these only for testing/fallback scenarios
+// Note: Mock services are deprecated, use API services above
+export * as mockServices from './mock';

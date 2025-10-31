@@ -1,97 +1,74 @@
-# ⚡ Quick Start Guide
+# ⚡ Quick Start
 
-Hướng dẫn nhanh để chạy Face Attendance Web Admin.
+## 3 Bước Cài Đặt
 
-## 🚀 Bắt đầu trong 3 bước
-
-### 1️⃣ Cài đặt
-
+### 1️⃣ Install Dependencies
 ```bash
-# Clone repository
-git clone <repository-url>
 cd client/apps/web-admin
-
-# Cài đặt dependencies
 npm install
 ```
 
-### 2️⃣ Chạy
+### 2️⃣ Configure Environment
+```bash
+cp .env.example .env
+```
 
+Cập nhật `.env`:
+```env
+VITE_API_BASE_URL=http://localhost:8080
+VITE_API_TIMEOUT=10000
+```
+
+### 3️⃣ Run Development Server
 ```bash
 npm run dev
 ```
 
-### 3️⃣ Mở trình duyệt
+Truy cập: **http://localhost:3003**
 
-```
-http://localhost:3003
-```
+## 🔐 Credentials
 
----
+**Default Admin Login:**
+- Email: `admin@company.com`
+- Password: `admin@123`
 
-## 📋 Yêu cầu
+## 📚 Next Steps
 
-- Node.js >= 16.0.0
-- npm >= 7.0.0
+1. **Setup Details** → [SETUP_GUIDE.md](SETUP_GUIDE.md)
+2. **API Integration** → [src/services/API_GUIDE.md](src/services/API_GUIDE.md)
+3. **Migrate to Real API** → [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md)
 
-Kiểm tra phiên bản:
+## ❓ Troubleshooting
+
+### Port 3003 đang bị sử dụng?
 ```bash
-node --version
-npm --version
+npm run dev -- --port 3004
 ```
 
----
-
-## 🎯 Pages đã hoàn thành
-
-| Page | URL | Status |
-|------|-----|--------|
-| Dashboard | `/` | ✅ Done |
-| Employees | `/employees` | ✅ Done |
-| Attendance | `/attendance` | ✅ Done |
-| Reports | `/reports` | ✅ Done |
-| Shifts | `/shifts` | ✅ Done |
-| Settings | `/settings` | ✅ Done |
-| Devices | `/devices` | 🚧 In Progress |
-
----
-
-## 🛠 Commands
-
+### Clear cache
 ```bash
-npm run dev      # Development server
-npm run build    # Production build
-npm run preview  # Preview production
-npm run lint     # Lint code
-```
-
----
-
-## 🐛 Gặp lỗi?
-
-### Port đã sử dụng?
-Vite sẽ tự động chọn port khác (3004, 3005...)
-
-### Module not found?
-```bash
-rm -rf node_modules
+npm run clean
 npm install
+npm run dev
 ```
 
 ### TypeScript errors?
-Restart VS Code hoặc chạy:
 ```bash
-npx tsc --noEmit
+npm run type-check
+```
+
+## 💡 Common Commands
+
+```bash
+npm run dev          # Start dev
+npm run build        # Production build
+npm run preview      # Preview build
+npm run lint         # Check code
+npm run type-check   # Check types
 ```
 
 ---
 
-## 📚 Đọc thêm
+**⏱️ Estimated Setup Time:** 5 phút
 
-- [SETUP_GUIDE.md](./SETUP_GUIDE.md) - Hướng dẫn chi tiết
-- [PHASE4_IMPLEMENTATION.md](./PHASE4_IMPLEMENTATION.md) - Tiến độ dự án
-- [doc/](./doc/) - Documentation đầy đủ
-
----
-
-**Happy Coding! 🎉**
+**❓ Có vấn đề?** Xem [SETUP_GUIDE.md](SETUP_GUIDE.md) chi tiết hơn

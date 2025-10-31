@@ -4,58 +4,7 @@ import type { Device, PaginatedResponse, FilterOptions, ApiResponse } from '@/ty
 
 const MOCK_DELAY = 500;
 
-const mockDevices: Device[] = [
-  {
-    id: '1',
-    name: 'Thiết bị cửa chính',
-    location: 'Tầng 1 - Lối vào chính',
-    status: 'online',
-    model: 'FaceReader-Pro-X1',
-    ipAddress: '192.168.1.101',
-    lastSyncAt: '2024-10-05T08:30:00Z',
-    createdAt: '2024-01-15T10:00:00Z'
-  },
-  {
-    id: '2',
-    name: 'Thiết bị phòng IT',
-    location: 'Tầng 2 - Phòng IT',
-    status: 'online',
-    model: 'FaceReader-Lite-A2',
-    ipAddress: '192.168.1.102',
-    lastSyncAt: '2024-10-05T08:25:00Z',
-    createdAt: '2024-02-01T09:15:00Z'
-  },
-  {
-    id: '3',
-    name: 'Thiết bị phòng họp',
-    location: 'Tầng 3 - Phòng họp A',
-    status: 'offline',
-    model: 'FaceReader-Standard-B1',
-    ipAddress: '192.168.1.103',
-    lastSyncAt: '2024-10-04T16:45:00Z',
-    createdAt: '2024-01-20T14:30:00Z'
-  },
-  {
-    id: '4',
-    name: 'Thiết bị khu vực ăn uống',
-    location: 'Tầng 1 - Cafeteria',
-    status: 'online',
-    model: 'FaceReader-Lite-A2',
-    ipAddress: '192.168.1.104',
-    lastSyncAt: '2024-10-05T07:50:00Z',
-    createdAt: '2024-03-01T11:00:00Z'
-  },
-  {
-    id: '5',
-    name: 'Thiết bị khu vực parking',
-    location: 'Tầng B1 - Parking',
-    status: 'offline',
-    model: 'FaceReader-Standard-B1',
-    ipAddress: '192.168.1.105',
-    lastSyncAt: '2024-10-03T18:20:00Z',
-    createdAt: '2024-02-15T08:45:00Z'
-  }
-];
+const mockDevices: Device[] = [];
 
 export async function getDevices(filters: FilterOptions = {}): Promise<PaginatedResponse<Device>> {
   await new Promise(resolve => setTimeout(resolve, MOCK_DELAY));

@@ -57,6 +57,15 @@ export interface Shift {
   createdAt: string;
 }
 
+export interface Schedule {
+  id: string;
+  userId: string;
+  shiftId: string;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
+}
+
 export interface ReportRow {
   employeeId: string;
   employeeName: string;

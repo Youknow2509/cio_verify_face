@@ -4,53 +4,10 @@ import type { Shift, PaginatedResponse, FilterOptions, ApiResponse } from '@/typ
 
 const MOCK_DELAY = 500;
 
-const mockShifts: Shift[] = [
-  {
-    id: '1',
-    name: 'Ca sáng',
-    start: '08:00',
-    end: '17:00',
-    description: 'Ca làm việc hành chính',
-    active: true,
-    createdAt: '2024-01-15T10:00:00Z'
-  },
-  {
-    id: '2',
-    name: 'Ca linh hoạt',
-    start: '09:00',
-    end: '18:00',
-    description: 'Ca làm việc linh hoạt cho nhóm Marketing và thiết kế',
-    active: true,
-    createdAt: '2024-01-20T11:30:00Z'
-  },
-  {
-    id: '3',
-    name: 'Ca chiều',
-    start: '13:00',
-    end: '22:00',
-    description: 'Ca làm việc buổi chiều tối',
-    active: true,
-    createdAt: '2024-02-01T09:15:00Z'
-  },
-  {
-    id: '4',
-    name: 'Ca đêm',
-    start: '22:00',
-    end: '06:00',
-    description: 'Ca làm việc đêm (bảo vệ, vận hành hệ thống)',
-    active: false,
-    createdAt: '2024-01-10T08:45:00Z'
-  }
-];
+const mockShifts: Shift[] = [];
 
 // Mock employee-shift assignments
-const mockEmployeeShifts: { employeeId: string; shiftId: string; assignedAt: string }[] = [
-  { employeeId: '1', shiftId: '1', assignedAt: '2024-01-15T10:30:00Z' },
-  { employeeId: '2', shiftId: '1', assignedAt: '2024-01-15T10:30:00Z' },
-  { employeeId: '3', shiftId: '2', assignedAt: '2024-02-01T09:20:00Z' },
-  { employeeId: '5', shiftId: '1', assignedAt: '2024-03-01T08:15:00Z' },
-  { employeeId: '6', shiftId: '2', assignedAt: '2024-02-15T11:00:00Z' }
-];
+const mockEmployeeShifts: { employeeId: string; shiftId: string; assignedAt: string }[] = [];
 
 export async function getShifts(filters: FilterOptions = {}): Promise<PaginatedResponse<Shift>> {
   await new Promise(resolve => setTimeout(resolve, MOCK_DELAY));
