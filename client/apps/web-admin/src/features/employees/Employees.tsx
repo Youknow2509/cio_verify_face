@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
+import { Plus, Edit, Trash2, Users, AlertTriangle } from 'lucide-react';
 import { Card } from '@/components/Card/Card';
 import { Table } from '@/components/Table/Table';
 import { Badge } from '@/components/Badge/Badge';
+import { FilterBar, SearchBox, FilterGroup, FilterSelect } from '@/components/FilterBar/FilterBar';
 import { 
   getEmployees,
   createEmployee,
@@ -188,7 +190,7 @@ export default function Employees() {
             className={styles.actionButton}
             aria-label={`Edit employee ${record.name}`}
           >
-            <EditIcon />
+            <Edit size={16} />
           </Link>
           <button
             type="button"
@@ -196,75 +198,83 @@ export default function Employees() {
             className={`${styles.actionButton} ${styles.danger}`}
             aria-label={`Delete employee ${record.name}`}
           >
-            <DeleteIcon />
+            <Trash2 size={16} />
           </button>
         </div>
       )
     }
   ];
 
-  const FilterBar = () => (
-    <div className={styles.filterBar}>
-      <div className={styles.filterBarLeft}>
-        <div className={styles.searchBox}>
-          <SearchIcon />
-          <input
-            type="text"
-            placeholder="Tìm kiếm theo tên hoặc mã nhân viên..."
-            value={filter.search || ''}
-            onChange={(e) => handleSearch(e.target.value)}
-            className={styles.searchInput}
-            aria-label="Search employees"
-          />
-        </div>
-        
-        <div className={styles.filters}>
-          <select
-            value={filter.department || ''}
-            onChange={(e) => handleDepartmentFilter(e.target.value)}
-            className={styles.select}
-            aria-label="Filter by department"
-          >
-            <option value="">Tất cả phòng ban</option>
-            {departments.map(dept => (
-              <option key={dept} value={dept}>{dept}</option>
-            ))}
-          </select>
+  const departmentOptions = departments
+    .filter((dept): dept is string => dept !== undefined && dept !== null && dept !== '')
+    .map(dept => ({
+      value: dept,
+      label: dept
+    }));
 
-          <select
-            value={filter.active === undefined ? '' : filter.active.toString()}
-            onChange={(e) => {
-              const value = e.target.value;
-              handleActiveFilter(value === '' ? undefined : value === 'true');
-            }}
-            className={styles.select}
-            aria-label="Filter by status"
-          >
-            <option value="">Tất cả trạng thái</option>
-            <option value="true">Hoạt động</option>
-            <option value="false">Tạm dừng</option>
-          </select>
-        </div>
-      </div>
+  const statusOptions = [
+    { value: 'true', label: 'Hoạt động' },
+    { value: 'false', label: 'Tạm dừng' }
+  ];
 
-      <div className={styles.filterBarRight}>
+  const hasActiveFilters = filter.search !== '' || filter.department !== '' || filter.active !== undefined;
+
+  const handleClearFilters = () => {
+    setFilter(prev => ({
+      ...prev,
+      search: '',
+      department: '',
+      active: undefined,
+      page: 1
+    }));
+  };
+
+  const FilterBarComponent = () => (
+    <FilterBar hasActiveFilters={hasActiveFilters} onClear={handleClearFilters}>
+      <SearchBox
+        value={filter.search || ''}
+        onChange={handleSearch}
+        placeholder="Tìm kiếm theo tên hoặc mã nhân viên..."
+      />
+      
+      <FilterGroup label="Phòng ban">
+        <FilterSelect
+          value={filter.department || ''}
+          onChange={handleDepartmentFilter}
+          options={departmentOptions}
+          placeholder="Tất cả phòng ban"
+        />
+      </FilterGroup>
+
+      <FilterGroup label="Trạng thái">
+        <FilterSelect
+          value={filter.active === undefined ? '' : filter.active.toString()}
+          onChange={(value) => {
+            handleActiveFilter(value === '' ? undefined : value === 'true');
+          }}
+          options={statusOptions}
+          placeholder="Tất cả trạng thái"
+        />
+      </FilterGroup>
+
+      <FilterGroup>
         <button
           type="button"
           onClick={() => setShowAddModal(true)}
           className={styles.addButton}
           aria-label="Add new employee"
         >
-          <PlusIcon />
+          <Plus size={20} />
           Thêm nhân viên
         </button>
-      </div>
-    </div>
+      </FilterGroup>
+    </FilterBar>
   );
 
   const EmptyState = () => (
     <div className={styles.emptyState}>
       <div className={styles.emptyIcon}>
-        <UsersIcon />
+        <Users size={48} />
       </div>
       <h3 className={styles.emptyTitle}>Chưa có nhân viên nào</h3>
       <p className={styles.emptyDescription}>
@@ -275,7 +285,7 @@ export default function Employees() {
         onClick={() => setShowAddModal(true)}
         className={styles.emptyAction}
       >
-        <PlusIcon />
+        <Plus size={20} />
         Thêm nhân viên đầu tiên
       </button>
     </div>
@@ -291,7 +301,7 @@ export default function Employees() {
   const ErrorState = () => (
     <div className={styles.error} role="alert">
       <div className={styles.errorIcon}>
-        <AlertIcon />
+        <AlertTriangle size={24} />
       </div>
       <h3 className={styles.errorTitle}>Có lỗi xảy ra</h3>
       <p className={styles.errorMessage}>{error}</p>
@@ -317,7 +327,7 @@ export default function Employees() {
       </div>
 
       <Card className={styles.content}>
-        <FilterBar />
+        <FilterBarComponent />
         
         {loading && <LoadingState />}
         {error && <ErrorState />}
@@ -358,46 +368,6 @@ export default function Employees() {
     </div>
   );
 }
-
-// Icons
-const SearchIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M12.9 14.32a8 8 0 111.41-1.41l5.35 5.33-1.42 1.42-5.33-5.34zM8 14A6 6 0 108 2a6 6 0 000 12z" clipRule="evenodd" />
-  </svg>
-);
-
-const PlusIcon = () => (
-  <svg width="20" height="20" viewBox="0 0 20 20" fill="currentColor">
-    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-  </svg>
-);
-
-const EditIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-    <path d="M11.013 1.427a1.75 1.75 0 012.474 0l1.086 1.086a1.75 1.75 0 010 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 01-.927-.928l.929-3.25a1.75 1.75 0 01.445-.758l8.61-8.61zm1.414 1.06a.25.25 0 00-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 000-.354l-1.086-1.086zM11.189 6.25L9.75 4.81l-6.286 6.287a.25.25 0 00-.064.108l-.558 1.953 1.953-.558a.249.249 0 00.108-.064l6.286-6.286z" />
-  </svg>
-);
-
-const DeleteIcon = () => (
-  <svg width="16" height="16" viewBox="0 0 16 16" fill="currentColor">
-    <path fillRule="evenodd" d="M6.5 1.75a.25.25 0 01.25-.25h2.5a.25.25 0 01.25.25V3h-3V1.75zm4.5 0V3h2.25a.75.75 0 010 1.5H2.75a.75.75 0 010-1.5H5V1.75C5 .784 5.784 0 6.75 0h2.5C10.216 0 11 .784 11 1.75zM4.496 6.675a.75.75 0 10-1.492.15l.66 6.6A1.75 1.75 0 005.405 15h5.19c.9 0 1.652-.681 1.741-1.576l.66-6.6a.75.75 0 00-1.492-.149l-.66 6.6a.25.25 0 01-.249.225h-5.19a.25.25 0 01-.249-.225l-.66-6.6z" clipRule="evenodd" />
-  </svg>
-);
-
-const UsersIcon = () => (
-  <svg width="48" height="48" viewBox="0 0 24 24" fill="currentColor">
-    <path d="M12 4.5C13.6569 4.5 15 5.84315 15 7.5C15 9.15685 13.6569 10.5 12 10.5C10.3431 10.5 9 9.15685 9 7.5C9 5.84315 10.3431 4.5 12 4.5Z"/>
-    <path d="M17.5 7.5C17.5 8.32843 16.8284 9 16 9C15.1716 9 14.5 8.32843 14.5 7.5C14.5 6.67157 15.1716 6 16 6C16.8284 6 17.5 6.67157 17.5 7.5Z"/>
-    <path d="M9.5 7.5C9.5 8.32843 8.82843 9 8 9C7.17157 9 6.5 8.32843 6.5 7.5C6.5 6.67157 7.17157 6 8 6C8.82843 6 9.5 6.67157 9.5 7.5Z"/>
-    <path d="M7 14C5.34315 14 4 15.3431 4 17V18.5C4 19.3284 4.67157 20 5.5 20H18.5C19.3284 20 20 19.3284 20 18.5V17C20 15.3431 18.6569 14 17 14H7Z"/>
-  </svg>
-);
-
-const AlertIcon = () => (
-  <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
-    <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495zM12 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0112 6zm0 9a1 1 0 100-2 1 1 0 000 2z" clipRule="evenodd" />
-  </svg>
-);
 
 // Simplified components for demo
 const Pagination = ({ current, total, pageSize, onChange }: any) => (

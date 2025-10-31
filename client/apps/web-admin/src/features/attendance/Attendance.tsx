@@ -11,6 +11,8 @@ import Stack from 'react-bootstrap/Stack';
 import { Page } from '@/ui/Page';
 import { DataTable, type DataTableColumn } from '@/ui/DataTable';
 import { useUi } from '@/app/providers/UiProvider';
+import { FilterBar, SearchBox, FilterGroup, FilterSelect } from '@/components/FilterBar/FilterBar';
+import { DatePicker } from '@/components/DatePicker/DatePicker';
 
 interface AttendanceRecord {
   id: string;
@@ -107,7 +109,7 @@ export default function Attendance() {
   const [records, setRecords] = useState<AttendanceRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [dateFilter, setDateFilter] = useState(new Date().toISOString().split('T')[0]);
+  const [dateFilter, setDateFilter] = useState(new Date());
   const [statusFilter, setStatusFilter] = useState<'all' | AttendanceRecord['status']>('all');
   const [page, setPage] = useState(1);
 
@@ -133,7 +135,7 @@ export default function Attendance() {
         record.department.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesStatus = statusFilter === 'all' || record.status === statusFilter;
-      const matchesDate = record.date === dateFilter;
+      const matchesDate = record.date === dateFilter.toISOString().split('T')[0];
 
       return matchesSearch && matchesStatus && matchesDate;
     });
@@ -159,12 +161,26 @@ export default function Attendance() {
     );
   }, [filteredRecords]);
 
+  const statusOptions = [
+    { value: 'on_time', label: 'Đúng giờ' },
+    { value: 'late', label: 'Đi trễ' },
+    { value: 'early', label: 'Về sớm' },
+    { value: 'absent', label: 'Vắng mặt' }
+  ];
+
+  const hasActiveFilters = searchQuery !== '' || statusFilter !== 'all' || 
+    dateFilter.toDateString() !== new Date().toDateString();
+
+  const handleClearFilters = () => {
+    setSearchQuery('');
+    setStatusFilter('all');
+    setDateFilter(new Date());
+  };
+
   const handleExport = (format: 'excel' | 'csv') => {
     showToast({
       variant: 'info',
-      message: `Đang chuẩn bị xuất dữ liệu (${format.toUpperCase()}) cho ngày ${new Date(
-        dateFilter
-      ).toLocaleDateString('vi-VN')}.`,
+      message: `Đang chuẩn bị xuất dữ liệu (${format.toUpperCase()}) cho ngày ${dateFilter.toLocaleDateString('vi-VN')}.`,
     });
   };
 
@@ -224,48 +240,34 @@ export default function Attendance() {
         </Stack>
       }
     >
-      <Card className="border-0 shadow-sm">
-        <Card.Body>
-          <Row className="g-3">
-            <Col md={4}>
-              <Form.Group controlId="attendance-search">
-                <Form.Label className="text-secondary small text-uppercase">Tìm kiếm</Form.Label>
-                <Form.Control
-                  type="search"
-                  placeholder="Tên, mã NV, phòng ban..."
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                />
-              </Form.Group>
-            </Col>
-            <Col md={4}>
-              <Form.Group controlId="attendance-date">
-                <Form.Label className="text-secondary small text-uppercase">Ngày</Form.Label>
-                <Form.Control
-                  type="date"
-                  value={dateFilter}
-                  onChange={(event) => setDateFilter(event.target.value)}
-                />
-              </Form.Group>
-            </Col>
-            <Col md={4}>
-              <Form.Group controlId="attendance-status">
-                <Form.Label className="text-secondary small text-uppercase">Trạng thái</Form.Label>
-                <Form.Select
-                  value={statusFilter}
-                  onChange={(event) => setStatusFilter(event.target.value as typeof statusFilter)}
-                >
-                  <option value="all">Tất cả</option>
-                  <option value="on_time">Đúng giờ</option>
-                  <option value="late">Đi trễ</option>
-                  <option value="early">Về sớm</option>
-                  <option value="absent">Vắng mặt</option>
-                </Form.Select>
-              </Form.Group>
-            </Col>
-          </Row>
-        </Card.Body>
-      </Card>
+      <FilterBar 
+        hasActiveFilters={hasActiveFilters}
+        onClear={handleClearFilters}
+      >
+        <SearchBox
+          value={searchQuery}
+          onChange={setSearchQuery}
+          placeholder="Tìm kiếm theo tên, mã NV, phòng ban..."
+        />
+        
+        <FilterGroup label="Ngày">
+          <DatePicker
+            selected={dateFilter}
+            onChange={(date) => setDateFilter(date || new Date())}
+            placeholder="Chọn ngày"
+            dateFormat="dd/MM/yyyy"
+          />
+        </FilterGroup>
+
+        <FilterGroup label="Trạng thái">
+          <FilterSelect
+            value={statusFilter}
+            onChange={(value) => setStatusFilter(value as typeof statusFilter)}
+            options={statusOptions}
+            placeholder="Tất cả trạng thái"
+          />
+        </FilterGroup>
+      </FilterBar>
 
       <Row className="g-3">
         <Col md={3}>
@@ -273,7 +275,7 @@ export default function Attendance() {
             <Card.Body>
               <p className="text-secondary text-uppercase small mb-1">Tổng bản ghi</p>
               <h3 className="fw-semibold mb-0">{statusSummary.total}</h3>
-              <p className="text-secondary small mb-0">Ngày {new Date(dateFilter).toLocaleDateString('vi-VN')}</p>
+              <p className="text-secondary small mb-0">Ngày {dateFilter.toLocaleDateString('vi-VN')}</p>
             </Card.Body>
           </Card>
         </Col>

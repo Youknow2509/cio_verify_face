@@ -1,11 +1,9 @@
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react';
 import Badge from 'react-bootstrap/Badge';
 import Button from 'react-bootstrap/Button';
-import Card from 'react-bootstrap/Card';
 import Col from 'react-bootstrap/Col';
 import FloatingLabel from 'react-bootstrap/FloatingLabel';
 import Form from 'react-bootstrap/Form';
-import InputGroup from 'react-bootstrap/InputGroup';
 import Modal from 'react-bootstrap/Modal';
 import Row from 'react-bootstrap/Row';
 import Stack from 'react-bootstrap/Stack';
@@ -13,6 +11,7 @@ import { useNavigate } from 'react-router-dom';
 import { useUi } from '@/app/providers/UiProvider';
 import { Page } from '@/ui/Page';
 import { DataTable, type DataTableColumn } from '@/ui/DataTable';
+import { FilterBar, SearchBox, FilterGroup, FilterSelect } from '@/components/FilterBar/FilterBar';
 import { createEmployee, deleteEmployee, getEmployees } from '@/services';
 import type { Employee, EmployeeFilter, FilterOptions } from '@/types';
 
@@ -57,6 +56,32 @@ export default function EmployeesPage() {
   const [formState, setFormState] = useState<EmployeeFormState>(defaultFormState);
   const [formErrors, setFormErrors] = useState<FormErrors>({});
   const { showToast, confirm } = useUi();
+
+  // Helper functions for filter
+  const departmentOptions = useMemo(() => 
+    departments.map(dept => ({ value: dept, label: dept })), 
+    [departments]
+  );
+
+  const statusOptions = [
+    { value: 'true', label: 'Hoạt động' },
+    { value: 'false', label: 'Tạm dừng' }
+  ];
+
+  const hasActiveFilters = useMemo(() => 
+    filter.search !== '' || filter.department !== '' || filter.active !== undefined,
+    [filter.search, filter.department, filter.active]
+  );
+
+  const handleClearFilters = useCallback(() => {
+    setFilter(prev => ({
+      ...prev,
+      search: '',
+      department: '',
+      active: undefined,
+      page: 1
+    }));
+  }, []);
 
   const normalizedFilters = useMemo<FilterOptions>(() => {
     const status =
@@ -298,62 +323,36 @@ export default function EmployeesPage() {
       ]}
       actions={actions}
     >
-      <Card className="border-0 shadow-sm">
-        <Card.Body>
-          <Form className="gy-3">
-            <Row className="g-3">
-              <Col md={4} lg={3}>
-                <InputGroup>
-                  <InputGroup.Text>
-                    <i className="bi bi-search" aria-hidden />
-                  </InputGroup.Text>
-                  <Form.Control
-                    placeholder="Tìm theo tên, mã nhân viên..."
-                    value={filter.search ?? ''}
-                    onChange={(event) => handleChangeFilter('search', event.target.value)}
-                    aria-label="Tìm kiếm nhân viên"
-                  />
-                </InputGroup>
-              </Col>
-              <Col md={4} lg={3}>
-                <FloatingLabel label="Phòng ban">
-                  <Form.Select
-                    value={filter.department ?? ''}
-                    onChange={(event) => handleChangeFilter('department', event.target.value)}
-                  >
-                    <option value="">Tất cả phòng ban</option>
-                    {departments.map((dept) => (
-                      <option key={dept} value={dept}>
-                        {dept}
-                      </option>
-                    ))}
-                  </Form.Select>
-                </FloatingLabel>
-              </Col>
-              <Col md={4} lg={3}>
-                <FloatingLabel label="Trạng thái">
-                  <Form.Select
-                    value={
-                      typeof filter.active === 'boolean' ? String(filter.active) : ''
-                    }
-                    onChange={(event) => {
-                      const value = event.target.value;
-                      handleChangeFilter(
-                        'active',
-                        value === '' ? undefined : value === 'true'
-                      );
-                    }}
-                  >
-                    <option value="">Tất cả</option>
-                    <option value="true">Hoạt động</option>
-                    <option value="false">Tạm dừng</option>
-                  </Form.Select>
-                </FloatingLabel>
-              </Col>
-            </Row>
-          </Form>
-        </Card.Body>
-      </Card>
+      <FilterBar 
+        hasActiveFilters={hasActiveFilters}
+        onClear={handleClearFilters}
+      >
+        <SearchBox
+          value={filter.search ?? ''}
+          onChange={(value) => handleChangeFilter('search', value)}
+          placeholder="Tìm theo tên, mã nhân viên..."
+        />
+        
+        <FilterGroup label="Phòng ban">
+          <FilterSelect
+            value={filter.department ?? ''}
+            onChange={(value) => handleChangeFilter('department', value)}
+            options={departmentOptions}
+            placeholder="Tất cả phòng ban"
+          />
+        </FilterGroup>
+
+        <FilterGroup label="Trạng thái">
+          <FilterSelect
+            value={typeof filter.active === 'boolean' ? String(filter.active) : ''}
+            onChange={(value) => {
+              handleChangeFilter('active', value === '' ? undefined : value === 'true');
+            }}
+            options={statusOptions}
+            placeholder="Tất cả trạng thái"
+          />
+        </FilterGroup>
+      </FilterBar>
 
       <div className="mt-4">
         <DataTable
