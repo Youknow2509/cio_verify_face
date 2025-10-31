@@ -1,0 +1,252 @@
+{
+  "info": {
+    "name": "Identity & Organization Service",
+    "description": "API collection for Managing Companies, Users, and Face Data",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Companies",
+      "item": [
+        {
+          "name": "Create Company",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Acme Tech\",\n  \"address\": \"123 Nguyen Trai, HCMC\",\n  \"phone\": \"+84-28-0000-0001\",\n  \"email\": \"contact@acmetech.com\",\n  \"website\": \"https://acmetech.example\",\n  \"status\": 1,\n  \"subscription_plan\": 1,\n  \"subscription_start_date\": \"2025-01-01\",\n  \"subscription_end_date\": \"2025-12-31\",\n  \"max_employees\": 500,\n  \"max_devices\": 50\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/companies",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "companies"]
+            }
+          }
+        },
+        {
+          "name": "Get All Companies",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/companies",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "companies"]
+            }
+          }
+        },
+        {
+          "name": "Get Company By ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/companies/{{company_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "companies", "{{company_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Company",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Acme Tech Updated\",\n  \"status\": 1,\n  \"max_employees\": 1000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/companies/{{company_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "companies", "{{company_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Company",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/api/v1/companies/{{company_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "companies", "{{company_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"alice.acme@example.com\",\n  \"phone\": \"0900001001\",\n  \"password\": \"SecurePass123\",\n  \"full_name\": \"Alice Nguyen\",\n  \"role\": 2,\n  \"company_id\": \"{{company_id}}\",\n  \"employee_code\": \"EMP-001\",\n  \"department\": \"Engineering\",\n  \"position\": \"Senior Engineer\",\n  \"hire_date\": \"2025-01-15\",\n  \"salary\": 50000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users"]
+            }
+          }
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/users",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users"]
+            }
+          }
+        },
+        {
+          "name": "Get Users By Company",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/users?company_id={{company_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users"],
+              "query": [
+                {
+                  "key": "company_id",
+                  "value": "{{company_id}}"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get User By ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "{{user_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"full_name\": \"Alice Nguyen Updated\",\n  \"position\": \"Lead Engineer\",\n  \"salary\": 60000\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "{{user_id}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/{{user_id}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "{{user_id}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Face Data",
+      "item": [
+        {
+          "name": "Upload Face Data",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"image_url\": \"https://example.com/face-001.jpg\",\n  \"face_encoding\": \"[0.1, 0.2, 0.3, ...]\",\n  \"quality_score\": 0.95\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/{{user_id}}/face-data",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "{{user_id}}", "face-data"]
+            }
+          }
+        },
+        {
+          "name": "Get Face Data List",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/{{user_id}}/face-data",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "{{user_id}}", "face-data"]
+            }
+          }
+        },
+        {
+          "name": "Delete Face Data",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{base_url}}/api/v1/users/{{user_id}}/face-data/{{fid}}",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "users", "{{user_id}}", "face-data", "{{fid}}"]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:3001"
+    },
+    {
+      "key": "company_id",
+      "value": ""
+    },
+    {
+      "key": "user_id",
+      "value": ""
+    },
+    {
+      "key": "fid",
+      "value": ""
+    }
+  ]
+}
