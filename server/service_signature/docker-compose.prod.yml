@@ -1,0 +1,45 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: signature_db
+    environment:
+      MYSQL_USER: signature_user
+      MYSQL_PASSWORD: signature_password
+      MYSQL_DATABASE: signature_db
+      MYSQL_ROOT_PASSWORD: root_password
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - signature_network
+
+  app:
+    build: .
+    container_name: signature_service
+    environment:
+      DB_HOST: mysql
+      DB_USER: signature_user
+      DB_PASSWORD: signature_password
+      DB_NAME: signature_db
+      PORT: 3001
+      NODE_ENV: production
+    ports:
+      - "3001:3001"
+    depends_on:
+      mysql:
+        condition: service_healthy
+    volumes:
+      - ./uploads:/app/uploads
+    networks:
+      - signature_network
+
+volumes:
+  mysql_data:
+    driver: local
+
+networks:
+  signature_network:
+    driver: bridge
