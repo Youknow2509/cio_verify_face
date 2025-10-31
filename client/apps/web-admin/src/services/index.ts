@@ -38,6 +38,55 @@ export {
   type InterceptorConfig
 } from '@/services/http-interceptor';
 
+// === Wrapper Functions (for backward compatibility) ===
+// Re-export API functions with shorter names
+export {
+  getEmployeesAPI as getEmployees,
+  getEmployeeAPI as getEmployee,
+  createEmployeeAPI as createEmployee,
+  updateEmployeeAPI as updateEmployee,
+  deleteEmployeeAPI as deleteEmployee,
+  getEmployeeFaceDataAPI as getEmployeeFaceData,
+  uploadFaceDataAPI as uploadFaceData,
+  deleteFaceDataAPI as deleteFaceData,
+} from '@/services/api/employees.api';
+
+export {
+  getDevicesAPI as getDevices,
+  getDeviceAPI as getDevice,
+  createDeviceAPI as createDevice,
+  updateDeviceAPI as updateDevice,
+  deleteDeviceAPI as deleteDevice,
+  syncDeviceAPI as syncDevice,
+} from '@/services/api/devices.api';
+
+export {
+  getShiftsAPI as getShifts,
+  getShiftAPI as getShift,
+  createShiftAPI as createShift,
+  updateShiftAPI as updateShift,
+  deleteShiftAPI as deleteShift,
+  getSchedulesAPI as getSchedules,
+  getScheduleAPI as getSchedule,
+  createScheduleAPI as createSchedule,
+  updateScheduleAPI as updateSchedule,
+  deleteScheduleAPI as deleteSchedule,
+} from '@/services/api/shifts.api';
+
+export {
+  getAttendanceRecordsAPI as getAttendanceRecords,
+  getAttendanceRecordAPI as getAttendanceRecord,
+  getMyAttendanceHistoryAPI as getMyAttendanceHistory,
+  checkInAPI as checkIn,
+  checkOutAPI as checkOut,
+} from '@/services/api/attendance.api';
+
+export {
+  getDailyReportAPI as getDailyReport,
+  getSummaryReportAPI as getSummaryReport,
+  exportReportAPI as exportReport,
+} from '@/services/api/reports.api';
+
 // === Mock Services (Legacy) ===
 // Import from these only for testing/fallback scenarios
 // Note: Mock services are deprecated, use API services above
