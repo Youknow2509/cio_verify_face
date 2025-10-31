@@ -1,0 +1,66 @@
+// src/app/layouts/Layout/Layout.module.scss
+
+@import '../../../styles/tokens';
+@import '../../../styles/mixins';
+
+.layout {
+  display: grid;
+  grid-template-areas: 
+    'header header'
+    'sidebar content';
+  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-rows: var(--header-height) 1fr;
+  height: 100vh;
+  overflow: hidden;
+  
+  &.collapsed {
+    grid-template-columns: var(--sidebar-collapsed-width) 1fr;
+  }
+  
+  @media (max-width: 899px) {
+    grid-template-areas: 
+      'header header'
+      'content content';
+    grid-template-columns: 1fr;
+    
+    &.collapsed {
+      grid-template-columns: 1fr;
+    }
+  }
+}
+
+.header {
+  grid-area: header;
+}
+
+.sidebar {
+  grid-area: sidebar;
+  
+  @media (max-width: 899px) {
+    position: fixed;
+    top: var(--header-height);
+    left: 0;
+    bottom: 0;
+    z-index: var(--z-30);
+    width: var(--sidebar-width);
+    transform: translateX(-100%);
+    @include transition(transform);
+    
+    .layout:not(.collapsed) & {
+      transform: translateX(0);
+    }
+  }
+}
+
+.content {
+  grid-area: content;
+  overflow: auto;
+  background: var(--color-background);
+}
+
+.contentInner {
+  @include container;
+  padding-top: var(--sp-6);
+  padding-bottom: var(--sp-6);
+  min-height: 100%;
+}
