@@ -9,7 +9,9 @@ const (
 	ErrSendEmailOTP   = 30003 // Send email failed
 	ErrSchemaValidate = 30004
 
-	ErrCodeAuthFailed = 401 // Auth failed
+	ErrCodeAuthFailed        = 401 // Auth failed
+	ErrorCodeSystemTemporary = 402 // System temporary error
+	ErrorCodeValidateRequest = 403 // Validate request error
 
 	// Register Code
 	ErrCodeUserHasExist            = 50001 // User has exist
@@ -20,9 +22,9 @@ const (
 	ErrCodeBindLoginInput          = 50006
 
 	// Login Code
-	ErrCodeOTPNotExist = 60001
-	ErrCodeUserOTPNotExist = 60002
-	ErrCodeOTPDontVerify   = 60003
+	ErrCodeOTPNotExist            = 60001
+	ErrCodeUserOTPNotExist        = 60002
+	ErrCodeOTPDontVerify          = 60003
 	ErrCodeUpdatePasswordRegister = 100000
 
 	// crypto code
@@ -57,13 +59,15 @@ const (
 	ErrCodeCronJobNotFound      = 200005
 	ErrCodeCronJobAlreadyExists = 200006
 
-	// Password 
+	// Password
 	UserResetPasswordSpamErrorCode = 300001 // Spam reset password send mail
 )
 
 // message
 var msg = map[int]string{
-	UserResetPasswordSpamErrorCode: "spam reset password",
+	ErrorCodeValidateRequest:        "validate request error",
+	ErrorCodeSystemTemporary:        "system temporary error",
+	UserResetPasswordSpamErrorCode:  "spam reset password",
 	ErrCodeCronAddJobFailed:         "add cron job failed",
 	ErrCodeCronStartFailed:          "start cron job failed",
 	ErrCodeCronStopFailed:           "stop cron job failed",

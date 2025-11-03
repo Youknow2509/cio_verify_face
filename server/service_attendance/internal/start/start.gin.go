@@ -53,10 +53,10 @@ func initRouter(ginEngine *gin.Engine) error {
 	ginEngine.Use(getConfigCors())
 	ginEngine.Use(infraMiddleware.GetValidateMiddleware().Apply())
 	// Initialize routes
-	httpRouter := httpRouter.HttpRouterManager{}
+	httpRouter := httpRouter.RouterManager{}
 	apiHttpRouter := ginEngine.Group("/api")
 	{
-		httpRouter.AuthRouter.InitializeAuthRoutes(apiHttpRouter)
+		httpRouter.AttendanceRouter.Deploy(apiHttpRouter)
 	}
 	return nil
 }

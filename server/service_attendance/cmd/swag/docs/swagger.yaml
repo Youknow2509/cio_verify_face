@@ -1,14 +1,36 @@
 basePath: /api
 definitions:
-  dto.DeleteDeviceRequest:
+  dto.CheckInRequest:
     properties:
-      company_id:
-        type: string
       device_id:
         type: string
+      location:
+        type: string
+      timestamp:
+        type: string
+      user_id:
+        type: string
     required:
-    - company_id
     - device_id
+    - location
+    - timestamp
+    - user_id
+    type: object
+  dto.CheckOutRequest:
+    properties:
+      device_id:
+        type: string
+      location:
+        type: string
+      timestamp:
+        type: string
+      user_id:
+        type: string
+    required:
+    - device_id
+    - location
+    - timestamp
+    - user_id
     type: object
   dto.ErrResponseData:
     properties:
@@ -20,25 +42,37 @@ definitions:
       error:
         type: string
     type: object
-  dto.LoginRequest:
+  dto.GetAttendanceRecordsRequest:
     properties:
-      password:
-        minLength: 8
+      device_id:
         type: string
-      username:
-        maxLength: 100
-        minLength: 2
+      end_date:
         type: string
-    required:
-    - password
-    - username
+      page:
+        minimum: 1
+        type: integer
+      page_size:
+        maximum: 100
+        minimum: 1
+        type: integer
+      start_date:
+        type: string
+      user_id:
+        type: string
     type: object
-  dto.RefreshTokenRequest:
+  dto.GetMyAttendanceRecordsRequest:
     properties:
-      refresh_token:
+      end_date:
         type: string
-    required:
-    - refresh_token
+      page:
+        minimum: 1
+        type: integer
+      page_size:
+        maximum: 100
+        minimum: 1
+        type: integer
+      start_date:
+        type: string
     type: object
   dto.ResponseData:
     properties:
@@ -50,24 +84,6 @@ definitions:
       message:
         description: Thong bao loi
         type: string
-    type: object
-  dto.UpdateDeviceRequest:
-    properties:
-      company_id:
-        type: string
-      device_id:
-        type: string
-      device_name:
-        maxLength: 100
-        minLength: 2
-        type: string
-      device_type:
-        type: integer
-    required:
-    - company_id
-    - device_id
-    - device_name
-    - device_type
     type: object
 externalDocs:
   description: OpenAPI
@@ -86,53 +102,23 @@ info:
   title: Swagger Chat Service Auth REST API
   version: "1.0"
 paths:
-  /v1/auth/device:
-    delete:
-      consumes:
-      - application/json
-      description: Delete session device
-      parameters:
-      - description: Authorization Bearer token
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: Request body delete device
-        in: body
-        name: body
-        required: true
-        schema:
-          $ref: '#/definitions/dto.DeleteDeviceRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.ResponseData'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrResponseData'
-      summary: Delete session device
-      tags:
-      - Core Auth
+  /v1/attendance/check_in:
     post:
       consumes:
       - application/json
-      description: Update session device
+      description: User check-in for attendance
       parameters:
-      - description: Authorization Bearer token
+      - description: Bearer token
         in: header
-        name: Authorization
+        name: authorization
         required: true
         type: string
-      - description: Request body update device
+      - description: Request body check-in
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.UpdateDeviceRequest'
+          $ref: '#/definitions/dto.CheckInRequest'
       produces:
       - application/json
       responses:
@@ -144,72 +130,26 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/dto.ErrResponseData'
-      summary: Update session device
+      summary: Check In attendance
       tags:
-      - Core Auth
-  /v1/auth/login:
+      - Attendance
+  /v1/attendance/check_out:
     post:
       consumes:
       - application/json
-      description: User login for user
+      description: User check-out for attendance
       parameters:
-      - description: Request body login
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.LoginRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.ResponseData'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrResponseData'
-      summary: User login
-      tags:
-      - Core Auth
-  /v1/auth/login/admin:
-    post:
-      consumes:
-      - application/json
-      description: User login for admin
-      parameters:
-      - description: Request body login
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.LoginRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.ResponseData'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrResponseData'
-      summary: Admin login
-      tags:
-      - Core Auth
-  /v1/auth/logout:
-    post:
-      consumes:
-      - application/json
-      description: User logout
-      parameters:
-      - description: Authorization Bearer token
+      - description: Bearer token
         in: header
-        name: Authorization
+        name: authorization
         required: true
         type: string
+      - description: Request body check-out
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CheckOutRequest'
       produces:
       - application/json
       responses:
@@ -221,18 +161,85 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/dto.ErrResponseData'
-      summary: User logout
+      summary: Check Out attendance
       tags:
-      - Core Auth
-  /v1/auth/me:
+      - Attendance
+  /v1/attendance/history/my:
+    post:
+      consumes:
+      - application/json
+      description: Retrieve the attendance history for the current user
+      parameters:
+      - description: Bearer token
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Request body to get my attendance records
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GetMyAttendanceRecordsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Get My Attendance History
+      tags:
+      - Attendance
+  /v1/attendance/records:
+    post:
+      consumes:
+      - application/json
+      description: Retrieve attendance records for device, day, user, ...
+      parameters:
+      - description: Bearer token
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Request body to get attendance records
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GetAttendanceRecordsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Get Attendance Records
+      tags:
+      - Attendance
+  /v1/attendance/records/{record_id}:
     get:
       consumes:
       - application/json
-      description: User get base info
+      description: Retrieve a specific attendance record by ID
       parameters:
-      - description: Authorization Bearer token
+      - description: Bearer token
         in: header
-        name: Authorization
+        name: authorization
+        required: true
+        type: string
+      - description: Record ID
+        in: path
+        name: record_id
         required: true
         type: string
       produces:
@@ -246,40 +253,9 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/dto.ErrResponseData'
-      summary: User get base info
+      summary: Get Attendance Record by ID
       tags:
-      - Core Auth
-  /v1/auth/refresh:
-    post:
-      consumes:
-      - application/json
-      description: User refresh token
-      parameters:
-      - description: Authorization Bearer token
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: Request body refresh token
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.RefreshTokenRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.ResponseData'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrResponseData'
-      summary: User refresh token
-      tags:
-      - Core Auth
+      - Attendance
 securityDefinitions:
   BasicAuth:
     type: basic
