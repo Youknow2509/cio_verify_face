@@ -7,3 +7,6 @@
 
 # config run services
 server/config/*.yaml
+server/config/*.env
+server/config/env.*
+server/config/.env.*

@@ -1,5 +1,5 @@
-# docker buildx build --platform linux/amd64,linux/arm64 -t cio_verify_face_service_device .
-# docker buildx build -t cio_verify_face_service_device .
+# docker buildx build --platform linux/amd64,linux/arm64 -t cio_verify_face_service_attendance .
+# docker buildx build -t cio_verify_face_service_attendance .
 # Build stage
 FROM golang:1.24-trixie AS builder
 
@@ -13,7 +13,7 @@ COPY . .
 RUN go mod download
 
 # Build the application
-RUN go build -o service_device ./cmd/server/main.go 
+RUN go build -o service_attendance ./cmd/server/main.go 
 
 # Production stage
 FROM debian:latest
@@ -21,11 +21,11 @@ FROM debian:latest
 WORKDIR /prod
 
 # Copy the built binary from the builder stage
-COPY --from=builder /build/service_device .
+COPY --from=builder /build/service_attendance .
 
 # Expose the application port
 EXPOSE 8080
 EXPOSE 50051
 
 # Command to run the application
-CMD ["./service_device"]
+CMD ["./service_attendance"]

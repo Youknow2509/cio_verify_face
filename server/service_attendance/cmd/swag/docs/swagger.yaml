@@ -1,0 +1,286 @@
+basePath: /api
+definitions:
+  dto.DeleteDeviceRequest:
+    properties:
+      company_id:
+        type: string
+      device_id:
+        type: string
+    required:
+    - company_id
+    - device_id
+    type: object
+  dto.ErrResponseData:
+    properties:
+      code:
+        description: Ma status code
+        type: integer
+      detail:
+        description: Thong bao loi
+      error:
+        type: string
+    type: object
+  dto.LoginRequest:
+    properties:
+      password:
+        minLength: 8
+        type: string
+      username:
+        maxLength: 100
+        minLength: 2
+        type: string
+    required:
+    - password
+    - username
+    type: object
+  dto.RefreshTokenRequest:
+    properties:
+      refresh_token:
+        type: string
+    required:
+    - refresh_token
+    type: object
+  dto.ResponseData:
+    properties:
+      code:
+        description: Ma status code
+        type: integer
+      data:
+        description: Du lieu duoc return
+      message:
+        description: Thong bao loi
+        type: string
+    type: object
+  dto.UpdateDeviceRequest:
+    properties:
+      company_id:
+        type: string
+      device_id:
+        type: string
+      device_name:
+        maxLength: 100
+        minLength: 2
+        type: string
+      device_type:
+        type: integer
+    required:
+    - company_id
+    - device_id
+    - device_name
+    - device_type
+    type: object
+externalDocs:
+  description: OpenAPI
+  url: https://swagger.io/resources/open-api/
+host: localhost:8080
+info:
+  contact:
+    email: lytranvinh.work@gmail.com
+    name: API Support
+    url: https://github.com/Youknow2509/
+  description: This is a REST API for the Chat Service Auth.
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Swagger Chat Service Auth REST API
+  version: "1.0"
+paths:
+  /v1/auth/device:
+    delete:
+      consumes:
+      - application/json
+      description: Delete session device
+      parameters:
+      - description: Authorization Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Request body delete device
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/dto.DeleteDeviceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Delete session device
+      tags:
+      - Core Auth
+    post:
+      consumes:
+      - application/json
+      description: Update session device
+      parameters:
+      - description: Authorization Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Request body update device
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateDeviceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Update session device
+      tags:
+      - Core Auth
+  /v1/auth/login:
+    post:
+      consumes:
+      - application/json
+      description: User login for user
+      parameters:
+      - description: Request body login
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: User login
+      tags:
+      - Core Auth
+  /v1/auth/login/admin:
+    post:
+      consumes:
+      - application/json
+      description: User login for admin
+      parameters:
+      - description: Request body login
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.LoginRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Admin login
+      tags:
+      - Core Auth
+  /v1/auth/logout:
+    post:
+      consumes:
+      - application/json
+      description: User logout
+      parameters:
+      - description: Authorization Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: User logout
+      tags:
+      - Core Auth
+  /v1/auth/me:
+    get:
+      consumes:
+      - application/json
+      description: User get base info
+      parameters:
+      - description: Authorization Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: User get base info
+      tags:
+      - Core Auth
+  /v1/auth/refresh:
+    post:
+      consumes:
+      - application/json
+      description: User refresh token
+      parameters:
+      - description: Authorization Bearer token
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Request body refresh token
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RefreshTokenRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: User refresh token
+      tags:
+      - Core Auth
+securityDefinitions:
+  BasicAuth:
+    type: basic
+swagger: "2.0"

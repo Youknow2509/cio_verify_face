@@ -1,4 +1,5 @@
 # docker buildx build --platform linux/amd64,linux/arm64 -t cio_verify_face_service_auth .
+# docker buildx build -t cio_verify_face_service_auth .
 # Build stage
 FROM golang:1.24-trixie AS builder
 
