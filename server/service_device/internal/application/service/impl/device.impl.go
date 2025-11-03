@@ -564,7 +564,7 @@ func (d *DeviceService) GetListDevices(ctx context.Context, input *model.ListDev
 			ErrorClient: "System is busy now. Please try again later.",
 		}
 	}
-	if !userInfo || input.Role != 0 {
+	if !userInfo && input.Role == domainModel.RoleManager {
 		return nil, &applicationError.Error{
 			ErrorSystem: nil,
 			ErrorClient: "You don't have permission to get device info.",

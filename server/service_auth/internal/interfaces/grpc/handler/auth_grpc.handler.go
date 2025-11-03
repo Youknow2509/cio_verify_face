@@ -7,6 +7,7 @@ import (
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/application/model"
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/application/service"
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/logger"
+	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/global"
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/uuid"
 	pb "github.com/youknow2509/cio_verify_face/server/service_auth/proto"
 	codes "google.golang.org/grpc/codes"
@@ -90,7 +91,7 @@ func (a *AuthGRPCHandler) ParseUserToken(ctx context.Context, req *pb.ParseUserT
 	if tok == nil {
 		return nil, status.Error(codes.FailedPrecondition, "token service not initialized")
 	}
-
+	global.Logger.Info("Parse access token: ", req.GetToken())
 	in, err := toModelParseUserTokenInput(req)
 	if err != nil {
 		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
