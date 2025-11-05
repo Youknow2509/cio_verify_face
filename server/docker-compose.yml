@@ -5,6 +5,14 @@ networks:
         driver: bridge
 
 services:
+    # Attendance Service
+    service_attendance:
+        image: cio_verify_face_service_attendance:latest
+        networks:
+            - nw-dev-0
+        volumes:
+            - ./config/config_service_attendance.yaml:/prod/config/config.yaml:ro
+    
     # WS Delivery Service
     service_ws_delivery:
         image: cio_verify_face_service_ws_delivery:latest
@@ -64,3 +72,4 @@ services:
             - service_notification
             - service_workforce
             - service_ws_delivery
+            - service_attendance

@@ -1,0 +1,61 @@
+syntax = "proto3";
+package attendance;
+option go_package = "github.com/youknow2509/cio_verify_face/server/service_attendance/proto/pb";
+
+// Attendance service for inter-service communication
+service AttendanceService {
+    // Check in attendance
+    rpc CheckInAttendance(CheckIOAttendanceRequest) returns (ResponseBase);
+    // Check out attendance
+    rpc CheckOutAttendance(CheckIOAttendanceRequest) returns (ResponseBase);
+    // Get attendance records within a date range for company
+    rpc GetAttendanceRecords(GetAttendanceRecordsRequest) returns (GetAttendanceRecordsResponse);
+}
+
+message GetAttendanceRecordsResponse {
+    repeated AttendanceRecord records = 1;
+    string msg = 2;
+    int32 status_code = 3;
+}
+
+message AttendanceRecord {
+    string user_id = 1;
+    string device_id = 2;
+    string check_type = 3; // "check_in" or "check_out"
+    int64 timestamp = 4;
+    string location = 5;
+    string verification_method = 6;
+    float verification_score = 7;
+    string face_image_url = 8;
+}
+
+message GetAttendanceRecordsRequest {
+    string company_id = 1;
+    string device_id = 2;
+    int64 start_date = 3;
+    int64 end_date = 4;
+    SessionInfo session_info = 5;
+}
+
+message CheckIOAttendanceRequest {
+    SessionInfo session_info = 1;
+    string device_id = 2;
+    string location = 3;
+    string verification_method = 4;
+    float verification_score = 5;
+    string face_image_url = 6;
+    int64 recorded_at = 7;
+}
+
+message ResponseBase {
+    string msg = 1;
+    int32 status_code = 2;
+}
+
+message SessionInfo {
+    string user_id = 1;
+    int32 role = 2;
+    string session_id = 3;
+    string client_ip = 4;
+    string client_agent = 5;
+}

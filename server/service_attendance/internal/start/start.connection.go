@@ -1,12 +1,12 @@
 package start
 
 import (
+	domainCache "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/domain/cache"
 	domainConfig "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/domain/config"
 	domainToken "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/domain/token"
-	infraToken "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/infrastructure/token"
-	infraConn "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/infrastructure/conn"
-	domainCache "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/domain/cache"
 	infraCache "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/infrastructure/cache"
+	infraConn "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/infrastructure/conn"
+	infraToken "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/infrastructure/token"
 )
 
 var (
@@ -22,12 +22,13 @@ func initConnectionToInfrastructure(setting *domainConfig.Setting) error {
 	if err := initConnectionPostgreSQL(&setting.Postgres); err != nil {
 		return err
 	}
+	// initialize scylladb
+	if err := initConnectionScyllaDB(&setting.ScyllaDb); err != nil {
+		return err
+	}
 	// initialize token service
 	_tokenService = infraToken.NewTokenService(
-		setting.JWT.Secret,
-		setting.JWT.Issuer,
-		setting.JWT.Subject,
-		setting.JWT.Audience,
+		grpcClient,
 	)
 	// v.v
 
@@ -37,6 +38,13 @@ func initConnectionToInfrastructure(setting *domainConfig.Setting) error {
 // Get TokenService returns the token service
 func GetTokenService() domainToken.ITokenService {
 	return _tokenService
+}
+
+func initConnectionScyllaDB(setting *domainConfig.ScyllaDbSetting) error {
+	if err := infraConn.InitScylladbClient(setting); err != nil {
+		return err
+	}
+	return nil
 }
 
 func initRedisDistributedCache(setting *domainConfig.RedisSetting) error {

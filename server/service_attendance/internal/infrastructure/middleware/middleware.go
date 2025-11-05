@@ -1,6 +1,13 @@
 package middleware
 
 /**
+ * Get auth admin middleware instance
+ */
+func GetAuthAdminMiddleware() *AuthAdminAccessTokenJwtMiddleware {
+	return &AuthAdminAccessTokenJwtMiddleware{}
+}
+
+/**
  * Get validate middleware instance
  */
 func GetValidateMiddleware() *ValidateMiddleware {

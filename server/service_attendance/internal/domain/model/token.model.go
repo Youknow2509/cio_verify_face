@@ -4,6 +4,12 @@ import (
 	"time"
 )
 
+// Create user token
+type UserTokenOutput struct {
+	AccessToken  string `json:"access_token"`
+	RefreshToken string `json:"refresh_token"`
+}
+
 // ========================================
 //
 //	Token input model
@@ -12,29 +18,7 @@ import (
 type (
 	TokenUserJwtInput struct {
 		UserId  string    `json:"user_id" validate:"required"`
-		TokenId string    `json:"token_id" validate:"required"`
-		Expires time.Time `json:"expires" validate:"required"`
 		Role    int       `json:"role" validate:"required"`
-	}
-
-	TokenUserRefreshInput struct {
-		TokenId string    `json:"token_id" validate:"required"`
-		UserId  string    `json:"user_id" validate:"required"`
-		Expires time.Time `json:"expires" validate:"required"`
-	}
-
-	TokenDeviceRefreshInput struct {
-		TokenId  string    `json:"token_id" validate:"required"`
-		CompanyId string    `json:"company_id" validate:"required"`
-		DeviceId string    `json:"device_id" validate:"required"`
-		Expires  time.Time `json:"expires" validate:"required"`
-	}
-
-	TokenServiceJwtInput struct {
-		ServiceName string    `json:"service_name" validate:"required"`
-		TokenId     string    `json:"token_id" validate:"required"`
-		Type        int       `json:"type" validate:"required"`
-		Expires     time.Time `json:"expires" validate:"required"`
 	}
 
 	TokenDeviceJwtInput struct {
@@ -49,7 +33,6 @@ type (
 		TokenId   string    `json:"token_id" validate:"required"`
 		Expires   time.Time `json:"expires" validate:"required"`
 	}
-
 )
 
 // ========================================

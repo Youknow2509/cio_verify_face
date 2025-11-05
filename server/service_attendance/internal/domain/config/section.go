@@ -7,7 +7,7 @@ package config
 // ==========================================================
 type (
 	Setting struct {
-		GrpcServer        GrpcSetting          `mapstructure:"grpc"`
+		Grpc              GrpcSetting          `mapstructure:"grpc"`
 		Server            ServerSetting        `mapstructure:"server"`
 		WsServer          WsSetting            `mapstructure:"ws"`
 		Cassandra         CassandraSetting     `mapstructure:"cassandra"`

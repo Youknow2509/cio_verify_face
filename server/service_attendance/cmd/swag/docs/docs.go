@@ -24,9 +24,9 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
-        "/v1/auth/device": {
+        "/v1/attendance/check_in": {
             "post": {
-                "description": "Update session device",
+                "description": "User check-in for attendance",
                 "consumes": [
                     "application/json"
                 ],
@@ -34,69 +34,24 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Core Auth"
+                    "Attendance"
                 ],
-                "summary": "Update session device",
+                "summary": "Check In attendance",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Authorization Bearer token",
-                        "name": "Authorization",
+                        "description": "Bearer token",
+                        "name": "authorization",
                         "in": "header",
                         "required": true
                     },
                     {
-                        "description": "Request body update device",
+                        "description": "Request body check-in",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.UpdateDeviceRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ResponseData"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrResponseData"
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "description": "Delete session device",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Core Auth"
-                ],
-                "summary": "Delete session device",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Authorization Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "Request body delete device",
-                        "name": "body",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.DeleteDeviceRequest"
+                            "$ref": "#/definitions/dto.CheckInRequest"
                         }
                     }
                 ],
@@ -116,9 +71,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/auth/login": {
+        "/v1/attendance/check_out": {
             "post": {
-                "description": "User login for user",
+                "description": "User check-out for attendance",
                 "consumes": [
                     "application/json"
                 ],
@@ -126,17 +81,24 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Core Auth"
+                    "Attendance"
                 ],
-                "summary": "User login",
+                "summary": "Check Out attendance",
                 "parameters": [
                     {
-                        "description": "Request body login",
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body check-out",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.LoginRequest"
+                            "$ref": "#/definitions/dto.CheckOutRequest"
                         }
                     }
                 ],
@@ -156,9 +118,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/auth/login/admin": {
+        "/v1/attendance/history/my": {
             "post": {
-                "description": "User login for admin",
+                "description": "Retrieve the attendance history for the current user",
                 "consumes": [
                     "application/json"
                 ],
@@ -166,17 +128,24 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Core Auth"
+                    "Attendance"
                 ],
-                "summary": "Admin login",
+                "summary": "Get My Attendance History",
                 "parameters": [
                     {
-                        "description": "Request body login",
-                        "name": "request",
+                        "type": "string",
+                        "description": "Bearer token",
+                        "name": "authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body to get my attendance records",
+                        "name": "req",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.LoginRequest"
+                            "$ref": "#/definitions/dto.GetMyAttendanceRecordsRequest"
                         }
                     }
                 ],
@@ -196,9 +165,9 @@ const docTemplate = `{
                 }
             }
         },
-        "/v1/auth/logout": {
+        "/v1/attendance/records": {
             "post": {
-                "description": "User logout",
+                "description": "Retrieve attendance records for device, day, user, ...",
                 "consumes": [
                     "application/json"
                 ],
@@ -206,100 +175,24 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Core Auth"
+                    "Attendance"
                 ],
-                "summary": "User logout",
+                "summary": "Get Attendance Records",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Authorization Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ResponseData"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrResponseData"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/auth/me": {
-            "get": {
-                "description": "User get base info",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Core Auth"
-                ],
-                "summary": "User get base info",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Authorization Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ResponseData"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrResponseData"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/auth/refresh": {
-            "post": {
-                "description": "User refresh token",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Core Auth"
-                ],
-                "summary": "User refresh token",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Authorization Bearer token",
-                        "name": "Authorization",
+                        "description": "Bearer token",
+                        "name": "authorization",
                         "in": "header",
                         "required": true
                     },
                     {
-                        "description": "Request body refresh token",
-                        "name": "request",
+                        "description": "Request body to get attendance records",
+                        "name": "req",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.RefreshTokenRequest"
+                            "$ref": "#/definitions/dto.GetAttendanceRecordsRequest"
                         }
                     }
                 ],
@@ -321,18 +214,73 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "dto.DeleteDeviceRequest": {
+        "dto.CheckInRequest": {
             "type": "object",
             "required": [
-                "company_id",
-                "device_id"
+                "device_id",
+                "face_image_url",
+                "location",
+                "timestamp",
+                "user_id",
+                "verification_method",
+                "verification_score"
             ],
             "properties": {
-                "company_id": {
-                    "type": "string"
-                },
                 "device_id": {
                     "type": "string"
+                },
+                "face_image_url": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "verification_method": {
+                    "type": "string"
+                },
+                "verification_score": {
+                    "type": "number"
+                }
+            }
+        },
+        "dto.CheckOutRequest": {
+            "type": "object",
+            "required": [
+                "device_id",
+                "face_image_url",
+                "location",
+                "timestamp",
+                "user_id",
+                "verification_method",
+                "verification_score"
+            ],
+            "properties": {
+                "device_id": {
+                    "type": "string"
+                },
+                "face_image_url": {
+                    "type": "string"
+                },
+                "location": {
+                    "type": "string"
+                },
+                "timestamp": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "verification_method": {
+                    "type": "string"
+                },
+                "verification_score": {
+                    "type": "number"
                 }
             }
         },
@@ -351,31 +299,48 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.LoginRequest": {
+        "dto.GetAttendanceRecordsRequest": {
             "type": "object",
-            "required": [
-                "password",
-                "username"
-            ],
             "properties": {
-                "password": {
-                    "type": "string",
-                    "minLength": 8
+                "company_id": {
+                    "type": "string"
                 },
-                "username": {
-                    "type": "string",
-                    "maxLength": 100,
-                    "minLength": 2
+                "device_id": {
+                    "type": "string"
+                },
+                "end_date": {
+                    "type": "string"
+                },
+                "page": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "page_size": {
+                    "type": "integer",
+                    "maximum": 100,
+                    "minimum": 1
+                },
+                "start_date": {
+                    "type": "string"
                 }
             }
         },
-        "dto.RefreshTokenRequest": {
+        "dto.GetMyAttendanceRecordsRequest": {
             "type": "object",
-            "required": [
-                "refresh_token"
-            ],
             "properties": {
-                "refresh_token": {
+                "end_date": {
+                    "type": "string"
+                },
+                "page": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "page_size": {
+                    "type": "integer",
+                    "maximum": 100,
+                    "minimum": 1
+                },
+                "start_date": {
                     "type": "string"
                 }
             }
@@ -393,31 +358,6 @@ const docTemplate = `{
                 "message": {
                     "description": "Thong bao loi",
                     "type": "string"
-                }
-            }
-        },
-        "dto.UpdateDeviceRequest": {
-            "type": "object",
-            "required": [
-                "company_id",
-                "device_id",
-                "device_name",
-                "device_type"
-            ],
-            "properties": {
-                "company_id": {
-                    "type": "string"
-                },
-                "device_id": {
-                    "type": "string"
-                },
-                "device_name": {
-                    "type": "string",
-                    "maxLength": 100,
-                    "minLength": 2
-                },
-                "device_type": {
-                    "type": "integer"
                 }
             }
         }
