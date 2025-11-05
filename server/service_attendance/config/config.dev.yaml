@@ -22,6 +22,25 @@ policy_rate_limit:
       limit: 5
       window: '1m'
 
+scylladb:
+    authentication:
+        username: scylla
+        password: scylla
+    address:
+        - 127.0.1:9042
+        # - v.v
+    keyspace: cio_verify_face
+    ssl:
+        enabled: false # true/false
+        certfile_path: '' # path default: ./config/scylladb/rootca.crt
+        validate: true # true/false
+        userkey_path: '' # path default: ./config/scylladb/client_key.key
+        usercert_path: '' # path default: ./config/scylladb/client_cert.crt
+    # pool config
+    maxIdleConns: 10 # maximum number of idle connections
+    maxOpenConns: 100 # maximum number of open connections
+    connMaxLifetime: 3600 # maximum connection lifetime in seconds
+
 postgres:
     address:
         - 127.0.0.1:5433
