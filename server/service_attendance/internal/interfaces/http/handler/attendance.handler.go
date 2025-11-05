@@ -95,10 +95,13 @@ func (a *AttendanceHandler) CheckIn(c *gin.Context) {
 	errReps := appService.GetAttendanceService().CheckInUser(
 		c,
 		&appModel.CheckInInput{
-			UserCheckInId: userCheckInId,
-			Timestamp:     req.Timestamp,
-			DeviceId:      deviceUuid,
-			Location:      req.Location,
+			UserCheckInId:      userCheckInId,
+			Timestamp:          req.Timestamp,
+			DeviceId:           deviceUuid,
+			Location:           req.Location,
+			VerificationMethod: req.VerificationMethod,
+			VerificationScore:  req.VerificationScore,
+			FaceImageURL:       req.FaceImageURL,
 			// Session info
 			UserID:      userUuid,
 			SessionID:   sessionUuid,
@@ -185,10 +188,13 @@ func (a *AttendanceHandler) CheckOut(c *gin.Context) {
 	errReps := appService.GetAttendanceService().CheckOutUser(
 		c,
 		&appModel.CheckOutInput{
-			UserCheckOutId: userCheckOutId,
-			Timestamp:      req.Timestamp,
-			DeviceId:       deviceUuid,
-			Location:       req.Location,
+			UserCheckOutId:     userCheckOutId,
+			Timestamp:          req.Timestamp,
+			DeviceId:           deviceUuid,
+			Location:           req.Location,
+			VerificationMethod: req.VerificationMethod,
+			VerificationScore:  req.VerificationScore,
+			FaceImageURL:       req.FaceImageURL,
 			// Session info
 			UserID:      userUuid,
 			SessionID:   sessionUuid,

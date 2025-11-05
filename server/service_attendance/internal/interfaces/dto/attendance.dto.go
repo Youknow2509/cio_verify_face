@@ -24,16 +24,22 @@ type GetMyAttendanceRecordsRequest struct {
 
 // CheckInRequest represents the request body for checking in.
 type CheckInRequest struct {
-	UserID    string `json:"user_id" validate:"required"`
-	Timestamp string `json:"timestamp" validate:"required"`
-	Location  string `json:"location" validate:"required"`
-	DeviceId  string `json:"device_id" validate:"required"`
+	UserID             string  `json:"user_id" validate:"required"`
+	Timestamp          string  `json:"timestamp" validate:"required"`
+	Location           string  `json:"location" validate:"required"`
+	DeviceId           string  `json:"device_id" validate:"required"`
+	VerificationMethod string  `json:"verification_method" validate:"required"`
+	VerificationScore  float32 `json:"verification_score" validate:"required"`
+	FaceImageURL       string  `json:"face_image_url" validate:"required"`
 }
 
 // CheckOutRequest represents the request body for checking out.
 type CheckOutRequest struct {
-	UserID    string `json:"user_id" validate:"required"`
-	Timestamp string `json:"timestamp" validate:"required"`
-	Location  string `json:"location" validate:"required"`
-	DeviceId  string `json:"device_id" validate:"required"`
+	UserID             string  `json:"user_id" validate:"required"`
+	Timestamp          string  `json:"timestamp" validate:"required"`
+	Location           string  `json:"location" validate:"required"`
+	DeviceId           string  `json:"device_id" validate:"required"`
+	VerificationMethod string  `json:"verification_method" validate:"required"`
+	VerificationScore  float32 `json:"verification_score" validate:"required"`
+	FaceImageURL       string  `json:"face_image_url" validate:"required"`
 }

@@ -65,10 +65,13 @@ type AttendanceRecordInfo struct {
 
 // For CheckIn method
 type CheckInInput struct {
-	UserCheckInId uuid.UUID `json:"user_checkin_id"`
-	Timestamp     string    `json:"timestamp"`
-	Location      string    `json:"location"`
-	DeviceId      uuid.UUID `json:"device_id"`
+	UserCheckInId      uuid.UUID `json:"user_checkin_id"`
+	VerificationMethod string    `json:"verification_method"`
+	VerificationScore  float32   `json:"verification_score"`
+	FaceImageURL       string    `json:"face_image_url"`
+	Timestamp          string    `json:"timestamp"`
+	Location           string    `json:"location"`
+	DeviceId           uuid.UUID `json:"device_id"`
 	// Session info
 	UserID      uuid.UUID `json:"user_id"`
 	SessionID   uuid.UUID `json:"session_id"`
@@ -79,10 +82,13 @@ type CheckInInput struct {
 
 // For CheckOut method
 type CheckOutInput struct {
-	UserCheckOutId uuid.UUID `json:"user_check_out_id"`
-	Timestamp      string    `json:"timestamp"`
-	Location       string    `json:"location"`
-	DeviceId       uuid.UUID `json:"device_id"`
+	UserCheckOutId     uuid.UUID `json:"user_check_out_id"`
+	VerificationMethod string    `json:"verification_method"`
+	VerificationScore  float32   `json:"verification_score"`
+	FaceImageURL       string    `json:"face_image_url"`
+	Timestamp          string    `json:"timestamp"`
+	Location           string    `json:"location"`
+	DeviceId           uuid.UUID `json:"device_id"`
 	// Session info
 	UserID      uuid.UUID `json:"user_id"`
 	SessionID   uuid.UUID `json:"session_id"`

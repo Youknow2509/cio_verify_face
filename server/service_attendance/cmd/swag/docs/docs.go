@@ -211,51 +211,6 @@ const docTemplate = `{
                     }
                 }
             }
-        },
-        "/v1/attendance/records/{record_id}": {
-            "get": {
-                "description": "Retrieve a specific attendance record by ID",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Attendance"
-                ],
-                "summary": "Get Attendance Record by ID",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Record ID",
-                        "name": "record_id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ResponseData"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrResponseData"
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
@@ -263,12 +218,18 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "device_id",
+                "face_image_url",
                 "location",
                 "timestamp",
-                "user_id"
+                "user_id",
+                "verification_method",
+                "verification_score"
             ],
             "properties": {
                 "device_id": {
+                    "type": "string"
+                },
+                "face_image_url": {
                     "type": "string"
                 },
                 "location": {
@@ -279,6 +240,12 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "string"
+                },
+                "verification_method": {
+                    "type": "string"
+                },
+                "verification_score": {
+                    "type": "number"
                 }
             }
         },
@@ -286,12 +253,18 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "device_id",
+                "face_image_url",
                 "location",
                 "timestamp",
-                "user_id"
+                "user_id",
+                "verification_method",
+                "verification_score"
             ],
             "properties": {
                 "device_id": {
+                    "type": "string"
+                },
+                "face_image_url": {
                     "type": "string"
                 },
                 "location": {
@@ -302,6 +275,12 @@ const docTemplate = `{
                 },
                 "user_id": {
                     "type": "string"
+                },
+                "verification_method": {
+                    "type": "string"
+                },
+                "verification_score": {
+                    "type": "number"
                 }
             }
         },
@@ -323,6 +302,9 @@ const docTemplate = `{
         "dto.GetAttendanceRecordsRequest": {
             "type": "object",
             "properties": {
+                "company_id": {
+                    "type": "string"
+                },
                 "device_id": {
                     "type": "string"
                 },
@@ -339,9 +321,6 @@ const docTemplate = `{
                     "minimum": 1
                 },
                 "start_date": {
-                    "type": "string"
-                },
-                "user_id": {
                     "type": "string"
                 }
             }

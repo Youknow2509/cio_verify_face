@@ -29,12 +29,14 @@ func (a *AttendanceService) CheckInUser(ctx context.Context, input *model.CheckI
 	// Instance use
 	var (
 		repo             domainRepo.IAttendanceRepository
+		userRepo         domainRepo.IUserRepository
 		distributedCache domainCache.IDistributedCache
 		logger           domainLogger.ILogger
 	)
 	logger = global.Logger
 	distributedCache, _ = domainCache.GetDistributedCache()
 	repo = domainRepo.GetAttendanceRepository()
+	userRepo = domainRepo.GetUserRepository()
 	// Check permission user manager or admin
 	ok, err := checkUserManagerOrAdminForUser(
 		ctx,
@@ -105,15 +107,26 @@ func (a *AttendanceService) CheckInUser(ctx context.Context, input *model.CheckI
 			_ = lc.SetTTL(ctx, key, "1", 60)
 		}
 	}
-
+	// get company ID of user
+	companyReps, err := userRepo.GetCompanyIdUser(
+		ctx,
+		&domainModel.GetCompanyIdUserInput{
+			UserID: input.UserID,
+		},
+	)
+	if err != nil {
+		logger.Error("GetCompanyIdUser failed", "error", err)
+		return &applicationErrors.Error{ErrorSystem: err}
+	}
+	companyId := companyReps.CompanyID
 	// build domain input and call repository
 	repoInput := &domainModel.AddCheckInRecordInput{
-		CompanyID:           uuid.Nil,
+		CompanyID:           companyId,
 		EmployeeID:          input.UserID,
 		DeviceID:            input.DeviceId,
-		VerificationMethod:  "unknown",
-		VerificationScore:   0.0,
-		FaceImageURL:        "",
+		VerificationMethod:  input.VerificationMethod,
+		VerificationScore:   input.VerificationScore,
+		FaceImageURL:        input.FaceImageURL,
 		LocationCoordinates: input.Location,
 		Metadata: map[string]string{
 			"client_ip":    input.ClientIp,
@@ -134,10 +147,12 @@ func (a *AttendanceService) CheckOutUser(ctx context.Context, input *model.Check
 	// Instance use
 	var (
 		repo   domainRepo.IAttendanceRepository
+		userRepo domainRepo.IUserRepository
 		logger domainLogger.ILogger
 	)
 	logger = global.Logger
 	repo = domainRepo.GetAttendanceRepository()
+	userRepo = domainRepo.GetUserRepository()
 	// Check permission user manager or admin
 	ok, err := checkUserManagerOrAdminForUser(
 		ctx,
@@ -160,15 +175,26 @@ func (a *AttendanceService) CheckOutUser(ctx context.Context, input *model.Check
 	} else {
 		return &applicationErrors.Error{ErrorClient: "Timestamp is not valid"}
 	}
-
+	// get company ID of user
+	companyReps, err := userRepo.GetCompanyIdUser(
+		ctx,
+		&domainModel.GetCompanyIdUserInput{
+			UserID: input.UserID,
+		},
+	)
+	if err != nil {
+		logger.Error("GetCompanyIdUser failed", "error", err)
+		return &applicationErrors.Error{ErrorSystem: err}
+	}
+	companyId := companyReps.CompanyID
 	// build domain input and call repository
 	repoInput := &domainModel.AddCheckOutRecordInput{
-		CompanyID:           uuid.Nil,
+		CompanyID:           companyId,
 		EmployeeID:          input.UserID,
 		DeviceID:            input.DeviceId,
-		VerificationMethod:  "unknown",
-		VerificationScore:   0.0,
-		FaceImageURL:        "",
+		VerificationMethod:  input.VerificationMethod,
+		VerificationScore:   input.VerificationScore,
+		FaceImageURL:        input.FaceImageURL,
 		LocationCoordinates: input.Location,
 		Metadata: map[string]string{
 			"client_ip":    input.ClientIp,
