@@ -96,3 +96,30 @@ type CheckOutInput struct {
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
 }
+
+// ===========================
+// Attendance admin models
+// ===========================
+// For CheckOut method
+type AdminCheckOutInput struct {
+	UserCheckOutId     uuid.UUID `json:"user_check_out_id"`
+	VerificationMethod string    `json:"verification_method"`
+	VerificationScore  float32   `json:"verification_score"`
+	FaceImageURL       string    `json:"face_image_url"`
+	Timestamp          string    `json:"timestamp"`
+	Location           string    `json:"location"`
+	DeviceId           uuid.UUID `json:"device_id"`
+	ClientIp           string    `json:"client_ip"`
+}
+
+// For CheckIn method
+type AdminCheckInInput struct {
+	UserCheckInId      uuid.UUID `json:"user_checkin_id"`
+	VerificationMethod string    `json:"verification_method"`
+	VerificationScore  float32   `json:"verification_score"`
+	FaceImageURL       string    `json:"face_image_url"`
+	Timestamp          string    `json:"timestamp"`
+	Location           string    `json:"location"`
+	DeviceId           uuid.UUID `json:"device_id"`
+	ClientIp           string    `json:"client_ip"`
+}

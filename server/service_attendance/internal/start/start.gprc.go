@@ -6,6 +6,7 @@ import (
 	"os"
 
 	global "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/global"
+	router "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/interfaces/grpc/router"
 	pb "github.com/youknow2509/cio_verify_face/server/service_attendance/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -59,34 +60,18 @@ func initServerGrpc() error {
 	}
 
 	grpcServer := grpc.NewServer(opts...)
-	_ = grpcServer
-	_ = lis
-	// // Get services
-	// authCacheService := service.GetAuthCacheService()
-	// coreAuthService := service.GetCoreAuthService()
-	// loggerService2 := logger.GetLogger()
 
-	// // Create and register gRPC handler
-	// authHandler := grpcHandler.NewAuthGRPCHandler(
-	// 	authCacheService,
-	// 	coreAuthService,
-	// 	loggerService2,
-	// )
+	// Register service
+	pb.RegisterAttendanceServiceServer(grpcServer, router.NewAttendanceRouter())
 
-	// // Register service
-	// pb.RegisterAuthServiceServer(grpcServer, authHandler)
+	// start server
+	global.Logger.Info("gRPC server starting", "address", lis.Addr().String())
 
-	// // Enable reflection for development/debugging
-	// reflection.Register(grpcServer)
-
-	// // start server
-	// global.Logger.Info("gRPC server starting", "address", lis.Addr().String())
-
-	// go func() {
-	// 	if err := grpcServer.Serve(lis); err != nil {
-	// 		global.Logger.Error("failed to start gRPC server", "error", err)
-	// 	}
-	// }()
+	go func() {
+		if err := grpcServer.Serve(lis); err != nil {
+			global.Logger.Error("failed to start gRPC server", "error", err)
+		}
+	}()
 
 	return nil
 }
