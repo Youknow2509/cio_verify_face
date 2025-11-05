@@ -11,7 +11,7 @@ type GetAttendanceRecordsRequest struct {
 	StartDate string `json:"start_date" validate:"omitempty,datetime=2006-01-02"`
 	EndDate   string `json:"end_date" validate:"omitempty,datetime=2006-01-02"`
 	DeviceId  string `json:"device_id" validate:"omitempty,uuid4"`
-	UserID    string `json:"user_id" validate:"omitempty,uuid4"`
+	CompanyID string `json:"company_id" validate:"omitempty,uuid4"`
 }
 
 // GetMyAttendanceRecordsRequest represents the request body for retrieving a user's attendance records.

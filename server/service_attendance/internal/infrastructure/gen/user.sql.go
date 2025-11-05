@@ -55,6 +55,20 @@ func (q *Queries) DeleteUserSessionByID(ctx context.Context, sessionID pgtype.UU
 	return err
 }
 
+const getCompanyIdUser = `-- name: GetCompanyIdUser :one
+SELECT company_id
+FROM employees
+WHERE employee_id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetCompanyIdUser(ctx context.Context, employeeID pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getCompanyIdUser, employeeID)
+	var company_id pgtype.UUID
+	err := row.Scan(&company_id)
+	return company_id, err
+}
+
 const getUserBaseWithMail = `-- name: GetUserBaseWithMail :one
 SELECT user_id, email, salt, password_hash, role, is_locked 
 FROM users

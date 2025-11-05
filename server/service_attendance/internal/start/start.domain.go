@@ -15,6 +15,10 @@ func initDomain() error {
 	if err != nil {
 		return err
 	}
+	cql, err := infraConn.GetScylladbClient()
+	if err != nil {
+		return err
+	}
 	// ============================================
 	// 			Initialize domain components
 	// ============================================
@@ -27,6 +31,18 @@ func initDomain() error {
 	// init IAuditLogRepository
 	if err := domainRepository.SetAuditRepository(
 		infraRepository.NewAuditRepository(postgres),
+	); err != nil {
+		return err
+	}
+	// init IAttendanceRepository
+	if err := domainRepository.SetAttendanceRepository(
+		infraRepository.NewAttendanceRepository(cql),
+	); err != nil {
+		return err
+	}
+	// init IUserRepository
+	if err := domainRepository.SetUserRepository(
+		infraRepository.NewUserRepository(postgres),
 	); err != nil {
 		return err
 	}

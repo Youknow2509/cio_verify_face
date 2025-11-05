@@ -7,6 +7,17 @@ import "fmt"
 //	Define key cache
 //
 // =================================
+
+// Key GetKeyUserIsManagerCompanyForUser
+func GetKeyUserIsManagerCompanyForUser(userIdReqHash string, userIdHash string) string {
+	return fmt.Sprintf("user:is:manager:company:%s:%s", userIdReqHash, userIdHash)
+}
+
+// Key GetKeyUserIsManagerCompany
+func GetKeyUserIsManagerCompany(userIdHash string, companyIdHash string) string {
+	return fmt.Sprintf("user:is:manager:company:%s:%s", userIdHash, companyIdHash)
+}
+
 // Key user register OTP value
 func GetKeyUserRegisterOTP(mailHash string) string {
 	return fmt.Sprintf("user:register:otp:%s", mailHash)
@@ -93,5 +104,15 @@ func GetKeyCacheListFriendsOfUser(userIdHash string, page int) string {
 }
 
 // =================================
-// 			Define value cache
+// Attendance related keys
 // =================================
+
+// Key for user's last check-in on a given date. Useful to prevent duplicate check-ins.
+func GetKeyAttendanceUserLastCheckIn(userIdHash string, date string) string {
+	return fmt.Sprintf("attendance:user:last_checkin:%s:%s", userIdHash, date)
+}
+
+// Key for device attendance records cache per company and date
+func GetKeyAttendanceDeviceRecords(companyIdHash string, deviceIdHash string, page int, size int, date string) string {
+	return fmt.Sprintf("attendance:device:records:%s:%s:%d:%d:%s", companyIdHash, deviceIdHash, page, size, date)
+}

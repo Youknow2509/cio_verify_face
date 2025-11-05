@@ -38,6 +38,7 @@ type GetAttendanceRecordByIDInput struct {
 // For GetRecords method
 type GetAttendanceRecordsInput struct {
 	DeviceID  uuid.UUID `json:"device_id,omitempty"`
+	CompanyId uuid.UUID `json:"company_id,omitempty"`
 	StartDate time.Time `json:"start_date,omitempty"`
 	EndDate   time.Time `json:"end_date,omitempty"`
 	Page      int       `json:"page,omitempty"`
@@ -64,9 +65,10 @@ type AttendanceRecordInfo struct {
 
 // For CheckIn method
 type CheckInInput struct {
-	Timestamp string    `json:"timestamp"`
-	Location  string    `json:"location"`
-	DeviceId  uuid.UUID `json:"device_id"`
+	UserCheckInId uuid.UUID `json:"user_checkin_id"`
+	Timestamp     string    `json:"timestamp"`
+	Location      string    `json:"location"`
+	DeviceId      uuid.UUID `json:"device_id"`
 	// Session info
 	UserID      uuid.UUID `json:"user_id"`
 	SessionID   uuid.UUID `json:"session_id"`
@@ -77,9 +79,10 @@ type CheckInInput struct {
 
 // For CheckOut method
 type CheckOutInput struct {
-	Timestamp string    `json:"timestamp"`
-	Location  string    `json:"location"`
-	DeviceId  uuid.UUID `json:"device_id"`
+	UserCheckOutId uuid.UUID `json:"user_check_out_id"`
+	Timestamp      string    `json:"timestamp"`
+	Location       string    `json:"location"`
+	DeviceId       uuid.UUID `json:"device_id"`
 	// Session info
 	UserID      uuid.UUID `json:"user_id"`
 	SessionID   uuid.UUID `json:"session_id"`

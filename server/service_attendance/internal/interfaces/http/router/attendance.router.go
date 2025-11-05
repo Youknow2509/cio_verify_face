@@ -3,7 +3,7 @@ package router
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/youknow2509/cio_verify_face/server/service_attendance/internal/infrastructure/middleware"
-	httpHandler "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/interfaces/http/handler/attendance"
+	httpHandler "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/interfaces/http/handler"
 )
 
 // ============================================
@@ -24,7 +24,6 @@ func (r *AttendanceRouter) Deploy(g *gin.RouterGroup) {
 	v1User := g.Group("/v1/attendance")
 	v1User.Use(middleware.GetAuthAccessTokenJwtMiddleware().Apply())
 	{
-		v1User.GET("/records/:record_id", httpHandler.NewAttendanceHandler().GetRecordByID)
 		v1User.POST("/history/my", httpHandler.NewAttendanceHandler().GetMyHistory)
 	}
 }

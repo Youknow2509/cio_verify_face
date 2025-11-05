@@ -1,4 +1,10 @@
 
+-- name: GetCompanyIdUser :one
+SELECT company_id
+FROM employees
+WHERE employee_id = $1
+LIMIT 1;
+
 -- name: GetUserInfoWithID :one
 SELECT 
     email,

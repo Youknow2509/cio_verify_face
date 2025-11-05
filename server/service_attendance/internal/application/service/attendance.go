@@ -14,7 +14,6 @@ type IAttendanceService interface {
 	CheckInUser(ctx context.Context, input *model.CheckInInput) *applicationErrors.Error
 	CheckOutUser(ctx context.Context, input *model.CheckOutInput) *applicationErrors.Error
 	GetRecords(ctx context.Context, input *model.GetAttendanceRecordsInput) ([]*model.AttendanceRecordOutput, *applicationErrors.Error)	
-	GetRecordByID(ctx context.Context, input *model.GetAttendanceRecordByIDInput) (*model.AttendanceRecordInfo, *applicationErrors.Error)
 	GetMyRecords(ctx context.Context, input *model.GetMyRecordsInput) ([]*model.GetMyRecordsOutput, *applicationErrors.Error)
 }
 

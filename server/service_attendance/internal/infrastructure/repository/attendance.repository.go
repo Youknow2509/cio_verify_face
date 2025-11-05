@@ -35,6 +35,104 @@ type AttendanceRepository struct {
 	dbSession *gocql.Session
 }
 
+// GetAttendanceRecordRangeTimeWithUserId implements repository.IAttendanceRepository.
+func (a *AttendanceRepository) GetAttendanceRecordRangeTimeWithUserId(ctx context.Context, input *model.GetAttendanceRecordRangeTimeWithUserIdInput) ([]*model.AttendanceRecord, error) {
+	if input == nil {
+		return nil, errors.New("GetAttendanceRecordRangeTimeWithUserIdInput is nil")
+	}
+	// Parse data query parameters
+	companyId, err := gocql.ParseUUID(input.CompanyID.String())
+	if err != nil {
+		return nil, err
+	}
+	userId, err := gocql.ParseUUID(input.UserID.String())
+	if err != nil {
+		return nil, err
+	}
+	startTime := time.Unix(input.StartTime, 0)
+	endTime := time.Unix(input.EndTime, 0)
+	if endTime.Before(startTime) {
+		return nil, errors.New("EndTime is before StartTime")
+	}
+	//
+	query := `SELECT
+		company_id,
+		record_time,
+		employee_id,
+		device_id,
+		record_type,
+		verification_method,
+		verification_score,
+		face_image_url,
+		location_coordinates,
+		metadata,
+		sync_status,
+		created_at
+	FROM attendance_records_by_company_date
+	WHERE company_id = ? AND employee_id = ? AND record_time >= ? AND record_time <= ?
+	ALLOW FILTERING
+	ORDER BY record_time ASC
+	LIMIT ? OFFSET ?`
+	// Execute query
+	iter := a.dbSession.Query(
+		query,
+		companyId,
+		userId,
+		startTime,
+		endTime,
+		input.Limit,
+		input.Offset,
+	).Iter()
+	var records []*model.AttendanceRecord
+	var (
+		cId            gocql.UUID
+		rTime          time.Time
+		eId            gocql.UUID
+		dId            gocql.UUID
+		rType          int
+		vMethod        string
+		vScore         float32
+		fImageURL      string
+		locCoordinates string
+		metadata       map[string]string
+		syncStatus     string
+		createdAt      time.Time
+	)
+	for iter.Scan(
+		&cId,
+		&rTime,
+		&eId,
+		&dId,
+		&rType,
+		&vMethod,
+		&vScore,
+		&fImageURL,
+		&locCoordinates,
+		&metadata,
+		&syncStatus,
+		&createdAt,
+	) {
+		record := &model.AttendanceRecord{
+			CompanyID:           uuid.UUID(cId.Bytes()),
+			RecordTime:          rTime.Unix(),
+			EmployeeID:          uuid.UUID(eId.Bytes()),
+			DeviceID:            uuid.UUID(dId.Bytes()),
+			Type:                rType,
+			VerificationMethod:  vMethod,
+			VerificationScore:   vScore,
+			FaceImageURL:        fImageURL,
+			LocationCoordinates: locCoordinates,
+			Metadata:            metadata,
+			CreatedAt:           createdAt.Unix(),
+		}
+		records = append(records, record)
+	}
+	if err := iter.Close(); err != nil {
+		return nil, err
+	}
+	return records, nil
+}
+
 // AddCheckInRecord implements repository.IAttendanceRepository.
 func (a *AttendanceRepository) AddCheckInRecord(ctx context.Context, input *model.AddCheckInRecordInput) error {
 	if input == nil {
@@ -177,13 +275,18 @@ func (a *AttendanceRepository) GetAttendanceRecordRangeTime(ctx context.Context,
 		sync_status,
 		created_at
 	FROM attendance_records_by_company_date
-	WHERE company_id = ? AND device_id = ? AND record_time >= ? AND record_time <= ?`
+	WHERE company_id = ? AND device_id = ? AND record_time >= ? AND record_time <= ?
+	ORDER BY record_time ASC
+	LIMIT ? OFFSET ?`
+	// Execute query
 	iter := a.dbSession.Query(
 		query,
 		companyId,
 		deviceId,
 		startTime,
 		endTime,
+		input.Limit,
+		input.Offset,
 	).Iter()
 	var records []*model.AttendanceRecord
 	var (

@@ -13,6 +13,7 @@ type IAttendanceRepository interface {
 	AddCheckInRecord(ctx context.Context, input *model.AddCheckInRecordInput) error
 	AddCheckOutRecord(ctx context.Context, input *model.AddCheckOutRecordInput) error
 	GetAttendanceRecordRangeTime(ctx context.Context, input *model.GetAttendanceRecordRangeTimeInput) ([]*model.AttendanceRecord, error)
+	GetAttendanceRecordRangeTimeWithUserId(ctx context.Context, input *model.GetAttendanceRecordRangeTimeWithUserIdInput) ([]*model.AttendanceRecord, error)
 }
 
 // ============================================

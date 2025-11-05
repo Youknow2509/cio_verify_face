@@ -5,7 +5,6 @@ import (
 
 	gin "github.com/gin-gonic/gin"
 	validator "github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
 	appModel "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/application/model"
 	appService "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/application/service"
 	constants "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/constants"
@@ -25,8 +24,6 @@ type iAttendanceHandler interface {
 	CheckOut(c *gin.Context)
 	// GetRecords retrieves attendance records
 	GetRecords(c *gin.Context)
-	// GetRecordByID retrieves a specific attendance record by ID
-	GetRecordByID(c *gin.Context)
 	// GetMyHistory retrieves the attendance history for the current user
 	GetMyHistory(c *gin.Context)
 }
@@ -89,13 +86,19 @@ func (a *AttendanceHandler) CheckIn(c *gin.Context) {
 		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Device ID is not valid UUID")
 		return
 	}
+	userCheckInId, err := sharedUuid.ParseUUID(req.UserID)
+	if err != nil {
+		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "User Check-In ID is not valid UUID")
+		return
+	}
 	// Call service to process check-in
 	errReps := appService.GetAttendanceService().CheckInUser(
 		c,
 		&appModel.CheckInInput{
-			Timestamp: req.Timestamp,
-			DeviceId:  deviceUuid,
-			Location:  req.Location,
+			UserCheckInId: userCheckInId,
+			Timestamp:     req.Timestamp,
+			DeviceId:      deviceUuid,
+			Location:      req.Location,
 			// Session info
 			UserID:      userUuid,
 			SessionID:   sessionUuid,
@@ -173,13 +176,19 @@ func (a *AttendanceHandler) CheckOut(c *gin.Context) {
 		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Device ID is not valid UUID")
 		return
 	}
+	userCheckOutId, err := sharedUuid.ParseUUID(req.UserID)
+	if err != nil {
+		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "User Check-Out ID is not valid UUID")
+		return
+	}
 	// Call service to process check-out
 	errReps := appService.GetAttendanceService().CheckOutUser(
 		c,
 		&appModel.CheckOutInput{
-			Timestamp: req.Timestamp,
-			DeviceId:  deviceUuid,
-			Location:  req.Location,
+			UserCheckOutId: userCheckOutId,
+			Timestamp:      req.Timestamp,
+			DeviceId:       deviceUuid,
+			Location:       req.Location,
 			// Session info
 			UserID:      userUuid,
 			SessionID:   sessionUuid,
@@ -315,67 +324,6 @@ func (a *AttendanceHandler) GetMyHistory(c *gin.Context) {
 	)
 }
 
-// GetRecordByID implements iAttendanceHandler.
-// @Summary      Get Attendance Record by ID
-// @Description  Retrieve a specific attendance record by ID
-// @Tags         Attendance
-// @Accept       json
-// @Produce      json
-// @Param        authorization header string true "Bearer token"
-// @Param        record_id  path  string  true  "Record ID"
-// @Success      200  {object}  dto.ResponseData
-// @Failure      400  {object}  dto.ErrResponseData
-// @Router       /v1/attendance/records/{record_id} [get]
-func (a *AttendanceHandler) GetRecordByID(c *gin.Context) {
-	// get record_id from path
-	recordId := c.Param("record_id")
-	if recordId == "" {
-		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Record ID is required")
-		return
-	}
-	// Get session
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
-	if !ok {
-		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
-		return
-	}
-	// Validate uuid
-	userUuid, _ := sharedUuid.ParseUUID(userId)
-	sessionUuid, _ := sharedUuid.ParseUUID(sessionId)
-	recordUuid, err := sharedUuid.ParseUUID(recordId)
-	if err != nil {
-		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Record ID is not valid UUID")
-		return
-	}
-	// Call service to get record by ID
-	reps, errReps := appService.GetAttendanceService().GetRecordByID(
-		c,
-		&appModel.GetAttendanceRecordByIDInput{
-			RecordID: recordUuid,
-			// Session info
-			UserID:      userUuid,
-			SessionID:   sessionUuid,
-			Role:        userRole,
-			ClientIp:    c.ClientIP(),
-			ClientAgent: c.Request.UserAgent(),
-		},
-	)
-	if errReps != nil {
-		if errReps.ErrorSystem != nil {
-			response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
-			return
-		}
-		response.ErrorResponse(c, 400, errReps.ErrorClient)
-		return
-	}
-	// Respond success
-	response.SuccessResponse(
-		c,
-		200,
-		reps,
-	)
-}
-
 // GetRecords implements iAttendanceHandler.
 // @Summary      Get Attendance Records
 // @Description  Retrieve attendance records for device, day, user, ...
@@ -424,13 +372,15 @@ func (a *AttendanceHandler) GetRecords(c *gin.Context) {
 	// Validate uuid
 	userUuid, _ := sharedUuid.ParseUUID(userId)
 	sessionUuid, _ := sharedUuid.ParseUUID(sessionId)
-	var deviceUuid uuid.UUID
-	if req.DeviceId != "" {
-		deviceUuid, err = sharedUuid.ParseUUID(req.DeviceId)
-		if err != nil {
-			response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Device ID is not valid UUID")
-			return
-		}
+	deviceUuid, err := sharedUuid.ParseUUID(req.DeviceId)
+	if err != nil {
+		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Device ID is not valid UUID")
+		return
+	}
+	companyUuid, err := sharedUuid.ParseUUID(req.CompanyID)
+	if err != nil {
+		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Company ID is not valid UUID")
+		return
 	}
 	// Validate date format
 	var (
@@ -473,8 +423,9 @@ func (a *AttendanceHandler) GetRecords(c *gin.Context) {
 			StartDate: startDate,
 			EndDate:   endDate,
 			DeviceID:  deviceUuid,
-			UserID:    userUuid,
+			CompanyId: companyUuid,
 			// Session info
+			UserID:      userUuid,
 			SessionID:   sessionUuid,
 			Role:        userRole,
 			ClientIp:    c.ClientIP(),

@@ -6,12 +6,24 @@ import "github.com/google/uuid"
 // Attendance Record Model
 // ============================================
 
+// For GetAttendanceRecordRangeTimeWithUserId
+type GetAttendanceRecordRangeTimeWithUserIdInput struct {
+	CompanyID uuid.UUID
+	UserID    uuid.UUID
+	StartTime int64
+	EndTime   int64
+	Limit     int
+	Offset    int
+}
+
 // For GetAttendanceRecordRangeTime
 type GetAttendanceRecordRangeTimeInput struct {
 	CompanyID uuid.UUID
 	DeviceID  uuid.UUID
 	StartTime int64
 	EndTime   int64
+	Limit     int
+	Offset    int
 }
 
 // Attendance Record structure
