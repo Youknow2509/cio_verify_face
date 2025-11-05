@@ -28,10 +28,7 @@ func initConnectionToInfrastructure(setting *domainConfig.Setting) error {
 	}
 	// initialize token service
 	_tokenService = infraToken.NewTokenService(
-		setting.JWT.Secret,
-		setting.JWT.Issuer,
-		setting.JWT.Subject,
-		setting.JWT.Audience,
+		grpcClient,
 	)
 	// v.v
 
