@@ -71,7 +71,7 @@ services:
 
     # MinIO Object Storage Service
     minio:
-        image: bitnami/minio:2025
+        image: bitnamilegacy/minio:2025
         networks:
             - nw-dev-0
         ports:
@@ -172,7 +172,7 @@ services:
 
     # MinIO UI
     minio-ui:
-        image: bitnami/minio-object-browser:latest
+        image: bitnamilegacy/minio-object-browser:latest
         networks:
             - nw-dev-0
         ports:
