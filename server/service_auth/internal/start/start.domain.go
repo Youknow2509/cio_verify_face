@@ -42,7 +42,12 @@ func initDomain() error {
 	); err != nil {
 		return err
 	}
-
+	// init IDeviceRepository
+	if err := domainRepository.SetDeviceRepository(
+		infraRepository.NewDeviceRepository(postgres),
+	); err != nil {
+		return err
+	}
 	// v.v
 	return nil
 }
