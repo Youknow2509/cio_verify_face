@@ -67,6 +67,36 @@ func (d *DeviceService) UpdateStatusDevice(ctx context.Context, input *model.Upd
 			}
 		}
 	}
+	// Rm cache of device info
+	userRepo, _ := domainRepo.GetUserRepository()
+	companyInfo, err := userRepo.GetCompanyIdOfUser(
+		ctx,
+		&domainModel.GetCompanyIdOfUserInput{
+			UserID: input.UserId,
+		},
+	)
+	if err != nil {
+		return nil
+	}
+	if companyInfo == nil {
+		return nil
+	}
+	key := []string{
+		sharedCache.GetKeyDeviceBase(sharedCrypto.GetHash(input.DeviceId.String())),
+		sharedCache.GetKeyListDeviceInCompany(
+			sharedCrypto.GetHash(companyInfo.CompanyID.String()),
+			20,
+			1,
+		),
+	}
+	go func() {
+		cacheService, _ := domainCache.GetDistributedCache()
+		for _, k := range key {
+			if err := cacheService.Delete(context.Background(), k); err != nil {
+				global.Logger.Error("Error when delete device info cache", "err", err)
+			}
+		}
+	}()
 	return nil
 }
 
@@ -128,6 +158,36 @@ func (d *DeviceService) RefreshDeviceToken(ctx context.Context, input *model.Ref
 		newToken,
 		constants.TTL_DEVICE_TOKEN,
 	)
+	// Rm cache of device info
+	userRepo, _ := domainRepo.GetUserRepository()
+	companyInfo, err := userRepo.GetCompanyIdOfUser(
+		ctx,
+		&domainModel.GetCompanyIdOfUserInput{
+			UserID: input.UserId,
+		},
+	)
+	if err != nil {
+		return nil, nil
+	}
+	if companyInfo == nil {
+		return nil, nil
+	}
+	keyRm := []string{
+		sharedCache.GetKeyDeviceBase(sharedCrypto.GetHash(input.DeviceId.String())),
+		sharedCache.GetKeyListDeviceInCompany(
+			sharedCrypto.GetHash(companyInfo.CompanyID.String()),
+			20,
+			1,
+		),
+	}
+	go func() {
+		cacheService, _ := domainCache.GetDistributedCache()
+		for _, k := range keyRm {
+			if err := cacheService.Delete(context.Background(), k); err != nil {
+				global.Logger.Error("Error when delete device info cache", "err", err)
+			}
+		}
+	}()
 	return &model.RefreshDeviceTokenOutput{
 		DeviceId:    input.DeviceId.String(),
 		DeviceToken: newToken,
@@ -276,7 +336,36 @@ func (d *DeviceService) UpdateInfoDevice(ctx context.Context, input *model.Updat
 			ErrorClient: "System is busy now. Please try again later.",
 		}
 	}
-
+	// Rm cache of device info
+	userRepo, _ := domainRepo.GetUserRepository()
+	companyInfo, err := userRepo.GetCompanyIdOfUser(
+		ctx,
+		&domainModel.GetCompanyIdOfUserInput{
+			UserID: input.UserId,
+		},
+	)
+	if err != nil {
+		return nil
+	}
+	if companyInfo == nil {
+		return nil
+	}
+	key := []string{
+		sharedCache.GetKeyDeviceBase(sharedCrypto.GetHash(input.DeviceId.String())),
+		sharedCache.GetKeyListDeviceInCompany(
+			sharedCrypto.GetHash(companyInfo.CompanyID.String()),
+			20,
+			1,
+		),
+	}
+	go func() {
+		cacheService, _ := domainCache.GetDistributedCache()
+		for _, k := range key {
+			if err := cacheService.Delete(context.Background(), k); err != nil {
+				global.Logger.Error("Error when delete device info cache", "err", err)
+			}
+		}
+	}()
 	return nil
 }
 
@@ -347,6 +436,36 @@ func (d *DeviceService) UpdateLocationDevice(ctx context.Context, input *model.U
 			ErrorClient: "System is busy now. Please try again later.",
 		}
 	}
+	// Rm cache of device info
+	userRepo, _ := domainRepo.GetUserRepository()
+	companyInfo, err := userRepo.GetCompanyIdOfUser(
+		ctx,
+		&domainModel.GetCompanyIdOfUserInput{
+			UserID: input.UserId,
+		},
+	)
+	if err != nil {
+		return nil
+	}
+	if companyInfo == nil {
+		return nil
+	}
+	key := []string{
+		sharedCache.GetKeyDeviceBase(sharedCrypto.GetHash(input.DeviceId.String())),
+		sharedCache.GetKeyListDeviceInCompany(
+			sharedCrypto.GetHash(companyInfo.CompanyID.String()),
+			20,
+			1,
+		),
+	}
+	go func() {
+		cacheService, _ := domainCache.GetDistributedCache()
+		for _, k := range key {
+			if err := cacheService.Delete(context.Background(), k); err != nil {
+				global.Logger.Error("Error when delete device info cache", "err", err)
+			}
+		}
+	}()
 	return nil
 }
 
@@ -417,8 +536,26 @@ func (d *DeviceService) UpdateNameDevice(ctx context.Context, input *model.Updat
 		}
 	}
 	// Rm cache of device info
+	userRepo, _ := domainRepo.GetUserRepository()
+	companyInfo, err := userRepo.GetCompanyIdOfUser(
+		ctx,
+		&domainModel.GetCompanyIdOfUserInput{
+			UserID: input.UserId,
+		},
+	)
+	if err != nil {
+		return nil
+	}
+	if companyInfo == nil {
+		return nil
+	}
 	key := []string{
 		sharedCache.GetKeyDeviceBase(sharedCrypto.GetHash(input.DeviceId.String())),
+		sharedCache.GetKeyListDeviceInCompany(
+			sharedCrypto.GetHash(companyInfo.CompanyID.String()),
+			20,
+			1,
+		),
 	}
 	go func() {
 		cacheService, _ := domainCache.GetDistributedCache()
@@ -578,6 +715,36 @@ func (d *DeviceService) DeleteDeviceById(ctx context.Context, input *model.Delet
 			ErrorClient: "System is busy now. Please try again later.",
 		}
 	}
+	// Rm cache of device info
+	userRepo, _ := domainRepo.GetUserRepository()
+	companyInfo, err := userRepo.GetCompanyIdOfUser(
+		ctx,
+		&domainModel.GetCompanyIdOfUserInput{
+			UserID: input.UserId,
+		},
+	)
+	if err != nil {
+		return nil
+	}
+	if companyInfo == nil {
+		return nil
+	}
+	key := []string{
+		sharedCache.GetKeyDeviceBase(sharedCrypto.GetHash(input.DeviceId.String())),
+		sharedCache.GetKeyListDeviceInCompany(
+			sharedCrypto.GetHash(companyInfo.CompanyID.String()),
+			20,
+			1,
+		),
+	}
+	go func() {
+		cacheService, _ := domainCache.GetDistributedCache()
+		for _, k := range key {
+			if err := cacheService.Delete(context.Background(), k); err != nil {
+				global.Logger.Error("Error when delete device info cache", "err", err)
+			}
+		}
+	}()
 	return nil
 }
 
@@ -789,6 +956,7 @@ func (d *DeviceService) GetListDevices(ctx context.Context, input *model.ListDev
 			MacAddress:   device.MacAddress,
 			CreateAt:     device.CreateAt,
 			Token:        device.Token,
+			Status:       device.Status,
 		})
 	}
 	return &model.ListDevicesOutput{

@@ -385,7 +385,7 @@ func (h *Handler) GetDeviceById(c *gin.Context) {
 func (h *Handler) GetListDevices(c *gin.Context) {
 	// Get query params
 	page := c.DefaultQuery("page", "1")
-	size := c.DefaultQuery("size", "10")
+	size := c.DefaultQuery("size", "20")
 	companyId := c.DefaultQuery("company_id", "")
 	// validate query params
 	var err error
