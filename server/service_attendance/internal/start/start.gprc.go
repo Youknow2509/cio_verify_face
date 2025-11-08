@@ -25,7 +25,7 @@ func initServerGrpc() error {
 	// Initialize the gRPC server
 	lis, err := net.Listen(
 		config.Network,
-		fmt.Sprintf("%s:%d", config.Host, config.Port),
+		fmt.Sprintf(":%d", config.Port),
 	)
 	if err != nil {
 		global.Logger.Error("failed to listen", "error", err)

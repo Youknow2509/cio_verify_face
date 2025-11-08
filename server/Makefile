@@ -1,6 +1,6 @@
 .PHONY: help
 .PHONY: goose_create goose_up goose_down goose_status goose_fix goose_redo goose_reset goose_clean goose_up_by_one
-.PHONY: docker_compose_up
+.PHONY: docker_compose_up docker_compose_down docker_builds docker_build_service
 
 .ALL: help
 
@@ -21,6 +21,9 @@ MIGRATE_DRIVER ?= cassandra
 # cassandra://host:port/keyspace?param1=value&param2=value2
 MIGRATE_URL ?= localhost:9042/cio_verify_face?username=cassandra&password=root1234&sslmode=disable
 MIGRATE_DB_DSN ?= "${MIGRATE_DRIVER}://${MIGRATE_URL}"
+
+# docker
+DOCKER_BAKE_FILE ?= docker-bake.hcl
 
 help:
 	@echo "Available commands:"
@@ -49,8 +52,25 @@ help:
 
 	@echo "\nDocker Compose Commands:"
 	@echo "\t docker_compose_up \t Docker compose up"
+	@echo "\t docker_compose_down \t Docker compose down"
+	@echo "\t docker_builds \t Docker build all services and push to registry"
+	@echo "\t docker_build_service \t Docker build a specific service and push to registry"
 
 	@echo "  help - Show this help message"
+
+docker_build_service:
+	@echo "Building Docker image for service $(SERVICE) and pushing to registry"
+	docker buildx bake --file ${DOCKER_BAKE_FILE} --push $(SERVICE) 
+
+# Docker Build All Services
+docker_builds:
+	@echo "Building Docker images for all services and pushing to registry"
+	docker buildx bake --file ${DOCKER_BAKE_FILE} --push
+
+# Docker Compose - Down
+docker_compose_down:
+	@echo "Stopping Docker Compose"
+	docker-compose -f docker-compose.yml -p cio_verify_face down
 
 # Docker Compose - Up
 docker_compose_up:
