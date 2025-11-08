@@ -77,6 +77,7 @@ type DeviceInfoBaseOutput struct {
 	Status       int       `json:"status"`
 	CreateAt     string    `json:"create_at"`
 	UpdateAt     string    `json:"update_at"`
+	Token        string    `json:"token"`
 }
 
 // DeviceInfo
@@ -96,6 +97,7 @@ type DeviceInfoOutput struct {
 	Settings        interface{} `json:"settings"`
 	CreateAt        string      `json:"create_at"`
 	UpdateAt        string      `json:"update_at"`
+	Token           string      `json:"token"`
 }
 
 // ListDeviceInCompany

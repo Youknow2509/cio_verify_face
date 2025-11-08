@@ -51,6 +51,7 @@ SELECT
     serial_number,
     mac_address,
     status,
+    token,
     created_at,
     updated_at
 FROM devices
@@ -67,6 +68,7 @@ SELECT
     ip_address,
     firmware_version,
     last_heartbeat,
+    token,
     settings,
     created_at,
     updated_at
@@ -82,6 +84,7 @@ SELECT
     serial_number,
     mac_address,
     status,
+    token,
     created_at,
     updated_at
 FROM devices

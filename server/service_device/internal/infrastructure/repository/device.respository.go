@@ -108,6 +108,7 @@ func (d *DeviceRepository) DeviceInfo(ctx context.Context, input *model.DeviceIn
 		Settings:        resp.Settings,
 		CreateAt:        resp.CreatedAt.Time.String(),
 		UpdateAt:        resp.UpdatedAt.Time.String(),
+		Token:           resp.Token,
 	}, nil
 }
 
@@ -134,6 +135,7 @@ func (d *DeviceRepository) DeviceInfoBase(ctx context.Context, input *model.Devi
 		Status:       int(resp.Status.Int16),
 		CreateAt:     resp.CreatedAt.Time.String(),
 		UpdateAt:     resp.UpdatedAt.Time.String(),
+		Token:        resp.Token,
 	}, nil
 }
 

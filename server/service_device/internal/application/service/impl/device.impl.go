@@ -614,6 +614,7 @@ func (d *DeviceService) GetDeviceById(ctx context.Context, input *model.GetDevic
 		SerialNumber: deviceInfoCache.SerialNumber,
 		MacAddress:   deviceInfoCache.MacAddress,
 		CreateAt:     deviceInfoCache.CreateAt,
+		Token:        deviceInfoCache.Token,
 	}, nil
 }
 
@@ -736,6 +737,7 @@ func (d *DeviceService) GetListDevices(ctx context.Context, input *model.ListDev
 			SerialNumber: device.SerialNumber,
 			MacAddress:   device.MacAddress,
 			CreateAt:     device.CreateAt,
+			Token:        device.Token,
 		})
 	}
 	return &model.ListDevicesOutput{
