@@ -178,6 +178,7 @@ func (d *DeviceRepository) ListDeviceInCompany(ctx context.Context, input *model
 			Status:       int(device.Status.Int16),
 			CreateAt:     device.CreatedAt.Time.String(),
 			UpdateAt:     device.UpdatedAt.Time.String(),
+			Token:        device.Token,
 		})
 	}
 	return &model.ListDeviceInCompanyOutput{
