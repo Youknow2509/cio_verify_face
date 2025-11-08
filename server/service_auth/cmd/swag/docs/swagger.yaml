@@ -35,9 +35,12 @@ definitions:
     type: object
   dto.RefreshTokenRequest:
     properties:
+      access_token:
+        type: string
       refresh_token:
         type: string
     required:
+    - access_token
     - refresh_token
     type: object
   dto.ResponseData:
@@ -255,11 +258,6 @@ paths:
       - application/json
       description: User refresh token
       parameters:
-      - description: Authorization Bearer token
-        in: header
-        name: Authorization
-        required: true
-        type: string
       - description: Request body refresh token
         in: body
         name: request

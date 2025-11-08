@@ -214,41 +214,11 @@ func (h *AuthBaseHandler) Logout(c *gin.Context) {
 // @Tags         Core Auth
 // @Accept       json
 // @Produce      json
-// @Param        Authorization header string true "Authorization Bearer token"
 // @Param        request   body dto.RefreshTokenRequest  true  "Request body refresh token"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
 // @Router       /v1/auth/refresh [post]
 func (h *AuthBaseHandler) RefreshToken(c *gin.Context) {
-	// Get data auth from context
-	userIdStr, sessionIdStr, userRole, exists := utilsContext.GetSessionFromContext(c)
-	if !exists {
-		interfaceResponse.BadRequestResponse(
-			c,
-			interfaceResponse.ErrCodeParamInvalid,
-			"Invalid request parameters",
-		)
-		return
-	}
-	// Validate id str to uuid
-	userId, err := utilsUuid.ParseUUID(userIdStr)
-	if err != nil {
-		interfaceResponse.BadRequestResponse(
-			c,
-			interfaceResponse.ErrCodeParamInvalid,
-			"Invalid data session",
-		)
-		return
-	}
-	sessionId, err := utilsUuid.ParseUUID(sessionIdStr)
-	if err != nil {
-		interfaceResponse.BadRequestResponse(
-			c,
-			interfaceResponse.ErrCodeParamInvalid,
-			"Invalid data session",
-		)
-		return
-	}
 	// Bind the request to the RefreshTokenRequest DTO
 	var request dto.RefreshTokenRequest
 	if err := c.ShouldBindJSON(&request); err != nil {
@@ -277,11 +247,9 @@ func (h *AuthBaseHandler) RefreshToken(c *gin.Context) {
 	response, serviceErr := applicationService.GetCoreAuthService().RefreshToken(
 		c,
 		&applicationModel.RefreshTokenInput{
-			UserId:       userId,
-			SessionId:    sessionId,
+			AccessToken:  request.AccessToken,
 			RefreshToken: request.RefreshToken,
 			ClientIp:     c.ClientIP(),
-			UserRole:     userRole,
 		},
 	)
 	if serviceErr != nil {
