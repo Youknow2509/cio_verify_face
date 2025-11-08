@@ -1,4 +1,4 @@
-# docker buildx build --platform linux/amd64,linux/arm64 -t cio_verify_face_service_attendance .
+# docker buildx build --platform linux/amd64,linux/arm64 -t someone2509/cio_verify_face_service_attendance:latest .
 # docker buildx build -t cio_verify_face_service_attendance .
 # Build stage
 FROM golang:1.24-trixie AS builder
