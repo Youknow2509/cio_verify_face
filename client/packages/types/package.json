@@ -1,0 +1,11 @@
+{
+  "name": "@face-attendance/types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript types",
+  "main": "src/index.ts",
+  "types": "src/index.ts",
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.3.3"
+  }
+}

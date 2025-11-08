@@ -13,5 +13,5 @@
     "build:system-admin": "cd apps/system-admin && pnpm build",
     "build:employee-portal": "cd apps/employee-portal && pnpm build"
   },
-  "packageManager": "pnpm@8.0.0"
+  "packageManager": "pnpm@8.15.9"
 }
