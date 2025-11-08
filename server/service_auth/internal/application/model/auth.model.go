@@ -55,11 +55,9 @@ type (
 	}
 
 	RefreshTokenInput struct {
-		ClientIp     string    `json:"client_ip"`
-		RefreshToken string    `json:"refresh_token"`
-		UserId       uuid.UUID `json:"user_id"`
-		SessionId    uuid.UUID `json:"session_id"`
-		UserRole     int       `json:"user_role"`
+		ClientIp     string `json:"client_ip"`
+		RefreshToken string `json:"refresh_token"`
+		AccessToken  string `json:"access_token"`
 	}
 
 	GetMyInfoInput struct {

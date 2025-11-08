@@ -1,16 +1,15 @@
-// src/App.tsx
-
-import { BrowserRouter } from 'react-router-dom';
-import { ThemeProvider } from '@/app/providers/ThemeProvider';
-import { AppRoutes } from '@/app/routes';
+import { ThemeProvider } from '@mui/material/styles';
+import { CssBaseline } from '@mui/material';
+import { RouterProvider } from 'react-router-dom';
+import { theme } from './theme';
+import { router } from './routes';
 
 function App() {
   return (
-    <BrowserRouter>
-      <ThemeProvider>
-        <AppRoutes />
-      </ThemeProvider>
-    </BrowserRouter>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <RouterProvider router={router} />
+    </ThemeProvider>
   );
 }
 

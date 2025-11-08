@@ -7,9 +7,14 @@ import "fmt"
 //	Define key cache
 //
 // =================================
+// Key get token device
+func GetKeyDeviceToken(deviceHashId string) string {
+	return fmt.Sprintf("device:token:%s", deviceHashId)
+}
+
 // Key info list device in company
-func GetKeyListDeviceInCompany(companyHashId string, limit int, size int) string {
-	return fmt.Sprintf("company:device:list:%s:%d:%d", companyHashId, limit, size)
+func GetKeyListDeviceInCompany(companyHashId string, size int, page int) string {
+	return fmt.Sprintf("company:device:list:%s:%d:%d", companyHashId, size, page)
 }
 
 // Key device info base

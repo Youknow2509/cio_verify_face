@@ -495,9 +495,32 @@ func (c *CoreAuthService) Logout(ctx context.Context, input *applicationModel.Lo
 
 // RefreshToken implements service.ICoreAuthService.
 func (c *CoreAuthService) RefreshToken(ctx context.Context, input *applicationModel.RefreshTokenInput) (*applicationModel.RefreshTokenOutput, *errors.Error) {
-	// Validate token refresh
+	// Validate access token
 	tokenService := domainToken.GetTokenService()
-	_, tkErr := tokenService.ParseUserRefreshToken(
+	userSession, tkErr := tokenService.ParseUserToken(ctx, input.AccessToken)
+	if tkErr != nil {
+		if tkErr.Code == domainError.TokenMalformedErrorCode || tkErr.Code == domainError.TokenSignatureInvalidErrCode {
+			// Token invalid
+			return nil, errors.GetError(errors.AuthTokenInvalidErrorCode)
+		} else if tkErr.Code == domainError.TokenExpiredErrorCode {
+			// Token expired, continue to refresh
+			global.Logger.Info("Access token expired, continuing to refresh")
+		} else {
+			// Other error
+			global.Logger.Error("Error parsing user access token: ", tkErr.Message)
+			return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+		}
+	}
+	if userSession == nil {
+		// Token invalid
+		global.Logger.Warn("User session is nil")
+		return nil, errors.GetError(errors.AuthTokenInvalidErrorCode)
+	}
+	sessionId, _ := utilsUuid.ParseUUID(userSession.TokenId)
+	userId, _ := utilsUuid.ParseUUID(userSession.UserId)
+	role := userSession.Role
+	// Validate token refresh
+	_, tkErr = tokenService.ParseUserRefreshToken(
 		ctx,
 		input.RefreshToken,
 	)
@@ -520,7 +543,7 @@ func (c *CoreAuthService) RefreshToken(ctx context.Context, input *applicationMo
 		global.Logger.Error("Error getting user repository: ", err)
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}
-	sessionData, err := domainRepo.GetUserSessionByID(ctx, input.SessionId)
+	sessionData, err := domainRepo.GetUserSessionByID(ctx, sessionId)
 	if err != nil {
 		global.Logger.Error("Error getting user session by ID: ", err)
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
@@ -542,9 +565,9 @@ func (c *CoreAuthService) RefreshToken(ctx context.Context, input *applicationMo
 	accessToken, err := tokenService.CreateUserToken(
 		ctx,
 		&domainModel.TokenUserJwtInput{
-			UserId:  input.UserId.String(),
-			TokenId: input.SessionId.String(),
-			Role:    input.UserRole,
+			UserId:  userId.String(),
+			TokenId: sessionId.String(),
+			Role:    role,
 			Expires: time.Now().Add(accessTokenTimeTtl),
 		},
 	)
@@ -556,8 +579,8 @@ func (c *CoreAuthService) RefreshToken(ctx context.Context, input *applicationMo
 	refreshTokenNew, err := tokenService.CreateUserRefreshToken(
 		ctx,
 		&domainModel.TokenUserRefreshInput{
-			UserId:  input.UserId.String(),
-			TokenId: input.SessionId.String(),
+			UserId:  userId.String(),
+			TokenId: sessionId.String(),
 			Expires: time.Now().Add(refreshTokenTimeTtl),
 		},
 	)
@@ -569,7 +592,7 @@ func (c *CoreAuthService) RefreshToken(ctx context.Context, input *applicationMo
 	if err := domainRepo.RefreshSession(
 		ctx,
 		&domainModel.RefreshSessionInput{
-			SessionID:    input.SessionId,
+			SessionID:    sessionId,
 			RefreshToken: refreshTokenNew,
 			ExpiredAt:    time.Now().Add(refreshTokenTimeTtl),
 		},
@@ -584,7 +607,7 @@ func (c *CoreAuthService) RefreshToken(ctx context.Context, input *applicationMo
 	}
 
 	// Save new session to cache using cache strategy
-	if err := c.cacheStrategy.SetUserSession(ctx, input.SessionId.String(), input.UserId.String(), domainModel.Role(input.UserRole), constants.TTL_ACCESS_TOKEN); err != nil {
+	if err := c.cacheStrategy.SetUserSession(ctx, sessionId.String(), userId.String(), domainModel.Role(role), constants.TTL_ACCESS_TOKEN); err != nil {
 		global.Logger.Error("Error setting session in cache: ", err)
 		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 	}

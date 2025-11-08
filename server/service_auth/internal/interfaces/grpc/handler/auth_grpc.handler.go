@@ -4,11 +4,12 @@ import (
 	"context"
 	"errors"
 
+	"github.com/google/uuid"
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/application/model"
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/application/service"
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/logger"
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/global"
-	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/uuid"
+	uuidUtils "github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/uuid"
 	pb "github.com/youknow2509/cio_verify_face/server/service_auth/proto"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
@@ -138,7 +139,7 @@ func (a *AuthGRPCHandler) ParseDeviceToken(ctx context.Context, req *pb.ParseDev
 
 // -------- Mapping helpers (TODO: map field theo proto/model thực tế) --------
 func toModelCreateUserTokenInput(req *pb.CreateUserTokenRequest) (model.CreateTokenUserInput, error) {
-	userUuid, err := uuid.ParseUUID(req.GetUserId())
+	userUuid, err := uuidUtils.ParseUUID(req.GetUserId())
 	if err != nil {
 		return model.CreateTokenUserInput{}, errors.New("invalid user ID format")
 	}
@@ -156,17 +157,13 @@ func toPbCreateUserTokenResponse(out *model.CreateTokenUserOutput) (*pb.CreateUs
 }
 
 func toModelCreateDeviceTokenInput(req *pb.CreateDeviceTokenRequest) (model.CreateTokenDeviceInput, error) {
-	deviceUuid, err := uuid.ParseUUID(req.GetDeviceId())
+	deviceUuid, err := uuidUtils.ParseUUID(req.GetDeviceId())
 	if err != nil {
 		return model.CreateTokenDeviceInput{}, errors.New("invalid device ID format")
 	}
-	companyUuid, err := uuid.ParseUUID(req.GetCompanyId())
-	if err != nil {
-		return model.CreateTokenDeviceInput{}, errors.New("invalid company ID format")
-	}
 	return model.CreateTokenDeviceInput{
 		DeviceId:  deviceUuid,
-		CompanyId: companyUuid,
+		CompanyId: uuid.Nil,
 	}, nil
 }
 
@@ -192,7 +189,7 @@ func toPbParseUserTokenResponse(out *model.ParseTokenUserOutput) (*pb.ParseUserT
 }
 
 func toModelCheckDeviceTokenInput(req *pb.ParseDeviceTokenRequest) (model.CheckTokenDeviceInput, error) {
-	deviceUuid, err := uuid.ParseUUID(req.GetDeviceId())
+	deviceUuid, err := uuidUtils.ParseUUID(req.GetDeviceId())
 	if err != nil {
 		return model.CheckTokenDeviceInput{}, errors.New("invalid device ID format")
 	}

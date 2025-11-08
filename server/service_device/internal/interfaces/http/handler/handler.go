@@ -27,12 +27,181 @@ type iHandler interface {
 	UpdateLocationDevice(c *gin.Context)
 	UpdateNameDevice(c *gin.Context)
 	UpdateInfoDevice(c *gin.Context)
+	GetDeviceToken(c *gin.Context)
+	RefreshDeviceToken(c *gin.Context)
+	UpdateStatusDevice(c *gin.Context)
 }
 
 /**
  * Handler struct
  */
 type Handler struct{}
+
+// UpdateStatusDevice implements iHandler.
+// @Summary      Update status device
+// @Description  Update status device
+// @Tags         Core Device
+// @Accept       json
+// @Produce      json
+// @Param		 authorization header string true "Bearer <token>"
+// @Param        request   body dto.UpdateStatusDeviceRequest  true  "Request body update device status"
+// @Success      200  {object}  dto.ResponseData
+// @Failure      400  {object}  dto.ErrResponseData
+// @Router       /v1/device/status [post]
+func (h *Handler) UpdateStatusDevice(c *gin.Context) {
+	// Get req and parse
+	var req dto.UpdateStatusDeviceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ErrorResponse(c, response.ErrorCodeBindRequest, "Invalid request body")
+		return
+	}
+	// Validate req
+	validateMiddleware, ok := c.Get(constants.MIDDLEWARE_VALIDATE_SERVICE_NAME)
+	if !ok {
+		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+	validate, ok := validateMiddleware.(*validator.Validate)
+	if !ok {
+		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+	err := validate.Struct(req)
+	if err != nil {
+		validationErrors := err.(validator.ValidationErrors)
+		response.ErrorResponse(c, response.ErrorCodeValidateRequest, validationErrors.Error())
+		return
+	}
+	// Get ession
+	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	if !ok {
+		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+	// Parse uuid
+	userUuid, _ := uuidShared.ParseUUID(userId)
+	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	deviceUuid, err := uuidShared.ParseUUID(req.DeviceId)
+	if err != nil {
+		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid device_id")
+		return
+	}
+	// Call to application handler
+	errReq := applicationService.GetDeviceService().UpdateStatusDevice(
+		c,
+		&applicationModel.UpdateStatusDeviceInput{
+			DeviceId: deviceUuid,
+			Status:   req.Status,
+			//
+			UserId:      userUuid,
+			Role:        userRole,
+			ClientIp:    c.ClientIP(),
+			ClientAgent: c.Request.UserAgent(),
+			SessionId:   sessionUuid,
+		},
+	)
+	if errReq != nil {
+		if errReq.ErrorClient == "" {
+			response.ErrorResponse(c, 500, "Internal server error")
+			return
+		}
+		response.ErrorResponse(c, 400, errReq.ErrorClient)
+		return
+	}
+	response.SuccessResponse(c, 200, "Update status device success")
+}
+
+// RefreshDeviceToken implements iHandler.
+// @Summary      Refresh device access token
+// @Description  Refresh device access token
+// @Tags         Core Device
+// @Accept       json
+// @Produce      json
+// @Param		 authorization header string true "Bearer <token>"
+// @Param        device_id   path string  true  "Device ID"
+// @Success      200  {object}  dto.ResponseData
+// @Failure      400  {object}  dto.ErrResponseData
+// @Router       /v1/device/token/refresh/{device_id} [post]
+func (h *Handler) RefreshDeviceToken(c *gin.Context) {
+	// Get id device from path
+	idDeviceStr := c.Param("device_id")
+	idDevice, err := uuidShared.ParseUUID(idDeviceStr)
+	if err != nil {
+		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid device ID")
+		return
+	}
+	// Get data auth from token
+	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	if !ok {
+		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+	userUuid, _ := uuidShared.ParseUUID(userId)
+	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	// Call to application handler
+	resp, errReq := applicationService.GetDeviceService().RefreshDeviceToken(
+		c,
+		&applicationModel.RefreshDeviceTokenInput{
+			DeviceId:    idDevice,
+			UserId:      userUuid,
+			Role:        userRole,
+			ClientIp:    c.ClientIP(),
+			ClientAgent: c.Request.UserAgent(),
+			SessionId:   sessionUuid,
+		},
+	)
+	if errReq != nil {
+		response.ErrorResponse(c, 400, errReq.ErrorClient)
+		return
+	}
+	response.SuccessResponse(c, 200, resp)
+}
+
+// GetDeviceToken implements iHandler.
+// @Summary      Get device access token
+// @Description  Get device access token
+// @Tags         Core Device
+// @Accept       json
+// @Produce      json
+// @Param		 authorization header string true "Bearer <token>"
+// @Param        device_id   path string  true  "Device ID"
+// @Success      200  {object}  dto.ResponseData
+// @Failure      400  {object}  dto.ErrResponseData
+// @Router       /v1/device/token/{device_id} [get]
+func (h *Handler) GetDeviceToken(c *gin.Context) {
+	// Get id device from path
+	idDeviceStr := c.Param("device_id")
+	idDevice, err := uuidShared.ParseUUID(idDeviceStr)
+	if err != nil {
+		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid device ID")
+		return
+	}
+	// Get data auth from token
+	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	if !ok {
+		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+	userUuid, _ := uuidShared.ParseUUID(userId)
+	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	// Call to application handler
+	resp, errReq := applicationService.GetDeviceService().GetDeviceToken(
+		c,
+		&applicationModel.GetDeviceTokenInput{
+			DeviceId:    idDevice,
+			UserId:      userUuid,
+			Role:        userRole,
+			ClientIp:    c.ClientIP(),
+			ClientAgent: c.Request.UserAgent(),
+			SessionId:   sessionUuid,
+		},
+	)
+	if errReq != nil {
+		response.ErrorResponse(c, 400, errReq.ErrorClient)
+		return
+	}
+	response.SuccessResponse(c, 200, resp)
+}
 
 // CreateNewDevice implements iHandler.
 // @Summary      Create new device
@@ -64,23 +233,10 @@ func (h *Handler) CreateNewDevice(c *gin.Context) {
 		return
 	}
 	err := validate.Struct(req)
-	validationErrors := err.(validator.ValidationErrors)
 	if err != nil {
+		validationErrors := err.(validator.ValidationErrors)
 		response.ErrorResponse(c, response.ErrorCodeValidateRequest, validationErrors.Error())
 		return
-	}
-	companyId, err := uuidShared.ParseUUID(req.CompanyId)
-	if err != nil {
-		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid company_id")
-		return
-	}
-	var locationId uuid.UUID
-	if req.LocationId != "" {
-		locationId, err = uuidShared.ParseUUID(req.LocationId)
-		if err != nil {
-			response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid location_id")
-			return
-		}
 	}
 	// Get data auth from token
 	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
@@ -95,8 +251,6 @@ func (h *Handler) CreateNewDevice(c *gin.Context) {
 	resp, errReq := service.CreateNewDevice(
 		c,
 		&applicationModel.CreateNewDeviceInput{
-			CompanyId:    companyId,
-			LocationId:   locationId,
 			DeviceName:   req.DeviceName,
 			Address:      req.Address,
 			DeviceType:   req.DeviceType,
@@ -231,7 +385,7 @@ func (h *Handler) GetDeviceById(c *gin.Context) {
 func (h *Handler) GetListDevices(c *gin.Context) {
 	// Get query params
 	page := c.DefaultQuery("page", "1")
-	size := c.DefaultQuery("size", "10")
+	size := c.DefaultQuery("size", "20")
 	companyId := c.DefaultQuery("company_id", "")
 	// validate query params
 	var err error

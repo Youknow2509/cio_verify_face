@@ -2,6 +2,21 @@ package model
 
 import "github.com/google/uuid"
 
+// UpdateTokenDevice
+type UpdateTokenDeviceInput struct {
+	DeviceId uuid.UUID `json:"device_id"`
+	NewToken string    `json:"new_token"`
+}
+
+// GetDeviceToken
+type GetDeviceTokenInput struct {
+	DeviceId uuid.UUID `json:"device_id"`
+}
+type GetDeviceTokenOutput struct {
+	DeviceId uuid.UUID `json:"device_id"`
+	Token    string    `json:"token"`
+}
+
 // DeviceExist
 type DeviceExistInput struct {
 	DeviceId uuid.UUID `json:"device_id"`
@@ -46,6 +61,7 @@ type NewDevice struct {
 	Address      string    `json:"address"`
 	SerialNumber string    `json:"serial_number"`
 	MacAddress   string    `json:"mac_address"`
+	Token        string    `json:"token"`
 }
 
 // DeviceInfoBase
@@ -62,6 +78,7 @@ type DeviceInfoBaseOutput struct {
 	Status       int       `json:"status"`
 	CreateAt     string    `json:"create_at"`
 	UpdateAt     string    `json:"update_at"`
+	Token        string    `json:"token"`
 }
 
 // DeviceInfo
@@ -81,6 +98,7 @@ type DeviceInfoOutput struct {
 	Settings        interface{} `json:"settings"`
 	CreateAt        string      `json:"create_at"`
 	UpdateAt        string      `json:"update_at"`
+	Token           string      `json:"token"`
 }
 
 // ListDeviceInCompany

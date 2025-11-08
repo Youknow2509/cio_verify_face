@@ -7,11 +7,55 @@ import (
 // =================================================
 // Device model
 // =================================================
+
+// Update status device
+type UpdateStatusDeviceInput struct {
+	// Info req
+	DeviceId uuid.UUID `json:"device_id"`
+	Status   int       `json:"status"` // 0: OFFLINE, 1: ONLINE, 2: MAINTENANCE, 3: ERROR
+	// Info client req
+	UserId      uuid.UUID `json:"user_id"`
+	Role        int       `json:"role"` // 0: ADMIN, 1: Admin company, 2: STAFF
+	SessionId   uuid.UUID `json:"session_id"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+}
+
+// Refresh device token
+type RefreshDeviceTokenInput struct {
+	// Info req
+	DeviceId uuid.UUID `json:"device_id"`
+	// Info client req
+	UserId      uuid.UUID `json:"user_id"`
+	Role        int       `json:"role"` // 0: ADMIN, 1: Admin company, 2: STAFF
+	SessionId   uuid.UUID `json:"session_id"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+}
+type RefreshDeviceTokenOutput struct {
+	DeviceId    string `json:"device_id"`
+	DeviceToken string `json:"device_token"`
+}
+
+// Get device token
+type GetDeviceTokenInput struct {
+	// Info req
+	DeviceId uuid.UUID `json:"device_id"`
+	// Info client req
+	UserId      uuid.UUID `json:"user_id"`
+	Role        int       `json:"role"` // 0: ADMIN, 1: Admin company, 2: STAFF
+	SessionId   uuid.UUID `json:"session_id"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+}
+type GetDeviceTokenOutput struct {
+	DeviceId    string `json:"device_id"`
+	DeviceToken string `json:"device_token"`
+}
+
 // CreateNewDevice
 type CreateNewDeviceInput struct {
 	// Info req
-	CompanyId    uuid.UUID `json:"company_id"`
-	LocationId   uuid.UUID `json:"location_id"`
 	DeviceName   string    `json:"device_name"`
 	Address      string    `json:"address"`
 	DeviceType   int       `json:"device_type"` // 0: FACE_TERMINAL, 1: MOBILE_APP, 2: WEB_CAMERA, 3: IOT_SENSOR
@@ -69,8 +113,10 @@ type GetDeviceByIdOutput struct {
 	Address      string `json:"address"`
 	SerialNumber string `json:"serial_number"`
 	MacAddress   string `json:"mac_address"`
+	Status       int    `json:"status"`
 	CreateAt     string `json:"create_at"`
 	UpdateAt     string `json:"update_at"`
+	Token        string `json:"token"`
 }
 
 // UpdateDevice

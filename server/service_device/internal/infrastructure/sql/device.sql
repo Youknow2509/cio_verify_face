@@ -1,3 +1,9 @@
+-- name: GetDeviceToken :one
+SELECT token
+FROM devices
+WHERE device_id = $1
+LIMIT 1;
+
 -- name: CheckDeviceExist :one
 SELECT device_id
 FROM devices
@@ -45,6 +51,7 @@ SELECT
     serial_number,
     mac_address,
     status,
+    token,
     created_at,
     updated_at
 FROM devices
@@ -61,6 +68,7 @@ SELECT
     ip_address,
     firmware_version,
     last_heartbeat,
+    token,
     settings,
     created_at,
     updated_at
@@ -76,6 +84,7 @@ SELECT
     serial_number,
     mac_address,
     status,
+    token,
     created_at,
     updated_at
 FROM devices
@@ -90,8 +99,9 @@ INSERT INTO devices (
     address,
     serial_number,
     mac_address,
+    token,
     created_at,
     updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, NOW(), NOW()
+    $1, $2, $3, $4, $5, $6, $7, NOW(), NOW()
 );

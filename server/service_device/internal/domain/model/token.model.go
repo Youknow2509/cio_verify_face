@@ -17,21 +17,19 @@ type UserTokenOutput struct {
 // ========================================
 type (
 	TokenUserJwtInput struct {
-		UserId  string    `json:"user_id" validate:"required"`
-		Role    int       `json:"role" validate:"required"`
+		UserId  string    `json:"user_id"`
+		Role    int       `json:"role"`
 	}
 
 	TokenDeviceJwtInput struct {
-		DeviceId  string    `json:"device_id" validate:"required"`
-		CompanyId string    `json:"company_id" validate:"required"`
-		TokenId   string    `json:"token_id" validate:"required"`
-		Expires   time.Time `json:"expires" validate:"required"`
+		DeviceId  string    `json:"device_id"`
+		TokenId   string    `json:"token_id"`
 	}
 
 	ServiceRefreshTokenInput struct {
-		ServiceId string    `json:"service_id" validate:"required"`
-		TokenId   string    `json:"token_id" validate:"required"`
-		Expires   time.Time `json:"expires" validate:"required"`
+		ServiceId string    `json:"service_id"`
+		TokenId   string    `json:"token_id"`
+		Expires   time.Time `json:"expires"`
 	}
 )
 
@@ -64,10 +62,10 @@ type (
 	}
 
 	TokenServiceJwtOutput struct {
-		ServiceId   string    `json:"service_id" validate:"required"`
-		ServiceName string    `json:"service_name" validate:"required"`
-		TokenId     string    `json:"token_id" validate:"required"`
-		Type        int       `json:"type" validate:"required"`
+		ServiceId   string    `json:"service_id"`
+		ServiceName string    `json:"service_name"`
+		TokenId     string    `json:"token_id"`
+		Type        int       `json:"type"`
 		Issuer      string    `json:"iss,omitempty"`
 		Subject     string    `json:"sub,omitempty"`
 		Audience    []string  `json:"aud,omitempty"`
@@ -77,9 +75,9 @@ type (
 	}
 
 	TokenDeviceJwtOutput struct {
-		DeviceId  string    `json:"device_id" validate:"required"`
-		CompanyId string    `json:"company_id" validate:"required"`
-		TokenId   string    `json:"token_id" validate:"required"`
+		DeviceId  string    `json:"device_id"`
+		CompanyId string    `json:"company_id"`
+		TokenId   string    `json:"token_id"`
 		Issuer    string    `json:"iss,omitempty"`
 		Subject   string    `json:"sub,omitempty"`
 		Audience  []string  `json:"aud,omitempty"`

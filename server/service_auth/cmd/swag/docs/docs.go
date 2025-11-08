@@ -287,13 +287,6 @@ const docTemplate = `{
                 "summary": "User refresh token",
                 "parameters": [
                     {
-                        "type": "string",
-                        "description": "Authorization Bearer token",
-                        "name": "Authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
                         "description": "Request body refresh token",
                         "name": "request",
                         "in": "body",
@@ -372,9 +365,13 @@ const docTemplate = `{
         "dto.RefreshTokenRequest": {
             "type": "object",
             "required": [
+                "access_token",
                 "refresh_token"
             ],
             "properties": {
+                "access_token": {
+                    "type": "string"
+                },
                 "refresh_token": {
                     "type": "string"
                 }

@@ -305,6 +305,143 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/device/status": {
+            "post": {
+                "description": "Update status device",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Core Device"
+                ],
+                "summary": "Update status device",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer \u003ctoken\u003e",
+                        "name": "authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body update device status",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.UpdateStatusDeviceRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ResponseData"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrResponseData"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/device/token/refresh/{device_id}": {
+            "post": {
+                "description": "Refresh device access token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Core Device"
+                ],
+                "summary": "Refresh device access token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer \u003ctoken\u003e",
+                        "name": "authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Device ID",
+                        "name": "device_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ResponseData"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrResponseData"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/device/token/{device_id}": {
+            "get": {
+                "description": "Get device access token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Core Device"
+                ],
+                "summary": "Get device access token",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer \u003ctoken\u003e",
+                        "name": "authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Device ID",
+                        "name": "device_id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ResponseData"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrResponseData"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/device/{device_id}": {
             "get": {
                 "description": "Delete device by ID",
@@ -398,16 +535,12 @@ const docTemplate = `{
         "dto.CreateDeviceRequest": {
             "type": "object",
             "required": [
-                "company_id",
                 "device_name"
             ],
             "properties": {
                 "address": {
                     "type": "string",
                     "maxLength": 255
-                },
-                "company_id": {
-                    "type": "string"
                 },
                 "device_name": {
                     "type": "string",
@@ -423,9 +556,6 @@ const docTemplate = `{
                         2,
                         3
                     ]
-                },
-                "location_id": {
-                    "type": "string"
                 },
                 "mac_address": {
                     "type": "string"
@@ -573,6 +703,28 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 100,
                     "minLength": 3
+                }
+            }
+        },
+        "dto.UpdateStatusDeviceRequest": {
+            "type": "object",
+            "required": [
+                "device_id",
+                "status"
+            ],
+            "properties": {
+                "device_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "description": "0: OFFLINE, 1: ONLINE, 2: MAINTENANCE, 3: ERROR",
+                    "type": "integer",
+                    "enum": [
+                        0,
+                        1,
+                        2,
+                        3
+                    ]
                 }
             }
         }

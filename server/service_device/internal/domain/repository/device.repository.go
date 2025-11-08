@@ -22,6 +22,8 @@ type IDeviceRepository interface {
 	UpdateDeviceName(ctx context.Context, input *model.UpdateDeviceNameInput) error
 	UpdateDeviceLocation(ctx context.Context, input *model.UpdateDeviceLocationInput) error
 	UpdateDeviceInfo(ctx context.Context, input *model.UpdateDeviceInfoInput) error
+	GetDeviceToken(ctx context.Context, input *model.GetDeviceTokenInput) (*model.GetDeviceTokenOutput, error)
+	UpdateTokenDevice(ctx context.Context, input *model.UpdateTokenDeviceInput) error
 }
 
 /**

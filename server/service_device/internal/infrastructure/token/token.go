@@ -71,7 +71,7 @@ func (t *TokenService) CheckDeviceToken(ctx context.Context, token string) (bool
 func (t *TokenService) CreateDeviceToken(ctx context.Context, input *domainModel.TokenDeviceJwtInput) (string, error) {
 	token, err := t.grpc.CreateDeviceToken(ctx, &pb.CreateDeviceTokenRequest{
 		DeviceId:  input.DeviceId,
-		CompanyId: input.CompanyId,
+		CompanyId: "",
 	})
 	if err != nil {
 		return "", err

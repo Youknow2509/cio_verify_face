@@ -34,10 +34,11 @@ INSERT INTO devices (
     address,
     serial_number,
     mac_address,
+    token,
     created_at,
     updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, NOW(), NOW()
+    $1, $2, $3, $4, $5, $6, $7, NOW(), NOW()
 )
 `
 
@@ -48,6 +49,7 @@ type CreateNewDeviceParams struct {
 	Address      pgtype.Text
 	SerialNumber pgtype.Text
 	MacAddress   pgtype.Text
+	Token        string
 }
 
 func (q *Queries) CreateNewDevice(ctx context.Context, arg CreateNewDeviceParams) error {
@@ -58,6 +60,7 @@ func (q *Queries) CreateNewDevice(ctx context.Context, arg CreateNewDeviceParams
 		arg.Address,
 		arg.SerialNumber,
 		arg.MacAddress,
+		arg.Token,
 	)
 	return err
 }
@@ -104,6 +107,7 @@ SELECT
     ip_address,
     firmware_version,
     last_heartbeat,
+    token,
     settings,
     created_at,
     updated_at
@@ -121,6 +125,7 @@ type GetDeviceInfoRow struct {
 	IpAddress       *netip.Addr
 	FirmwareVersion pgtype.Text
 	LastHeartbeat   pgtype.Timestamptz
+	Token           string
 	Settings        []byte
 	CreatedAt       pgtype.Timestamptz
 	UpdatedAt       pgtype.Timestamptz
@@ -138,6 +143,7 @@ func (q *Queries) GetDeviceInfo(ctx context.Context, deviceID pgtype.UUID) (GetD
 		&i.IpAddress,
 		&i.FirmwareVersion,
 		&i.LastHeartbeat,
+		&i.Token,
 		&i.Settings,
 		&i.CreatedAt,
 		&i.UpdatedAt,
@@ -153,6 +159,7 @@ SELECT
     serial_number,
     mac_address,
     status,
+    token,
     created_at,
     updated_at
 FROM devices
@@ -167,6 +174,7 @@ type GetDeviceInfoBaseRow struct {
 	SerialNumber pgtype.Text
 	MacAddress   pgtype.Text
 	Status       pgtype.Int2
+	Token        string
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
 }
@@ -181,10 +189,25 @@ func (q *Queries) GetDeviceInfoBase(ctx context.Context, deviceID pgtype.UUID) (
 		&i.SerialNumber,
 		&i.MacAddress,
 		&i.Status,
+		&i.Token,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
+}
+
+const getDeviceToken = `-- name: GetDeviceToken :one
+SELECT token
+FROM devices
+WHERE device_id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetDeviceToken(ctx context.Context, deviceID pgtype.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getDeviceToken, deviceID)
+	var token string
+	err := row.Scan(&token)
+	return token, err
 }
 
 const getListDeviceInCompany = `-- name: GetListDeviceInCompany :many
@@ -196,6 +219,7 @@ SELECT
     serial_number,
     mac_address,
     status,
+    token,
     created_at,
     updated_at
 FROM devices
@@ -217,6 +241,7 @@ type GetListDeviceInCompanyRow struct {
 	SerialNumber pgtype.Text
 	MacAddress   pgtype.Text
 	Status       pgtype.Int2
+	Token        string
 	CreatedAt    pgtype.Timestamptz
 	UpdatedAt    pgtype.Timestamptz
 }
@@ -238,6 +263,7 @@ func (q *Queries) GetListDeviceInCompany(ctx context.Context, arg GetListDeviceI
 			&i.SerialNumber,
 			&i.MacAddress,
 			&i.Status,
+			&i.Token,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {

@@ -19,6 +19,30 @@ type DeviceRepository struct {
 	db *database.Queries
 }
 
+// GetDeviceToken implements repository.IDeviceRepository.
+func (d *DeviceRepository) GetDeviceToken(ctx context.Context, input *model.GetDeviceTokenInput) (*model.GetDeviceTokenOutput, error) {
+	resp, err := d.db.GetDeviceToken(
+		ctx,
+		pgtype.UUID{Valid: true, Bytes: input.DeviceId},
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &model.GetDeviceTokenOutput{
+		DeviceId: input.DeviceId,
+		Token:    resp,
+	}, nil
+}
+
+// UpdateTokenDevice implements repository.IDeviceRepository.
+func (d *DeviceRepository) UpdateTokenDevice(ctx context.Context, input *model.UpdateTokenDeviceInput) error {
+	panic("unimplemented")
+}
+
 // DeviceExist implements repository.IDeviceRepository.
 func (d *DeviceRepository) DeviceExist(ctx context.Context, input *model.DeviceExistInput) (bool, error) {
 	_, err := d.db.CheckDeviceExist(
@@ -46,6 +70,7 @@ func (d *DeviceRepository) CreateNewDevice(ctx context.Context, input *model.New
 			Address:      pgtype.Text{Valid: true, String: input.Address},
 			SerialNumber: pgtype.Text{Valid: true, String: input.SerialNumber},
 			MacAddress:   pgtype.Text{Valid: true, String: input.MacAddress},
+			Token:        input.Token,
 		},
 	)
 }
@@ -84,6 +109,7 @@ func (d *DeviceRepository) DeviceInfo(ctx context.Context, input *model.DeviceIn
 		Settings:        resp.Settings,
 		CreateAt:        resp.CreatedAt.Time.String(),
 		UpdateAt:        resp.UpdatedAt.Time.String(),
+		Token:           resp.Token,
 	}, nil
 }
 
@@ -110,6 +136,7 @@ func (d *DeviceRepository) DeviceInfoBase(ctx context.Context, input *model.Devi
 		Status:       int(resp.Status.Int16),
 		CreateAt:     resp.CreatedAt.Time.String(),
 		UpdateAt:     resp.UpdatedAt.Time.String(),
+		Token:        resp.Token,
 	}, nil
 }
 
@@ -152,6 +179,7 @@ func (d *DeviceRepository) ListDeviceInCompany(ctx context.Context, input *model
 			Status:       int(device.Status.Int16),
 			CreateAt:     device.CreatedAt.Time.String(),
 			UpdateAt:     device.UpdatedAt.Time.String(),
+			Token:        device.Token,
 		})
 	}
 	return &model.ListDeviceInCompanyOutput{

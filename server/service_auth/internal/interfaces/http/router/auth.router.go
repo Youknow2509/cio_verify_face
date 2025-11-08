@@ -23,14 +23,14 @@ func (r *AuthRouter) InitializeCoreAuth(g *gin.RouterGroup) {
 		routerV1Public.POST("/login", handler.GetAuthBaseHandler().Login)
 		// Login admin
 		routerV1Public.POST("/login/admin", handler.GetAuthBaseHandler().LoginAdmin)
+		// Refresh token
+		routerV1Public.POST("/refresh", handler.GetAuthBaseHandler().RefreshToken)
 	}
 	routerV1Private := g.Group("/v1/auth")
 	routerV1Private.Use(infraMiddleware.GetAuthAccessTokenJwtMiddleware().Apply())
 	{
 		// Logout
 		routerV1Private.POST("/logout", handler.GetAuthBaseHandler().Logout)
-		// Refresh token
-		routerV1Private.POST("/refresh", handler.GetAuthBaseHandler().RefreshToken)
 		// Get my info
 		routerV1Private.GET("/me", handler.GetAuthBaseHandler().GetMyInfo)
 		// Update device token
