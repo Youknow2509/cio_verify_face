@@ -69,6 +69,7 @@ type GetDeviceByIdOutput struct {
 	Address      string `json:"address"`
 	SerialNumber string `json:"serial_number"`
 	MacAddress   string `json:"mac_address"`
+	Status       int    `json:"status"`
 	CreateAt     string `json:"create_at"`
 	UpdateAt     string `json:"update_at"`
 }
