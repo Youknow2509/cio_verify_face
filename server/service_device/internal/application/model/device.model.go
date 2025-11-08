@@ -8,6 +8,19 @@ import (
 // Device model
 // =================================================
 
+// Update status device
+type UpdateStatusDeviceInput struct {
+	// Info req
+	DeviceId uuid.UUID `json:"device_id"`
+	Status   int       `json:"status"` // 0: OFFLINE, 1: ONLINE, 2: MAINTENANCE, 3: ERROR
+	// Info client req
+	UserId      uuid.UUID `json:"user_id"`
+	Role        int       `json:"role"` // 0: ADMIN, 1: Admin company, 2: STAFF
+	SessionId   uuid.UUID `json:"session_id"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+}
+
 // Refresh device token
 type RefreshDeviceTokenInput struct {
 	// Info req

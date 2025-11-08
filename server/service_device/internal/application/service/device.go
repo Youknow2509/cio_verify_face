@@ -22,6 +22,7 @@ type IDeviceService interface {
 	UpdateInfoDevice(ctx context.Context, input *model.UpdateInfoDeviceInput) *applicationError.Error
 	GetDeviceToken(ctx context.Context, input *model.GetDeviceTokenInput) (*model.GetDeviceTokenOutput, *applicationError.Error)
 	RefreshDeviceToken(ctx context.Context, input *model.RefreshDeviceTokenInput) (*model.RefreshDeviceTokenOutput, *applicationError.Error)
+	UpdateStatusDevice(ctx context.Context, input *model.UpdateStatusDeviceInput) *applicationError.Error
 }
 
 /**

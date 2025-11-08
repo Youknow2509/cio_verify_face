@@ -29,5 +29,6 @@ func (r *HttpRouterManager) InitRoutes(group *gin.RouterGroup) {
 		deviceV1.POST("/location", handler.NewHandler().UpdateLocationDevice)
 		deviceV1.POST("/name", handler.NewHandler().UpdateNameDevice)
 		deviceV1.POST("/info", handler.NewHandler().UpdateInfoDevice)
+		deviceV1.POST("/status", handler.NewHandler().UpdateStatusDevice)
 	}
 }

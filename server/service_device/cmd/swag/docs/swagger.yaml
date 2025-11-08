@@ -125,6 +125,22 @@ definitions:
     - device_id
     - device_name
     type: object
+  dto.UpdateStatusDeviceRequest:
+    properties:
+      device_id:
+        type: string
+      status:
+        description: '0: OFFLINE, 1: ONLINE, 2: MAINTENANCE, 3: ERROR'
+        enum:
+        - 0
+        - 1
+        - 2
+        - 3
+        type: integer
+    required:
+    - device_id
+    - status
+    type: object
 externalDocs:
   description: OpenAPI
   url: https://swagger.io/resources/open-api/
@@ -385,6 +401,37 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/dto.ErrResponseData'
+      tags:
+      - Core Device
+  /v1/device/status:
+    post:
+      consumes:
+      - application/json
+      description: Update status device
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Request body update device status
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.UpdateStatusDeviceRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Update status device
       tags:
       - Core Device
   /v1/device/token/{device_id}:

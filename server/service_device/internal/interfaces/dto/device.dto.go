@@ -4,6 +4,12 @@ package dto
 // Device DTO
 // =======================================
 
+// Update status device request
+type UpdateStatusDeviceRequest struct {
+	DeviceId string `json:"device_id" validate:"required"`
+	Status   int    `json:"status" validate:"required,oneof=0 1 2 3"` // 0: OFFLINE, 1: ONLINE, 2: MAINTENANCE, 3: ERROR
+}
+
 // Create device request
 type CreateDeviceRequest struct {
 	DeviceName   string `json:"device_name" validate:"required,min=3,max=100"`

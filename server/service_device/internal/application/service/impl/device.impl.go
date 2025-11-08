@@ -24,6 +24,52 @@ import (
 // =================================================
 type DeviceService struct{}
 
+// UpdateStatusDevice implements service.IDeviceService.
+func (d *DeviceService) UpdateStatusDevice(ctx context.Context, input *model.UpdateStatusDeviceInput) *applicationError.Error {
+	// Check permission
+	if input.Role > 1 {
+		return &applicationError.Error{
+			ErrorSystem: nil,
+			ErrorClient: "You don't have permission to update device status.",
+		}
+	}
+	// Check device exist
+	deviceRepo, _ := domainRepo.GetDeviceRepository()
+	ok, err := deviceRepo.DeviceExist(ctx, &domainModel.DeviceExistInput{DeviceId: input.DeviceId})
+	if err != nil {
+		global.Logger.Error("Error when get device by id", "err", err)
+		return &applicationError.Error{
+			ErrorSystem: err,
+			ErrorClient: "System is busy now. Please try again later.",
+		}
+	}
+	if !ok {
+		return &applicationError.Error{
+			ErrorSystem: nil,
+			ErrorClient: "Device not found.",
+		}
+	}
+	// Update status device
+	if input.Status == 1 {
+		if err := deviceRepo.EnableDevice(ctx, &domainModel.EnableDeviceInput{DeviceId: input.DeviceId}); err != nil {
+			global.Logger.Error("Error when enable device", "err", err)
+			return &applicationError.Error{
+				ErrorSystem: err,
+				ErrorClient: "System is busy now. Please try again later.",
+			}
+		}
+	} else {
+		if err := deviceRepo.DisableDevice(ctx, &domainModel.DisableDeviceInput{DeviceId: input.DeviceId}); err != nil {
+			global.Logger.Error("Error when disable device", "err", err)
+			return &applicationError.Error{
+				ErrorSystem: err,
+				ErrorClient: "System is busy now. Please try again later.",
+			}
+		}
+	}
+	return nil
+}
+
 // RefreshDeviceToken implements service.IDeviceService.
 func (d *DeviceService) RefreshDeviceToken(ctx context.Context, input *model.RefreshDeviceTokenInput) (*model.RefreshDeviceTokenOutput, *applicationError.Error) {
 	// Check user have permission to get device token
