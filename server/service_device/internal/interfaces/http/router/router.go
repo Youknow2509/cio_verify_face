@@ -22,6 +22,8 @@ func (r *HttpRouterManager) InitRoutes(group *gin.RouterGroup) {
 		deviceV1.GET("", handler.NewHandler().GetListDevices)
 		deviceV1.POST("", handler.NewHandler().CreateNewDevice)
 		deviceV1.GET("/:device_id", handler.NewHandler().GetDeviceById)
+		deviceV1.GET("/token/:device_id", handler.NewHandler().GetDeviceToken)
+		deviceV1.POST("/token/refresh/:device_id", handler.NewHandler().RefreshDeviceToken)
 		deviceV1.PUT("/:device_id", handler.NewHandler().UpdateDeviceById)
 		deviceV1.DELETE("/:device_id", handler.NewHandler().DeleteDeviceById)
 		deviceV1.POST("/location", handler.NewHandler().UpdateLocationDevice)

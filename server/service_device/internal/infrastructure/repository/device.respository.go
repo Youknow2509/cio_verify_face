@@ -19,6 +19,30 @@ type DeviceRepository struct {
 	db *database.Queries
 }
 
+// GetDeviceToken implements repository.IDeviceRepository.
+func (d *DeviceRepository) GetDeviceToken(ctx context.Context, input *model.GetDeviceTokenInput) (*model.GetDeviceTokenOutput, error) {
+	resp, err := d.db.GetDeviceToken(
+		ctx,
+		pgtype.UUID{Valid: true, Bytes: input.DeviceId},
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &model.GetDeviceTokenOutput{
+		DeviceId: input.DeviceId,
+		Token:    resp,
+	}, nil
+}
+
+// UpdateTokenDevice implements repository.IDeviceRepository.
+func (d *DeviceRepository) UpdateTokenDevice(ctx context.Context, input *model.UpdateTokenDeviceInput) error {
+	panic("unimplemented")
+}
+
 // DeviceExist implements repository.IDeviceRepository.
 func (d *DeviceRepository) DeviceExist(ctx context.Context, input *model.DeviceExistInput) (bool, error) {
 	_, err := d.db.CheckDeviceExist(

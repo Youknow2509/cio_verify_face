@@ -2,6 +2,21 @@ package model
 
 import "github.com/google/uuid"
 
+// UpdateTokenDevice
+type UpdateTokenDeviceInput struct {
+	DeviceId uuid.UUID `json:"device_id"`
+	NewToken string    `json:"new_token"`
+}
+
+// GetDeviceToken
+type GetDeviceTokenInput struct {
+	DeviceId uuid.UUID `json:"device_id"`
+}
+type GetDeviceTokenOutput struct {
+	DeviceId uuid.UUID `json:"device_id"`
+	Token    string    `json:"token"`
+}
+
 // DeviceExist
 type DeviceExistInput struct {
 	DeviceId uuid.UUID `json:"device_id"`

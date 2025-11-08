@@ -187,6 +187,20 @@ func (q *Queries) GetDeviceInfoBase(ctx context.Context, deviceID pgtype.UUID) (
 	return i, err
 }
 
+const getDeviceToken = `-- name: GetDeviceToken :one
+SELECT token
+FROM devices
+WHERE device_id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetDeviceToken(ctx context.Context, deviceID pgtype.UUID) (string, error) {
+	row := q.db.QueryRow(ctx, getDeviceToken, deviceID)
+	var token string
+	err := row.Scan(&token)
+	return token, err
+}
+
 const getListDeviceInCompany = `-- name: GetListDeviceInCompany :many
 SELECT
     device_id,

@@ -27,12 +27,106 @@ type iHandler interface {
 	UpdateLocationDevice(c *gin.Context)
 	UpdateNameDevice(c *gin.Context)
 	UpdateInfoDevice(c *gin.Context)
+	GetDeviceToken(c *gin.Context)
+	RefreshDeviceToken(c *gin.Context)
 }
 
 /**
  * Handler struct
  */
 type Handler struct{}
+
+// RefreshDeviceToken implements iHandler.
+// @Summary      Refresh device access token
+// @Description  Refresh device access token
+// @Tags         Core Device
+// @Accept       json
+// @Produce      json
+// @Param		 authorization header string true "Bearer <token>"
+// @Param        device_id   path string  true  "Device ID"
+// @Success      200  {object}  dto.ResponseData
+// @Failure      400  {object}  dto.ErrResponseData
+// @Router       /v1/device/token/refresh/{device_id} [post]
+func (h *Handler) RefreshDeviceToken(c *gin.Context) {
+	// Get id device from path
+	idDeviceStr := c.Param("device_id")
+	idDevice, err := uuidShared.ParseUUID(idDeviceStr)
+	if err != nil {
+		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid device ID")
+		return
+	}
+	// Get data auth from token
+	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	if !ok {
+		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+	userUuid, _ := uuidShared.ParseUUID(userId)
+	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	// Call to application handler
+	resp, errReq := applicationService.GetDeviceService().RefreshDeviceToken(
+		c,
+		&applicationModel.RefreshDeviceTokenInput{
+			DeviceId:    idDevice,
+			UserId:      userUuid,
+			Role:        userRole,
+			ClientIp:    c.ClientIP(),
+			ClientAgent: c.Request.UserAgent(),
+			SessionId:   sessionUuid,
+		},
+	)
+	if errReq != nil {
+		response.ErrorResponse(c, 400, errReq.ErrorClient)
+		return
+	}
+	response.SuccessResponse(c, 200, resp)
+}
+
+// GetDeviceToken implements iHandler.
+// @Summary      Get device access token
+// @Description  Get device access token
+// @Tags         Core Device
+// @Accept       json
+// @Produce      json
+// @Param		 authorization header string true "Bearer <token>"
+// @Param        device_id   path string  true  "Device ID"
+// @Success      200  {object}  dto.ResponseData
+// @Failure      400  {object}  dto.ErrResponseData
+// @Router       /v1/device/token/{device_id} [get]
+func (h *Handler) GetDeviceToken(c *gin.Context) {
+	// Get id device from path
+	idDeviceStr := c.Param("device_id")
+	idDevice, err := uuidShared.ParseUUID(idDeviceStr)
+	if err != nil {
+		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid device ID")
+		return
+	}
+	// Get data auth from token
+	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	if !ok {
+		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+	userUuid, _ := uuidShared.ParseUUID(userId)
+	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	// Call to application handler
+	resp, errReq := applicationService.GetDeviceService().GetDeviceToken(
+		c,
+		&applicationModel.GetDeviceTokenInput{
+			DeviceId:    idDevice,
+			UserId:      userUuid,
+			Role:        userRole,
+			ClientIp:    c.ClientIP(),
+			ClientAgent: c.Request.UserAgent(),
+			SessionId:   sessionUuid,
+		},
+	)
+	if errReq != nil {
+		response.ErrorResponse(c, 400, errReq.ErrorClient)
+		return
+	}
+	response.SuccessResponse(c, 200, resp)
+}
 
 // CreateNewDevice implements iHandler.
 // @Summary      Create new device

@@ -7,6 +7,39 @@ import (
 // =================================================
 // Device model
 // =================================================
+
+// Refresh device token
+type RefreshDeviceTokenInput struct {
+	// Info req
+	DeviceId uuid.UUID `json:"device_id"`
+	// Info client req
+	UserId      uuid.UUID `json:"user_id"`
+	Role        int       `json:"role"` // 0: ADMIN, 1: Admin company, 2: STAFF
+	SessionId   uuid.UUID `json:"session_id"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+}
+type RefreshDeviceTokenOutput struct {
+	DeviceId    string `json:"device_id"`
+	DeviceToken string `json:"device_token"`
+}
+
+// Get device token
+type GetDeviceTokenInput struct {
+	// Info req
+	DeviceId uuid.UUID `json:"device_id"`
+	// Info client req
+	UserId      uuid.UUID `json:"user_id"`
+	Role        int       `json:"role"` // 0: ADMIN, 1: Admin company, 2: STAFF
+	SessionId   uuid.UUID `json:"session_id"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+}
+type GetDeviceTokenOutput struct {
+	DeviceId    string `json:"device_id"`
+	DeviceToken string `json:"device_token"`
+}
+
 // CreateNewDevice
 type CreateNewDeviceInput struct {
 	// Info req

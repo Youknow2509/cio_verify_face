@@ -1,3 +1,9 @@
+-- name: GetDeviceToken :one
+SELECT token
+FROM devices
+WHERE device_id = $1
+LIMIT 1;
+
 -- name: CheckDeviceExist :one
 SELECT device_id
 FROM devices
