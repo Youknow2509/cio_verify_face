@@ -43,8 +43,6 @@ type GetDeviceTokenOutput struct {
 // CreateNewDevice
 type CreateNewDeviceInput struct {
 	// Info req
-	CompanyId    uuid.UUID `json:"company_id"`
-	LocationId   uuid.UUID `json:"location_id"`
 	DeviceName   string    `json:"device_name"`
 	Address      string    `json:"address"`
 	DeviceType   int       `json:"device_type"` // 0: FACE_TERMINAL, 1: MOBILE_APP, 2: WEB_CAMERA, 3: IOT_SENSOR

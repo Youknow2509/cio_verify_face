@@ -34,10 +34,11 @@ INSERT INTO devices (
     address,
     serial_number,
     mac_address,
+    token,
     created_at,
     updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, NOW(), NOW()
+    $1, $2, $3, $4, $5, $6, $7, NOW(), NOW()
 )
 `
 
@@ -48,6 +49,7 @@ type CreateNewDeviceParams struct {
 	Address      pgtype.Text
 	SerialNumber pgtype.Text
 	MacAddress   pgtype.Text
+	Token        string
 }
 
 func (q *Queries) CreateNewDevice(ctx context.Context, arg CreateNewDeviceParams) error {
@@ -58,6 +60,7 @@ func (q *Queries) CreateNewDevice(ctx context.Context, arg CreateNewDeviceParams
 		arg.Address,
 		arg.SerialNumber,
 		arg.MacAddress,
+		arg.Token,
 	)
 	return err
 }

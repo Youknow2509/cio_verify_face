@@ -488,16 +488,12 @@ const docTemplate = `{
         "dto.CreateDeviceRequest": {
             "type": "object",
             "required": [
-                "company_id",
                 "device_name"
             ],
             "properties": {
                 "address": {
                     "type": "string",
                     "maxLength": 255
-                },
-                "company_id": {
-                    "type": "string"
                 },
                 "device_name": {
                     "type": "string",
@@ -513,9 +509,6 @@ const docTemplate = `{
                         2,
                         3
                     ]
-                },
-                "location_id": {
-                    "type": "string"
                 },
                 "mac_address": {
                     "type": "string"

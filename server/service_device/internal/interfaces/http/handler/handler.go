@@ -158,23 +158,10 @@ func (h *Handler) CreateNewDevice(c *gin.Context) {
 		return
 	}
 	err := validate.Struct(req)
-	validationErrors := err.(validator.ValidationErrors)
 	if err != nil {
+		validationErrors := err.(validator.ValidationErrors)
 		response.ErrorResponse(c, response.ErrorCodeValidateRequest, validationErrors.Error())
 		return
-	}
-	companyId, err := uuidShared.ParseUUID(req.CompanyId)
-	if err != nil {
-		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid company_id")
-		return
-	}
-	var locationId uuid.UUID
-	if req.LocationId != "" {
-		locationId, err = uuidShared.ParseUUID(req.LocationId)
-		if err != nil {
-			response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid location_id")
-			return
-		}
 	}
 	// Get data auth from token
 	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
@@ -189,8 +176,6 @@ func (h *Handler) CreateNewDevice(c *gin.Context) {
 	resp, errReq := service.CreateNewDevice(
 		c,
 		&applicationModel.CreateNewDeviceInput{
-			CompanyId:    companyId,
-			LocationId:   locationId,
 			DeviceName:   req.DeviceName,
 			Address:      req.Address,
 			DeviceType:   req.DeviceType,

@@ -61,6 +61,7 @@ type NewDevice struct {
 	Address      string    `json:"address"`
 	SerialNumber string    `json:"serial_number"`
 	MacAddress   string    `json:"mac_address"`
+	Token        string    `json:"token"`
 }
 
 // DeviceInfoBase

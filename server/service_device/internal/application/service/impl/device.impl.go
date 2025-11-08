@@ -16,6 +16,7 @@ import (
 	global "github.com/youknow2509/cio_verify_face/server/service_device/internal/global"
 	sharedCache "github.com/youknow2509/cio_verify_face/server/service_device/internal/shared/utils/cache"
 	sharedCrypto "github.com/youknow2509/cio_verify_face/server/service_device/internal/shared/utils/crypto"
+	sharedRandom "github.com/youknow2509/cio_verify_face/server/service_device/internal/shared/utils/random"
 )
 
 // =================================================
@@ -401,21 +402,24 @@ func (d *DeviceService) CreateNewDevice(ctx context.Context, input *model.Create
 			ErrorClient: "You don't have permission to update device info.",
 		}
 	}
-	ok, err := domainUser.UserExistsInCompany(ctx, &domainModel.UserExistsInCompanyInput{
-		UserID:    input.UserId,
-		CompanyID: input.CompanyId,
-	})
+	// Get company id
+	companyInfo, err := domainUser.GetCompanyIdOfUser(
+		ctx,
+		&domainModel.GetCompanyIdOfUserInput{
+			UserID: input.UserId,
+		},
+	)
 	if err != nil {
-		global.Logger.Error("Error when check user permission device", "err", err)
+		global.Logger.Error("Error when get company id of user", "err", err)
 		return nil, &applicationError.Error{
 			ErrorSystem: err,
 			ErrorClient: "System is busy now. Please try again later.",
 		}
 	}
-	if !ok && input.Role != 0 {
+	if companyInfo == nil {
 		return nil, &applicationError.Error{
 			ErrorSystem: nil,
-			ErrorClient: "You don't have permission to update device info.",
+			ErrorClient: "you don't have permission to create device.",
 		}
 	}
 	// Create new device
@@ -423,11 +427,12 @@ func (d *DeviceService) CreateNewDevice(ctx context.Context, input *model.Create
 	deviceRepo, _ := domainRepo.GetDeviceRepository()
 	deviceModel := &domainModel.NewDevice{
 		DeviceId:     deviceUuid,
-		CompanyId:    input.CompanyId,
+		CompanyId:    companyInfo.CompanyID,
 		Name:         input.DeviceName,
 		Address:      input.Address,
 		SerialNumber: input.SerialNumber,
 		MacAddress:   input.MacAddress,
+		Token:        sharedRandom.RandomString(32),
 	}
 	if err := deviceRepo.CreateNewDevice(
 		ctx,
@@ -454,7 +459,7 @@ func (d *DeviceService) CreateNewDevice(ctx context.Context, input *model.Create
 	}
 	return &model.CreateNewDeviceOutput{
 		DeviceId:     deviceUuid.String(),
-		CompanyId:    input.CompanyId.String(),
+		CompanyId:    companyInfo.CompanyID.String(),
 		Name:         input.DeviceName,
 		Address:      input.Address,
 		SerialNumber: input.SerialNumber,

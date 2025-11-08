@@ -99,8 +99,9 @@ INSERT INTO devices (
     address,
     serial_number,
     mac_address,
+    token,
     created_at,
     updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, NOW(), NOW()
+    $1, $2, $3, $4, $5, $6, $7, NOW(), NOW()
 );

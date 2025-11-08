@@ -70,6 +70,7 @@ func (d *DeviceRepository) CreateNewDevice(ctx context.Context, input *model.New
 			Address:      pgtype.Text{Valid: true, String: input.Address},
 			SerialNumber: pgtype.Text{Valid: true, String: input.SerialNumber},
 			MacAddress:   pgtype.Text{Valid: true, String: input.MacAddress},
+			Token:        input.Token,
 		},
 	)
 }

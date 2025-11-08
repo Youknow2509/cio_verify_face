@@ -5,8 +5,6 @@ definitions:
       address:
         maxLength: 255
         type: string
-      company_id:
-        type: string
       device_name:
         maxLength: 100
         minLength: 3
@@ -19,15 +17,12 @@ definitions:
         - 2
         - 3
         type: integer
-      location_id:
-        type: string
       mac_address:
         type: string
       serial_number:
         maxLength: 100
         type: string
     required:
-    - company_id
     - device_name
     type: object
   dto.ErrResponseData:
