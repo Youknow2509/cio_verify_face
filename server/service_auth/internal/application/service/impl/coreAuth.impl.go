@@ -499,16 +499,22 @@ func (c *CoreAuthService) RefreshToken(ctx context.Context, input *applicationMo
 	tokenService := domainToken.GetTokenService()
 	userSession, tkErr := tokenService.ParseUserToken(ctx, input.AccessToken)
 	if tkErr != nil {
-		if tkErr.Code == domainError.TokenExpiredErrorCode {
-			// access token expired -> allow refresh flow to continue
-		} else if tkErr.Code == domainError.TokenMalformedErrorCode || tkErr.Code == domainError.TokenSignatureInvalidErrCode {
+		if tkErr.Code == domainError.TokenMalformedErrorCode || tkErr.Code == domainError.TokenSignatureInvalidErrCode {
 			// Token invalid
 			return nil, errors.GetError(errors.AuthTokenInvalidErrorCode)
+		} else if tkErr.Code == domainError.TokenExpiredErrorCode {
+			// Token expired, continue to refresh
+			global.Logger.Info("Access token expired, continuing to refresh")
 		} else {
 			// Other error
 			global.Logger.Error("Error parsing user access token: ", tkErr.Message)
 			return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
 		}
+	}
+	if userSession == nil {
+		// Token invalid
+		global.Logger.Warn("User session is nil")
+		return nil, errors.GetError(errors.AuthTokenInvalidErrorCode)
 	}
 	sessionId, _ := utilsUuid.ParseUUID(userSession.TokenId)
 	userId, _ := utilsUuid.ParseUUID(userSession.UserId)

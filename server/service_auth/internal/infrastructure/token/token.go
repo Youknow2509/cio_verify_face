@@ -257,7 +257,27 @@ func (t *TokenService) ParseUserToken(ctx context.Context, tokenString string) (
 		},
 	)
 	if e := handleError(err); e != nil {
-		return nil, e
+		if errors.Is(err, jwt.ErrTokenExpired) {
+			// Return token even if expired
+			out := token.Claims.(*TokenUserJwtClaim)
+			if out == nil {
+				return nil, domainErrors.GetTokenValidationError(domainErrors.TokenMalformedErrorCode)
+			}
+			output := &domainModel.TokenUserJwtOutput{
+				UserId:    out.UserId,
+				TokenId:   out.ID,
+				Role:      out.Role,
+				Issuer:    out.Issuer,
+				Subject:   out.Subject,
+				Audience:  out.Audience,
+				ExpiresAt: out.ExpiresAt.Time,
+				IssuedAt:  out.IssuedAt.Time,
+				NotBefore: out.NotBefore.Time,
+			}
+			return output, nil
+		} else {
+			return nil, e
+		}
 	}
 	if !token.Valid {
 		return nil, domainErrors.GetTokenValidationError(domainErrors.TokenValidationErrorCode)

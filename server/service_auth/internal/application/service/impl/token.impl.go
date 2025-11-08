@@ -271,24 +271,19 @@ func (t *TokenService) RefreshTokenUser(ctx context.Context, input model.Refresh
 	tokenService := domainToken.GetTokenService()
 	accessTokenResp, errToken := tokenService.ParseUserToken(ctx, input.AccessToken)
 	if errToken != nil {
-		if errToken != nil {
-			switch errToken.Code {
-			case domainError.TokenErrorNotFoundCode:
-				global.Logger.Warn("token not found", "token", input.AccessToken)
-				return nil, errors.New("token not found")
-			case domainError.TokenMalformedErrorCode:
-				global.Logger.Warn("token malformed", "token", input.AccessToken)
-				return nil, errors.New("token malformed")
-			case domainError.TokenSignatureInvalidErrCode:
-				global.Logger.Warn("token signature invalid", "token", input.AccessToken)
-				return nil, errors.New("token signature invalid")
-			case domainError.TokenValidationErrorCode:
-				global.Logger.Warn("token validation error", "token", input.AccessToken)
-				return nil, errors.New("token validation error")
-			default:
-				global.Logger.Error("unknown token error", "error", errToken.Message, "token", input.AccessToken)
-				return nil, errors.New("unknown token error")
-			}
+		switch errToken.Code {
+		case domainError.TokenErrorNotFoundCode:
+			global.Logger.Warn("token not found", "token", input.AccessToken)
+			return nil, errors.New("token not found")
+		case domainError.TokenMalformedErrorCode:
+			global.Logger.Warn("token malformed", "token", input.AccessToken)
+			return nil, errors.New("token malformed")
+		case domainError.TokenSignatureInvalidErrCode:
+			global.Logger.Warn("token signature invalid", "token", input.AccessToken)
+			return nil, errors.New("token signature invalid")
+		case domainError.TokenValidationErrorCode:
+			global.Logger.Warn("token validation error", "token", input.AccessToken)
+			return nil, errors.New("token validation error")
 		}
 	}
 	// Validate refresh token
