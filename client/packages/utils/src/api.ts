@@ -1,7 +1,7 @@
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 
 export const API_BASE_URL =
-    import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+    (import.meta as any).env?.VITE_API_BASE_URL || 'http://localhost:8000';
 
 export const createApiClient = (
     baseURL: string = API_BASE_URL
@@ -43,6 +43,7 @@ export const createApiClient = (
                         const response = await axios.post(
                             `${baseURL}/api/v1/auth/refresh`,
                             {
+                                access_token: access_token_old,
                                 refresh_token: refreshToken,
                             },
                             {
