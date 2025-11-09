@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/google/uuid"
 	applicationError "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/application/error"
 	applicationModel "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/application/model"
 	service "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/application/service"
@@ -41,8 +42,13 @@ func (s *ShiftService) CreateShift(ctx context.Context, input *applicationModel.
 			ErrorClient: "Invalid input data",
 		}
 	}
-
-	s.logger.Info("CreateShift - Start", "user_id", input.UserId, "company_id", input.CompanyId)
+	var companyId uuid.UUID
+	if input.Role == domainModel.RoleManager && input.CompanyIdReq == input.CompanyId {
+		companyId = input.CompanyIdReq
+	} else {
+		companyId = input.CompanyIdReq
+	}
+	s.logger.Info("CreateShift - Start", "user_id", input.UserId, "company_id", companyId)
 
 	// Convert work days from []int to []int32
 	workDays := make([]int32, len(input.WorkDays))
@@ -52,7 +58,7 @@ func (s *ShiftService) CreateShift(ctx context.Context, input *applicationModel.
 
 	// Create domain input
 	domainInput := &domainModel.CreateShiftInput{
-		CompanyID:             input.CompanyId,
+		CompanyID:             companyId,
 		Name:                  input.Name,
 		Description:           input.Description,
 		StartTime:             input.StartTime,
@@ -189,7 +195,6 @@ func (s *ShiftService) GetDetailShift(ctx context.Context, input *applicationMod
 			ErrorClient: "Invalid input data",
 		}
 	}
-
 	s.logger.Info("GetDetailShift - Start", "user_id", input.UserId, "shift_id", input.ShiftId)
 
 	cacheKey := fmt.Sprintf("%s%s", shiftCachePrefix, input.ShiftId.String())

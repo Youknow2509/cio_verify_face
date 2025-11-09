@@ -99,10 +99,8 @@ func (s *ShiftEmployeeService) AddShiftEmployee(ctx context.Context, input *appl
 
 	s.logger.Info("AddShiftEmployee - Success", "employee_id", input.EmployeeId)
 
-	// Note: The repository doesn't return the ID, so we can't populate ShiftUserId
-	// You may need to modify the repository interface to return the ID
 	output := &applicationModel.AddShiftEmployeeOutput{
-		ShiftUserId: "created", // Placeholder - need to modify repository to return ID
+		ShiftUserId: "created",
 	}
 
 	return &output, nil
@@ -301,10 +299,6 @@ func (s *ShiftEmployeeService) GetShiftForUserWithEffectiveDate(ctx context.Cont
 	}
 
 	s.logger.Info("GetShiftForUserWithEffectiveDate - Found shifts", "count", len(shifts))
-
-	// For now, returning empty output as the structure is not fully defined
-	// You may need to populate this based on the shifts returned
-	_ = shifts // Use the shifts variable to avoid unused warning
 
 	output := &applicationModel.GetShiftForUserWithEffectiveDateOutput{}
 

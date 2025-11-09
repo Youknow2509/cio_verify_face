@@ -5,6 +5,7 @@ import (
 
 	gin "github.com/gin-gonic/gin"
 	validator "github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	applicationModel "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/application/model"
 	applicationService "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/application/service"
 	constants "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/constants"
@@ -73,10 +74,14 @@ func (h *Handler) AddShiftEmployee(c *gin.Context) {
 		return
 	}
 	// Get data auth from context
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeAuthSessionInvalid, "Invalid auth session")
 		return
+	}
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
 	}
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
@@ -95,9 +100,12 @@ func (h *Handler) AddShiftEmployee(c *gin.Context) {
 		c,
 		&applicationModel.AddShiftEmployeeInput{
 			// User info
-			UserId:    userUuid,
-			SessionId: sessionUuid,
-			Role:      userRole,
+			UserId:      userUuid,
+			SessionId:   sessionUuid,
+			Role:        userRole,
+			ClientIp:    c.ClientIP(),
+			ClientAgent: c.Request.UserAgent(),
+			CompanyId:   companyUuid,
 			//
 			EmployeeId:    employeeUuid,
 			ShiftId:       shiftUuid,
@@ -152,14 +160,18 @@ func (h *Handler) CreateShift(c *gin.Context) {
 		return
 	}
 	// Get data auth from context
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeAuthSessionInvalid, "Invalid auth session")
 		return
 	}
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
+	}
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
-	companyId, err := uuidShared.ParseUUID(req.CompanyId)
+	companyIdReq, err := uuidShared.ParseUUID(req.CompanyId)
 	if err != nil {
 		response.ErrorResponse(c, 400, "Invalid company ID")
 		return
@@ -172,8 +184,11 @@ func (h *Handler) CreateShift(c *gin.Context) {
 			UserId:      userUuid,
 			UserSession: sessionUuid,
 			Role:        userRole,
+			ClientIp:    c.ClientIP(),
+			ClientAgent: c.Request.UserAgent(),
+			CompanyId:   companyUuid,
 			//
-			CompanyId:             companyId,
+			CompanyIdReq:          companyIdReq,
 			Name:                  req.Name,
 			Description:           req.Description,
 			StartTime:             time.Unix(req.StartTime, 0),
@@ -213,10 +228,14 @@ func (h *Handler) DeleteShift(c *gin.Context) {
 		return
 	}
 	// Get data auth from context
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeAuthSessionInvalid, "Invalid auth session")
 		return
+	}
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
 	}
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
@@ -228,6 +247,9 @@ func (h *Handler) DeleteShift(c *gin.Context) {
 			UserId:      userUuid,
 			UserSession: sessionUuid,
 			Role:        userRole,
+			ClientIp:    c.ClientIP(),
+			ClientAgent: c.Request.UserAgent(),
+			CompanyId:   companyUuid,
 			//
 			ShiftId: shiftUuid,
 		},
@@ -262,10 +284,14 @@ func (h *Handler) DeleteShiftForUser(c *gin.Context) {
 		return
 	}
 	// Get data auth from context
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeAuthSessionInvalid, "Invalid auth session")
 		return
+	}
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
 	}
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
@@ -274,9 +300,12 @@ func (h *Handler) DeleteShiftForUser(c *gin.Context) {
 		c,
 		&applicationModel.DeleteShiftUserInput{
 			// User info
-			UserId:    userUuid,
-			SessionId: sessionUuid,
-			Role:      userRole,
+			UserId:      userUuid,
+			SessionId:   sessionUuid,
+			Role:        userRole,
+			ClientIp:    c.ClientIP(),
+			ClientAgent: c.Request.UserAgent(),
+			CompanyId:   companyUuid,
 			//
 			ShiftUserId: shiftUserUuid,
 		},
@@ -328,10 +357,14 @@ func (h *Handler) DisableShiftForUser(c *gin.Context) {
 		return
 	}
 	// Get data auth from context
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeAuthSessionInvalid, "Invalid auth session")
 		return
+	}
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
 	}
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
@@ -348,6 +381,9 @@ func (h *Handler) DisableShiftForUser(c *gin.Context) {
 			SessionId:   sessionUuid,
 			Role:        userRole,
 			ShiftUserId: shiftUserUuid,
+			ClientIp:    c.ClientIP(),
+			ClientAgent: c.Request.UserAgent(),
+			CompanyId:   companyUuid,
 		},
 	)
 	if errReq != nil {
@@ -397,10 +433,14 @@ func (h *Handler) EditShift(c *gin.Context) {
 		return
 	}
 	// Get data auth from context
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeAuthSessionInvalid, "Invalid auth session")
 		return
+	}
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
 	}
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
@@ -409,7 +449,7 @@ func (h *Handler) EditShift(c *gin.Context) {
 		response.ErrorResponse(c, 400, "Invalid shift ID")
 		return
 	}
-	companyUuid, err := uuidShared.ParseUUID(req.CompanyId)
+	companyUuidReq, err := uuidShared.ParseUUID(req.CompanyId)
 	if err != nil {
 		response.ErrorResponse(c, 400, "Invalid company ID")
 		return
@@ -421,9 +461,12 @@ func (h *Handler) EditShift(c *gin.Context) {
 			UserId:      userUuid,
 			UserSession: sessionUuid,
 			Role:        userRole,
+			ClientIp:    c.ClientIP(),
+			ClientAgent: c.Request.UserAgent(),
+			CompanyId:   companyUuid,
 			//
 			ShiftId:               shiftUuid,
-			CompanyId:             companyUuid,
+			CompanyIdReq:          companyUuidReq,
 			Name:                  req.Name,
 			Description:           req.Description,
 			StartTime:             time.Unix(req.StartTime, 0),
@@ -481,10 +524,14 @@ func (h *Handler) EditShiftForUserWithEffectiveDate(c *gin.Context) {
 		return
 	}
 	// Get data auth from context
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeAuthSessionInvalid, "Invalid auth session")
 		return
+	}
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
 	}
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
@@ -492,9 +539,12 @@ func (h *Handler) EditShiftForUserWithEffectiveDate(c *gin.Context) {
 	errReq := applicationService.GetShiftEmployeeService().EditShiftForUserWithEffectiveDate(
 		c,
 		&applicationModel.EditShiftForUserWithEffectiveDateInput{
-			UserId:    userUuid,
-			SessionId: sessionUuid,
-			Role:      userRole,
+			UserId:      userUuid,
+			SessionId:   sessionUuid,
+			Role:        userRole,
+			ClientIp:    c.ClientIP(),
+			ClientAgent: c.Request.UserAgent(),
+			CompanyId:   companyUuid,
 			//
 			NewEffectiveFrom: time.Unix(req.NewEffectiveFrom, 0),
 			NewEffectiveTo:   time.Unix(req.NewEffectiveTo, 0),
@@ -546,10 +596,14 @@ func (h *Handler) EnableShiftForUser(c *gin.Context) {
 		return
 	}
 	// Get data auth from context
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeAuthSessionInvalid, "Invalid auth session")
 		return
+	}
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
 	}
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
@@ -563,9 +617,12 @@ func (h *Handler) EnableShiftForUser(c *gin.Context) {
 		c,
 		&applicationModel.EnableShiftUserInput{
 			// User info
-			UserId:    userUuid,
-			SessionId: sessionUuid,
-			Role:      userRole,
+			UserId:      userUuid,
+			SessionId:   sessionUuid,
+			Role:        userRole,
+			ClientIp:    c.ClientIP(),
+			ClientAgent: c.Request.UserAgent(),
+			CompanyId:   companyUuid,
 			//
 			ShiftUserId: shiftUserUuid,
 		},
@@ -601,10 +658,14 @@ func (h *Handler) GetDetailShift(c *gin.Context) {
 		return
 	}
 	// Get data auth from context
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeAuthSessionInvalid, "Invalid auth session")
 		return
+	}
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
 	}
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
@@ -616,6 +677,9 @@ func (h *Handler) GetDetailShift(c *gin.Context) {
 			UserId:      userUuid,
 			UserSession: sessionUuid,
 			Role:        userRole,
+			ClientIp:    c.ClientIP(),
+			ClientAgent: c.Request.UserAgent(),
+			CompanyId:   companyUuid,
 			//
 			ShiftId: shiftUuid,
 		},
@@ -667,10 +731,14 @@ func (h *Handler) GetShiftForUserWithEffectiveDate(c *gin.Context) {
 		return
 	}
 	// Get data auth from context
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeAuthSessionInvalid, "Invalid auth session")
 		return
+	}
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
 	}
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
@@ -687,9 +755,12 @@ func (h *Handler) GetShiftForUserWithEffectiveDate(c *gin.Context) {
 	reps, errReq := applicationService.GetShiftEmployeeService().GetShiftForUserWithEffectiveDate(
 		c,
 		&applicationModel.GetShiftForUserWithEffectiveDateInput{
-			UserId:    userUuid,
-			SessionId: sessionUuid,
-			Role:      userRole,
+			UserId:      userUuid,
+			SessionId:   sessionUuid,
+			Role:        userRole,
+			ClientIp:    c.ClientIP(),
+			ClientAgent: c.Request.UserAgent(),
+			CompanyId:   companyUuid,
 			//
 			EffectiveFrom: time.Unix(req.EffectiveFrom, 0),
 			EffectiveTo:   time.Unix(req.EffectiveTo, 0),
