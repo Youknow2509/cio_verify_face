@@ -5,9 +5,11 @@ import (
 
 	gin "github.com/gin-gonic/gin"
 	validator "github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 	appModel "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/application/model"
 	appService "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/application/service"
 	constants "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/constants"
+	domainModel "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/domain/model"
 	dto "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/interfaces/dto"
 	response "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/interfaces/response"
 	contextShared "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/shared/utils/context"
@@ -73,7 +75,7 @@ func (a *AttendanceHandler) CheckIn(c *gin.Context) {
 		return
 	}
 	// Get session
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 		return
@@ -81,6 +83,12 @@ func (a *AttendanceHandler) CheckIn(c *gin.Context) {
 	// Validate uuid
 	userUuid, _ := sharedUuid.ParseUUID(userId)
 	sessionUuid, _ := sharedUuid.ParseUUID(sessionId)
+	var companyUuid uuid.UUID
+	if userRole == domainModel.RoleAdmin {
+		companyUuid = uuid.Nil
+	} else {
+		companyUuid, _ = sharedUuid.ParseUUID(companyId)
+	}
 	deviceUuid, err := sharedUuid.ParseUUID(req.DeviceId)
 	if err != nil {
 		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Device ID is not valid UUID")
@@ -108,6 +116,7 @@ func (a *AttendanceHandler) CheckIn(c *gin.Context) {
 			Role:        userRole,
 			ClientIp:    c.ClientIP(),
 			ClientAgent: c.Request.UserAgent(),
+			CompanyId:   companyUuid,
 		},
 	)
 	if errReps != nil {
@@ -166,7 +175,7 @@ func (a *AttendanceHandler) CheckOut(c *gin.Context) {
 		return
 	}
 	// Get session
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 		return
@@ -174,6 +183,12 @@ func (a *AttendanceHandler) CheckOut(c *gin.Context) {
 	// Validate uuid
 	userUuid, _ := sharedUuid.ParseUUID(userId)
 	sessionUuid, _ := sharedUuid.ParseUUID(sessionId)
+	var companyUuid uuid.UUID
+	if userRole == domainModel.RoleAdmin {
+		companyUuid = uuid.Nil
+	} else {
+		companyUuid, _ = sharedUuid.ParseUUID(companyId)
+	}
 	deviceUuid, err := sharedUuid.ParseUUID(req.DeviceId)
 	if err != nil {
 		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Device ID is not valid UUID")
@@ -201,6 +216,7 @@ func (a *AttendanceHandler) CheckOut(c *gin.Context) {
 			Role:        userRole,
 			ClientIp:    c.ClientIP(),
 			ClientAgent: c.Request.UserAgent(),
+			CompanyId:   companyUuid,
 		},
 	)
 	if errReps != nil {
@@ -259,7 +275,7 @@ func (a *AttendanceHandler) GetMyHistory(c *gin.Context) {
 		return
 	}
 	// Get session
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 		return
@@ -267,6 +283,12 @@ func (a *AttendanceHandler) GetMyHistory(c *gin.Context) {
 	// Validate uuid
 	userUuid, _ := sharedUuid.ParseUUID(userId)
 	sessionUuid, _ := sharedUuid.ParseUUID(sessionId)
+	var companyUuid uuid.UUID
+	if userRole == domainModel.RoleAdmin {
+		companyUuid = uuid.Nil
+	} else {
+		companyUuid, _ = sharedUuid.ParseUUID(companyId)
+	}
 	// Validate date format
 	var (
 		startDate time.Time
@@ -308,10 +330,12 @@ func (a *AttendanceHandler) GetMyHistory(c *gin.Context) {
 			StartDate: startDate,
 			EndDate:   endDate,
 			// Session info
-			UserID:    userUuid,
-			SessionID: sessionUuid,
-			Role:      userRole,
-			ClientIp:  c.ClientIP(),
+			UserID:      userUuid,
+			SessionID:   sessionUuid,
+			Role:        userRole,
+			ClientIp:    c.ClientIP(),
+			ClientAgent: c.Request.UserAgent(),
+			CompanyId:   companyUuid,
 		},
 	)
 	if errReps != nil {
@@ -370,7 +394,7 @@ func (a *AttendanceHandler) GetRecords(c *gin.Context) {
 		return
 	}
 	// Get session
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 		return
@@ -378,6 +402,12 @@ func (a *AttendanceHandler) GetRecords(c *gin.Context) {
 	// Validate uuid
 	userUuid, _ := sharedUuid.ParseUUID(userId)
 	sessionUuid, _ := sharedUuid.ParseUUID(sessionId)
+	var companyUuidUser uuid.UUID
+	if userRole == domainModel.RoleAdmin {
+		companyUuidUser = uuid.Nil
+	} else {
+		companyUuidUser, _ = sharedUuid.ParseUUID(companyId)
+	}
 	deviceUuid, err := sharedUuid.ParseUUID(req.DeviceId)
 	if err != nil {
 		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Device ID is not valid UUID")
@@ -431,11 +461,12 @@ func (a *AttendanceHandler) GetRecords(c *gin.Context) {
 			DeviceID:  deviceUuid,
 			CompanyId: companyUuid,
 			// Session info
-			UserID:      userUuid,
-			SessionID:   sessionUuid,
-			Role:        userRole,
-			ClientIp:    c.ClientIP(),
-			ClientAgent: c.Request.UserAgent(),
+			UserID:        userUuid,
+			SessionID:     sessionUuid,
+			Role:          userRole,
+			ClientIp:      c.ClientIP(),
+			ClientAgent:   c.Request.UserAgent(),
+			CompanyIdUser: companyUuidUser,
 		},
 	)
 	if errReps != nil {

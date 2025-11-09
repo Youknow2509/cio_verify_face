@@ -17,8 +17,8 @@ type UserTokenOutput struct {
 // ========================================
 type (
 	TokenUserJwtInput struct {
-		UserId  string    `json:"user_id" validate:"required"`
-		Role    int       `json:"role" validate:"required"`
+		UserId string `json:"user_id" validate:"required"`
+		Role   int    `json:"role" validate:"required"`
 	}
 
 	TokenDeviceJwtInput struct {
@@ -45,6 +45,7 @@ type (
 		UserId    string    `json:"user_id"`
 		Role      int       `json:"role"`
 		TokenId   string    `json:"jti,omitempty"`
+		CompanyId string    `json:"company_id,omitempty"`
 		Issuer    string    `json:"iss,omitempty"`
 		Subject   string    `json:"sub,omitempty"`
 		Audience  []string  `json:"aud,omitempty"`

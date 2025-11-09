@@ -18,19 +18,27 @@ func ExtractBearerToken(c *gin.Context) (string, bool) {
 }
 
 // Save session to the context
-func SaveSessionToContext(c *gin.Context, userId string, sessionId string, userRole int) {
+func SaveSessionToContext(
+	c *gin.Context,
+	userId string,
+	sessionId string,
+	userRole int,
+	companyId string,
+) {
 	c.Set(constants.ContextUserIDKey, userId)
 	c.Set(constants.ContextSessionIDKey, sessionId)
 	c.Set(constants.ContextUserRoleKey, userRole)
+	c.Set(constants.ContextCompanyIDKey, companyId)
 }
 
 // Get session from the context
-func GetSessionFromContext(c *gin.Context) (string, string, int, bool) {
+func GetSessionFromContext(c *gin.Context) (string, string, int, string, bool) {
 	userId, userIdExists := c.Get(constants.ContextUserIDKey)
 	sessionId, sessionIdExists := c.Get(constants.ContextSessionIDKey)
 	userRole, userRoleExists := c.Get(constants.ContextUserRoleKey)
-	if !userIdExists || !sessionIdExists || !userRoleExists {
-		return "", "", -1, false
+	companyId, companyIdExists := c.Get(constants.ContextCompanyIDKey)
+	if !userIdExists || !sessionIdExists || !userRoleExists || !companyIdExists {
+		return "", "", -1, "", false
 	}
-	return userId.(string), sessionId.(string), userRole.(int), true
+	return userId.(string), sessionId.(string), userRole.(int), companyId.(string), true
 }
