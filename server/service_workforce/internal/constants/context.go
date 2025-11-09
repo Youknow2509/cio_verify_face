@@ -7,6 +7,7 @@ const (
 	ContextUserIDKey       = "user_id"
 	ContextSessionIDKey    = "session_id"
 	ContextUserRoleKey     = "user_role"
+	ContextCompanyIdKey    = "company_id"
 	ContextAuthHeaderKey   = "Authorization"
 	ContextBearerPrefixKey = "Bearer "
 )

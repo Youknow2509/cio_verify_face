@@ -73,7 +73,7 @@ func (h *Handler) UpdateStatusDevice(c *gin.Context) {
 		return
 	}
 	// Get ession
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 		return
@@ -81,6 +81,10 @@ func (h *Handler) UpdateStatusDevice(c *gin.Context) {
 	// Parse uuid
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
+	}
 	deviceUuid, err := uuidShared.ParseUUID(req.DeviceId)
 	if err != nil {
 		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid device_id")
@@ -98,6 +102,7 @@ func (h *Handler) UpdateStatusDevice(c *gin.Context) {
 			ClientIp:    c.ClientIP(),
 			ClientAgent: c.Request.UserAgent(),
 			SessionId:   sessionUuid,
+			CompanyId:   companyUuid,
 		},
 	)
 	if errReq != nil {
@@ -131,13 +136,17 @@ func (h *Handler) RefreshDeviceToken(c *gin.Context) {
 		return
 	}
 	// Get data auth from token
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 		return
 	}
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
+	}
 	// Call to application handler
 	resp, errReq := applicationService.GetDeviceService().RefreshDeviceToken(
 		c,
@@ -148,6 +157,7 @@ func (h *Handler) RefreshDeviceToken(c *gin.Context) {
 			ClientIp:    c.ClientIP(),
 			ClientAgent: c.Request.UserAgent(),
 			SessionId:   sessionUuid,
+			CompanyId:   companyUuid,
 		},
 	)
 	if errReq != nil {
@@ -177,13 +187,17 @@ func (h *Handler) GetDeviceToken(c *gin.Context) {
 		return
 	}
 	// Get data auth from token
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 		return
 	}
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
+	}
 	// Call to application handler
 	resp, errReq := applicationService.GetDeviceService().GetDeviceToken(
 		c,
@@ -194,6 +208,7 @@ func (h *Handler) GetDeviceToken(c *gin.Context) {
 			ClientIp:    c.ClientIP(),
 			ClientAgent: c.Request.UserAgent(),
 			SessionId:   sessionUuid,
+			CompanyId:   companyUuid,
 		},
 	)
 	if errReq != nil {
@@ -239,18 +254,27 @@ func (h *Handler) CreateNewDevice(c *gin.Context) {
 		return
 	}
 	// Get data auth from token
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 		return
 	}
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
+	}
+	var companyUuidReq uuid.UUID
+	if req.CompanyId != "" {
+		companyUuidReq, _ = uuidShared.ParseUUID(req.CompanyId)
+	}
 	// Call to application handler
 	service := applicationService.GetDeviceService()
 	resp, errReq := service.CreateNewDevice(
 		c,
 		&applicationModel.CreateNewDeviceInput{
+			CompanyIdReq: companyUuidReq,
 			DeviceName:   req.DeviceName,
 			Address:      req.Address,
 			DeviceType:   req.DeviceType,
@@ -262,6 +286,7 @@ func (h *Handler) CreateNewDevice(c *gin.Context) {
 			SessionId:   sessionUuid,
 			ClientIp:    c.ClientIP(),
 			ClientAgent: c.Request.UserAgent(),
+			CompanyId:   companyUuid,
 		},
 	)
 	if errReq != nil {
@@ -295,13 +320,17 @@ func (h *Handler) DeleteDeviceById(c *gin.Context) {
 		return
 	}
 	// Get data auth from token
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 		return
 	}
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
+	}
 	// Call to application handler
 	if err := applicationService.GetDeviceService().DeleteDeviceById(
 		c,
@@ -312,6 +341,7 @@ func (h *Handler) DeleteDeviceById(c *gin.Context) {
 			ClientIp:    c.ClientIP(),
 			ClientAgent: c.Request.UserAgent(),
 			SessionId:   sessionUuid,
+			CompanyId:   companyUuid,
 		},
 	); err != nil {
 		if err.ErrorSystem != nil {
@@ -344,10 +374,14 @@ func (h *Handler) GetDeviceById(c *gin.Context) {
 		return
 	}
 	// Get data auth from token
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 		return
+	}
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
 	}
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
@@ -361,6 +395,7 @@ func (h *Handler) GetDeviceById(c *gin.Context) {
 			ClientIp:    c.ClientIP(),
 			ClientAgent: c.Request.UserAgent(),
 			SessionId:   sessionUuid,
+			CompanyId:   companyUuid,
 		},
 	)
 	if errReq != nil {
@@ -384,9 +419,9 @@ func (h *Handler) GetDeviceById(c *gin.Context) {
 // @Router       /v1/device [get]
 func (h *Handler) GetListDevices(c *gin.Context) {
 	// Get query params
-	page := c.DefaultQuery("page", "1")
-	size := c.DefaultQuery("size", "20")
-	companyId := c.DefaultQuery("company_id", "")
+	page := c.DefaultQuery("page", strconv.Itoa(constants.PageDefault))
+	size := c.DefaultQuery("size", strconv.Itoa(constants.SizeDefault))
+	companyIdReq := c.DefaultQuery("company_id", "")
 	// validate query params
 	var err error
 	pageInt, err := strconv.Atoi(page)
@@ -400,7 +435,7 @@ func (h *Handler) GetListDevices(c *gin.Context) {
 		return
 	}
 	// Get data auth from token
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 		return
@@ -410,7 +445,11 @@ func (h *Handler) GetListDevices(c *gin.Context) {
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
 	var companyUuid uuid.UUID
 	if companyId != "" {
-		companyUuid, err = uuidShared.ParseUUID(companyId)
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
+	}
+	var companyUuidReq uuid.UUID
+	if companyIdReq != "" {
+		companyUuidReq, err = uuidShared.ParseUUID(companyIdReq)
 		if err != nil {
 			response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid company_id")
 			return
@@ -420,15 +459,16 @@ func (h *Handler) GetListDevices(c *gin.Context) {
 	resp, errReq := applicationService.GetDeviceService().GetListDevices(
 		c,
 		&applicationModel.ListDevicesInput{
-			CompanyId: companyUuid,
-			Page:      pageInt,
-			Size:      sizeInt,
+			CompanyIdReq: companyUuidReq,
+			Page:         pageInt,
+			Size:         sizeInt,
 			//
 			UserId:      userUuid,
 			Role:        userRole,
 			ClientIp:    c.ClientIP(),
 			ClientAgent: c.Request.UserAgent(),
 			SessionId:   sessionUuid,
+			CompanyId:   companyUuid,
 		},
 	)
 	if errReq != nil {
@@ -478,7 +518,7 @@ func (h *Handler) UpdateDeviceById(c *gin.Context) {
 		return
 	}
 	// Get data auth from token
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 		return
@@ -486,6 +526,10 @@ func (h *Handler) UpdateDeviceById(c *gin.Context) {
 	// Parse uuid
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
+	}
 	locationUuid, err := uuidShared.ParseUUID(req.LocationId)
 	if err != nil && req.LocationId != "" {
 		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid location_id")
@@ -508,6 +552,7 @@ func (h *Handler) UpdateDeviceById(c *gin.Context) {
 			ClientIp:    c.ClientIP(),
 			ClientAgent: c.Request.UserAgent(),
 			SessionId:   sessionUuid,
+			CompanyId:   companyUuid,
 		},
 	)
 	if errReq != nil {
@@ -557,7 +602,7 @@ func (h *Handler) UpdateLocationDevice(c *gin.Context) {
 		return
 	}
 	// Get ession
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 		return
@@ -565,6 +610,10 @@ func (h *Handler) UpdateLocationDevice(c *gin.Context) {
 	// Parse uuid
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
+	}
 	deviceUuid, err := uuidShared.ParseUUID(req.DeviceId)
 	if err != nil {
 		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid device_id")
@@ -588,6 +637,7 @@ func (h *Handler) UpdateLocationDevice(c *gin.Context) {
 			ClientIp:    c.ClientIP(),
 			ClientAgent: c.Request.UserAgent(),
 			SessionId:   sessionUuid,
+			CompanyId:   companyUuid,
 		},
 	)
 	if errReq != nil {
@@ -636,7 +686,7 @@ func (h *Handler) UpdateNameDevice(c *gin.Context) {
 		return
 	}
 	// Get ession
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 		return
@@ -644,6 +694,10 @@ func (h *Handler) UpdateNameDevice(c *gin.Context) {
 	// Parse uuid
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
+	}
 	deviceUuid, err := uuidShared.ParseUUID(req.DeviceId)
 	if err != nil {
 		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid device_id")
@@ -660,6 +714,7 @@ func (h *Handler) UpdateNameDevice(c *gin.Context) {
 			Role:        userRole,
 			ClientIp:    c.ClientIP(),
 			ClientAgent: c.Request.UserAgent(),
+			CompanyId:   companyUuid,
 		},
 	)
 	if errReq != nil {
@@ -708,7 +763,7 @@ func (h *Handler) UpdateInfoDevice(c *gin.Context) {
 		return
 	}
 	// Get ession
-	userId, sessionId, userRole, ok := contextShared.GetSessionFromContext(c)
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 		return
@@ -716,6 +771,10 @@ func (h *Handler) UpdateInfoDevice(c *gin.Context) {
 	// Parse uuid
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
+	}
 	deviceUuid, err := uuidShared.ParseUUID(req.DeviceId)
 	if err != nil {
 		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid device_id")
@@ -735,6 +794,7 @@ func (h *Handler) UpdateInfoDevice(c *gin.Context) {
 			Role:        userRole,
 			ClientIp:    c.ClientIP(),
 			ClientAgent: c.Request.UserAgent(),
+			CompanyId:   companyUuid,
 		},
 	)
 	if errReq != nil {

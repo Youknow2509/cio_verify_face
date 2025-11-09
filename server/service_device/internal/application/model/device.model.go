@@ -19,6 +19,7 @@ type UpdateStatusDeviceInput struct {
 	SessionId   uuid.UUID `json:"session_id"`
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 }
 
 // Refresh device token
@@ -31,6 +32,7 @@ type RefreshDeviceTokenInput struct {
 	SessionId   uuid.UUID `json:"session_id"`
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 }
 type RefreshDeviceTokenOutput struct {
 	DeviceId    string `json:"device_id"`
@@ -47,6 +49,7 @@ type GetDeviceTokenInput struct {
 	SessionId   uuid.UUID `json:"session_id"`
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 }
 type GetDeviceTokenOutput struct {
 	DeviceId    string `json:"device_id"`
@@ -56,6 +59,7 @@ type GetDeviceTokenOutput struct {
 // CreateNewDevice
 type CreateNewDeviceInput struct {
 	// Info req
+	CompanyIdReq uuid.UUID `json:"company_id_req"`
 	DeviceName   string    `json:"device_name"`
 	Address      string    `json:"address"`
 	DeviceType   int       `json:"device_type"` // 0: FACE_TERMINAL, 1: MOBILE_APP, 2: WEB_CAMERA, 3: IOT_SENSOR
@@ -67,6 +71,7 @@ type CreateNewDeviceInput struct {
 	SessionId   uuid.UUID `json:"session_id"`
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 }
 type CreateNewDeviceOutput struct {
 	DeviceId     string `json:"device_id"`
@@ -80,15 +85,16 @@ type CreateNewDeviceOutput struct {
 // ListDevices
 type ListDevicesInput struct {
 	// Info req
-	CompanyId uuid.UUID `json:"company_id"`
-	Size      int       `json:"size"`
-	Page      int       `json:"page"`
+	CompanyIdReq uuid.UUID `json:"company_id_req"`
+	Size         int       `json:"size"`
+	Page         int       `json:"page"`
 	// Info client req
 	UserId      uuid.UUID `json:"user_id"`
 	Role        int       `json:"role"` // 0: ADMIN, 1: Admin company, 2: STAFF
 	SessionId   uuid.UUID `json:"session_id"`
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 }
 type ListDevicesOutput struct {
 	Devices []*GetDeviceByIdOutput `json:"devices"`
@@ -104,6 +110,7 @@ type GetDeviceByIdInput struct {
 	SessionId   uuid.UUID `json:"session_id"`
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 }
 
 type GetDeviceByIdOutput struct {
@@ -135,6 +142,7 @@ type UpdateDeviceInput struct {
 	SessionId   uuid.UUID `json:"session_id"`
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 }
 type UpdateDeviceOutput struct{}
 
@@ -148,6 +156,7 @@ type DeleteDeviceInput struct {
 	SessionId   uuid.UUID `json:"session_id"`
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 }
 
 // UpdateLocationDevice
@@ -162,6 +171,7 @@ type UpdateLocationDeviceInput struct {
 	SessionId   uuid.UUID `json:"session_id"`
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 }
 
 // UpdateNameDeviceInput
@@ -175,6 +185,7 @@ type UpdateNameDeviceInput struct {
 	SessionId   uuid.UUID `json:"session_id"`
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 }
 
 // UpdateInfoDeviceInput
@@ -190,4 +201,5 @@ type UpdateInfoDeviceInput struct {
 	SessionId   uuid.UUID `json:"session_id"`
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 }

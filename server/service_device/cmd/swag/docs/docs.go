@@ -542,6 +542,9 @@ const docTemplate = `{
                     "type": "string",
                     "maxLength": 255
                 },
+                "company_id": {
+                    "type": "string"
+                },
                 "device_name": {
                     "type": "string",
                     "maxLength": 100,
@@ -709,8 +712,7 @@ const docTemplate = `{
         "dto.UpdateStatusDeviceRequest": {
             "type": "object",
             "required": [
-                "device_id",
-                "status"
+                "device_id"
             ],
             "properties": {
                 "device_id": {

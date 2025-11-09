@@ -12,6 +12,7 @@ type UpdateStatusDeviceRequest struct {
 
 // Create device request
 type CreateDeviceRequest struct {
+	CompanyId    string `json:"company_id" validate:"omitempty"`
 	DeviceName   string `json:"device_name" validate:"required,min=3,max=100"`
 	Address      string `json:"address" validate:"omitempty,max=255"`
 	DeviceType   int    `json:"device_type" validate:"omitempty,oneof=0 1 2 3"` // 0: FACE_TERMINAL, 1: MOBILE_APP, 2: WEB_CAMERA, 3: IOT_SENSOR

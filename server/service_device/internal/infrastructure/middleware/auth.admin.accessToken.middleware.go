@@ -83,6 +83,7 @@ func (m *AuthAdminAccessTokenJwtMiddleware) Apply() gin.HandlerFunc {
 			tokenObj.UserId,
 			tokenObj.TokenId,
 			tokenObj.Role,
+			tokenObj.CompanyId,
 		)
 		// If the token is valid, proceed to the next middleware/handler
 		c.Next()
