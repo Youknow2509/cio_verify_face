@@ -10,6 +10,8 @@ import (
  * Interface for company repository
  */
 type ICompanyRepository interface {
+	// Get company ID by user ID
+	GetCompanyUser(ctx context.Context, input *model.GetCompanyUserInput) (*model.GetCompanyUserOutput, error)
 	// Check company is management in company
 	CheckUserIsManagementInCompany(ctx context.Context, data *model.CheckCompanyIsManagementInCompanyInput) (bool, error)
 	// Check device exists in company

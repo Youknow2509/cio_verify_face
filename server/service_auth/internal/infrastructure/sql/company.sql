@@ -1,3 +1,10 @@
+-- name: GetCompanyUser :one
+SELECT 
+    company_id
+FROM employees
+WHERE employee_id = $1
+LIMIT 1;
+
 -- name: CheckUserIsManagementInCompany :one
 SELECT e.employee_code
 FROM employees e

@@ -297,15 +297,32 @@ func (c *CoreAuthService) Login(ctx context.Context, input *applicationModel.Log
 	// Create session
 	tokenService := domainToken.GetTokenService()
 	tokenId := utilsRandom.GenerateUUID()
+	// Get company ID
+	companyRepo, err := domainRepository.GetCompanyRepository()
+	if err != nil {
+		global.Logger.Error("Error getting company repository: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	userUuid, _ := utilsUuid.ParseUUID(response.UserID)
+	companyReps, err := companyRepo.GetCompanyUser(ctx, &domainModel.GetCompanyUserInput{UserID: userUuid})
+	if err != nil {
+		global.Logger.Error("Error getting company user: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	companyId := ""
+	if companyReps != nil {
+		companyId = companyReps.CompanyID.String()
+	}
 	// Create access token
 	timeTtlAccessToken := time.Duration(constants.TTL_ACCESS_TOKEN) * time.Second
 	accessToken, err := tokenService.CreateUserToken(
 		ctx,
 		&domainModel.TokenUserJwtInput{
-			UserId:  response.UserID,
-			TokenId: tokenId.String(),
-			Role:    domainModel.RoleUser,
-			Expires: time.Now().Add(timeTtlAccessToken),
+			UserId:    response.UserID,
+			CompanyId: companyId,
+			TokenId:   tokenId.String(),
+			Role:      domainModel.RoleUser,
+			Expires:   time.Now().Add(timeTtlAccessToken),
 		},
 	)
 	if err != nil {
@@ -396,15 +413,32 @@ func (c *CoreAuthService) LoginAdmin(ctx context.Context, input *applicationMode
 	// Create session
 	tokenService := domainToken.GetTokenService()
 	tokenId := utilsRandom.GenerateUUID()
+	// Get company ID
+	companyRepo, err := domainRepository.GetCompanyRepository()
+	if err != nil {
+		global.Logger.Error("Error getting company repository: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	userUuid, _ := utilsUuid.ParseUUID(response.UserID)
+	companyReps, err := companyRepo.GetCompanyUser(ctx, &domainModel.GetCompanyUserInput{UserID: userUuid})
+	if err != nil {
+		global.Logger.Error("Error getting company user: ", err)
+		return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)
+	}
+	companyId := ""
+	if companyReps != nil {
+		companyId = companyReps.CompanyID.String()
+	}
 	// Create access token
 	timeTtlAccessToken := time.Duration(constants.TTL_ACCESS_TOKEN) * time.Second
 	accessToken, err := tokenService.CreateUserToken(
 		ctx,
 		&domainModel.TokenUserJwtInput{
-			UserId:  response.UserID,
-			TokenId: tokenId.String(),
-			Role:    domainModel.RoleManager,
-			Expires: time.Now().Add(timeTtlAccessToken),
+			UserId:    response.UserID,
+			CompanyId: companyId,
+			TokenId:   tokenId.String(),
+			Role:      domainModel.RoleManager,
+			Expires:   time.Now().Add(timeTtlAccessToken),
 		},
 	)
 	if err != nil {
@@ -499,13 +533,14 @@ func (c *CoreAuthService) RefreshToken(ctx context.Context, input *applicationMo
 	tokenService := domainToken.GetTokenService()
 	userSession, tkErr := tokenService.ParseUserToken(ctx, input.AccessToken)
 	if tkErr != nil {
-		if tkErr.Code == domainError.TokenMalformedErrorCode || tkErr.Code == domainError.TokenSignatureInvalidErrCode {
+		switch tkErr.Code {
+		case domainError.TokenMalformedErrorCode, domainError.TokenSignatureInvalidErrCode:
 			// Token invalid
 			return nil, errors.GetError(errors.AuthTokenInvalidErrorCode)
-		} else if tkErr.Code == domainError.TokenExpiredErrorCode {
+		case domainError.TokenExpiredErrorCode:
 			// Token expired, continue to refresh
 			global.Logger.Info("Access token expired, continuing to refresh")
-		} else {
+		default:
 			// Other error
 			global.Logger.Error("Error parsing user access token: ", tkErr.Message)
 			return nil, errors.GetError(errors.SystemTemporaryUnavailableErrorCode)

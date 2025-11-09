@@ -75,6 +75,21 @@ func (q *Queries) DisableDevice(ctx context.Context, deviceID pgtype.UUID) error
 	return err
 }
 
+const getCompanyUser = `-- name: GetCompanyUser :one
+SELECT 
+    company_id
+FROM employees
+WHERE employee_id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetCompanyUser(ctx context.Context, employeeID pgtype.UUID) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, getCompanyUser, employeeID)
+	var company_id pgtype.UUID
+	err := row.Scan(&company_id)
+	return company_id, err
+}
+
 const updateDeviceSession = `-- name: UpdateDeviceSession :exec
 UPDATE devices
 SET token = $2,

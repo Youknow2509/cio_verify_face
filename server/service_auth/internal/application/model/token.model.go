@@ -64,10 +64,11 @@ type ParseTokenUserInput struct {
 	Token string `json:"token" validate:"required"`
 }
 type ParseTokenUserOutput struct {
-	UserId  string    `json:"user_id"`
-	TokenId string    `json:"token_id"`
-	Expires time.Time `json:"expires"`
-	Role    int       `json:"role"`
+	UserId    string    `json:"user_id"`
+	TokenId   string    `json:"token_id"`
+	Expires   time.Time `json:"expires"`
+	Role      int       `json:"role"`
+	CompanyId string    `json:"company_id"`
 }
 
 // Parse device access token

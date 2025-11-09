@@ -2,6 +2,15 @@ package model
 
 import "github.com/google/uuid"
 
+// For get company user
+type GetCompanyUserInput struct {
+	UserID uuid.UUID `json:"user_id"`
+}
+
+type GetCompanyUserOutput struct {
+	CompanyID uuid.UUID `json:"company_id"`
+}
+
 type CheckCompanyIsManagementInCompanyInput struct {
 	CompanyID uuid.UUID `json:"company_id"`
 	UserID    uuid.UUID `json:"user_id"`

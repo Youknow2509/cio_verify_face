@@ -358,7 +358,8 @@ type ParseUserTokenResponse struct {
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
 	Roles         int32                  `protobuf:"varint,2,opt,name=roles,proto3" json:"roles,omitempty"`
 	TokenId       string                 `protobuf:"bytes,3,opt,name=token_id,json=tokenId,proto3" json:"token_id,omitempty"`
-	ExpriresAt    int64                  `protobuf:"varint,4,opt,name=exprires_at,json=expriresAt,proto3" json:"exprires_at,omitempty"`
+	CompanyId     string                 `protobuf:"bytes,4,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	ExpriresAt    int64                  `protobuf:"varint,5,opt,name=exprires_at,json=expriresAt,proto3" json:"exprires_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -410,6 +411,13 @@ func (x *ParseUserTokenResponse) GetRoles() int32 {
 func (x *ParseUserTokenResponse) GetTokenId() string {
 	if x != nil {
 		return x.TokenId
+	}
+	return ""
+}
+
+func (x *ParseUserTokenResponse) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
 	}
 	return ""
 }
@@ -629,12 +637,14 @@ const file_auth_proto_rawDesc = "" +
 	"\x1aCreateServiceTokenResponse\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\"-\n" +
 	"\x15ParseUserTokenRequest\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\"\x83\x01\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"\xa2\x01\n" +
 	"\x16ParseUserTokenResponse\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
 	"\x05roles\x18\x02 \x01(\x05R\x05roles\x12\x19\n" +
-	"\btoken_id\x18\x03 \x01(\tR\atokenId\x12\x1f\n" +
-	"\vexprires_at\x18\x04 \x01(\x03R\n" +
+	"\btoken_id\x18\x03 \x01(\tR\atokenId\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x04 \x01(\tR\tcompanyId\x12\x1f\n" +
+	"\vexprires_at\x18\x05 \x01(\x03R\n" +
 	"expriresAt\"9\n" +
 	"\x18ParseServiceTokenRequest\x12\x1d\n" +
 	"\n" +

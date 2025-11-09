@@ -19,6 +19,26 @@ type CompanyRepository struct {
 	q db.Queries
 }
 
+// GetCompanyUser implements repository.ICompanyRepository.
+func (c *CompanyRepository) GetCompanyUser(ctx context.Context, input *model.GetCompanyUserInput) (*model.GetCompanyUserOutput, error) {
+	response, err := c.q.GetCompanyUser(
+		ctx,
+		pgtype.UUID{
+			Valid: true,
+			Bytes: input.UserID,
+		},
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+	return &model.GetCompanyUserOutput{
+		CompanyID: response.Bytes,
+	}, nil
+}
+
 // CheckUserIsManagementInCompany implements repository.ICompanyRepository.
 func (c *CompanyRepository) CheckUserIsManagementInCompany(ctx context.Context, data *model.CheckCompanyIsManagementInCompanyInput) (bool, error) {
 	response, err := c.q.CheckUserIsManagementInCompany(

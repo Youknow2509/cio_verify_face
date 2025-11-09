@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/google/uuid"
 	applicationModel "github.com/youknow2509/cio_verify_face/server/service_auth/internal/application/model"
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/application/service"
 	constants "github.com/youknow2509/cio_verify_face/server/service_auth/internal/constants"
@@ -85,6 +86,7 @@ func (a *AuthCacheService) ValidateAccessToken(ctx context.Context, tokenString 
 		Valid:  true,
 		UserID: userID,
 		Role:   tokenClaims.Role,
+		CompanyID: uuid.MustParse(tokenClaims.CompanyId),
 	}, nil
 }
 
@@ -145,6 +147,7 @@ func (a *AuthCacheService) validateTokenFromDB(ctx context.Context, tokenClaims 
 		Valid:  true,
 		UserID: userID,
 		Role:   tokenClaims.Role,
+		CompanyID: uuid.MustParse(tokenClaims.CompanyId),
 	}, nil
 }
 
