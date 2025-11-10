@@ -165,7 +165,6 @@ func (s *ShiftRepository) ListShifts(ctx context.Context, input *model.ListShift
 
 	rows, err := s.db.ListShifts(ctx, database.ListShiftsParams{
 		CompanyID: pgtype.UUID{Valid: true, Bytes: input.CompanyID},
-		Column2:   input.IsActive,
 		Limit:     input.Limit,
 		Offset:    input.Offset,
 	})

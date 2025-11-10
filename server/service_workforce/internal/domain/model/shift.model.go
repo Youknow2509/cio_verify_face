@@ -57,7 +57,6 @@ type CreateShiftInput struct {
 // ListShiftsInput filters and paginates shifts
 type ListShiftsInput struct {
 	CompanyID uuid.UUID
-	IsActive  bool
 	Limit     int32
 	Offset    int32
 }

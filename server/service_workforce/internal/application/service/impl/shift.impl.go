@@ -154,7 +154,10 @@ func (s *ShiftService) GetListShift(ctx context.Context, input *applicationModel
 			ErrorClient: "Failed to get shift list",
 		}
 	}
-
+	if len(reps) == 0 {
+		s.logger.Info("GetListShift - No shifts found", "company_id", input.CompanyId)
+		return []*applicationModel.GetDetailShiftOutput{}, nil
+	}
 	// Convert to application model
 	var output []*applicationModel.GetDetailShiftOutput
 	for _, shift := range reps {
