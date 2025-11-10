@@ -536,6 +536,9 @@
                     "type": "string",
                     "maxLength": 255
                 },
+                "company_id": {
+                    "type": "string"
+                },
                 "device_name": {
                     "type": "string",
                     "maxLength": 100,
@@ -703,8 +706,7 @@
         "dto.UpdateStatusDeviceRequest": {
             "type": "object",
             "required": [
-                "device_id",
-                "status"
+                "device_id"
             ],
             "properties": {
                 "device_id": {

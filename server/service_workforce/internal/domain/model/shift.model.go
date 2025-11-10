@@ -10,6 +10,27 @@ import (
 	"github.com/google/uuid"
 )
 
+// For CountEmployeesInShift
+type CountEmployeesInShiftInput struct {
+	ShiftId   uuid.UUID `json:"shift_id"`
+}
+
+type CountEmployeesInShiftOutput struct {
+	Count int64 `json:"count"`
+}
+
+// DisableShiftInput carries data to disable a shift
+type DisableShiftInput struct {
+	ShiftID   uuid.UUID
+	CompanyId uuid.UUID
+}
+
+// EnableShiftInput carries data to enable a shift
+type EnableShiftInput struct {
+	ShiftID   uuid.UUID
+	CompanyId uuid.UUID
+}
+
 // Shift entity (domain-facing)
 type Shift struct {
 	ShiftID               uuid.UUID
@@ -45,7 +66,6 @@ type CreateShiftInput struct {
 // ListShiftsInput filters and paginates shifts
 type ListShiftsInput struct {
 	CompanyID uuid.UUID
-	IsActive  bool
 	Limit     int32
 	Offset    int32
 }

@@ -4,6 +4,20 @@ package dto
 // Shift employee DTO
 // =======================================
 
+// Add shift employee list request
+type AddShiftEmployeeListReq struct {
+	EmployeeIDs   []string `json:"employee_ids" validate:"required,dive,required"`
+	EffectiveFrom int64    `json:"effective_from" validate:"required"`
+	EffectiveTo   int64    `json:"effective_to" validate:"required"`
+	CompanyId     string   `json:"company_id" validate:"required"`
+	ShiftId       string   `json:"shift_id" validate:"required"`
+}
+
+// List Employee id
+type ListEmployeeIDReq struct {
+	EmployeeIDs []string `json:"employee_ids" validate:"required,dive,required"`
+}
+
 // Enable shift for user request
 type EnableShiftForUserReq struct {
 	ShiftUserId string `json:"shift_user_id" validate:"required"`

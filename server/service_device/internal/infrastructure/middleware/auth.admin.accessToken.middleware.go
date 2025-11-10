@@ -5,6 +5,7 @@ import (
 	domainCache "github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/cache"
 	domainModel "github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/model"
 	domainToken "github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/token"
+	"github.com/youknow2509/cio_verify_face/server/service_device/internal/global"
 	utilsCache "github.com/youknow2509/cio_verify_face/server/service_device/internal/shared/utils/cache"
 	utilsContext "github.com/youknow2509/cio_verify_face/server/service_device/internal/shared/utils/context"
 	utilsCrypto "github.com/youknow2509/cio_verify_face/server/service_device/internal/shared/utils/crypto"
@@ -53,6 +54,7 @@ func (m *AuthAdminAccessTokenJwtMiddleware) Apply() gin.HandlerFunc {
 			c.Abort()
 			return
 		}
+		global.Logger.Info("AuthAdminAccessTokenJwtMiddleware - Token parsed", tokenObj)
 		// Check token is blocked
 		keyCacheAccessTokenIsActive = utilsCache.GetKeyUserAccessTokenIsActive(
 			utilsCrypto.GetHash(tokenObj.TokenId),
@@ -83,6 +85,7 @@ func (m *AuthAdminAccessTokenJwtMiddleware) Apply() gin.HandlerFunc {
 			tokenObj.UserId,
 			tokenObj.TokenId,
 			tokenObj.Role,
+			tokenObj.CompanyId,
 		)
 		// If the token is valid, proceed to the next middleware/handler
 		c.Next()

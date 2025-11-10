@@ -32,9 +32,8 @@ RETURNING shift_id;
 SELECT *
 FROM work_shifts
 WHERE company_id = $1
-  AND ( ($2::boolean IS NULL) OR (is_active = $2) )
 ORDER BY name
-LIMIT $3 OFFSET $4;
+LIMIT $2 OFFSET $3;
 
 -- name: GetShiftByID :one
 SELECT *
@@ -66,11 +65,11 @@ LIMIT $2 OFFSET $3;
 UPDATE work_shifts
 SET is_active = FALSE,
     updated_at = now()
-WHERE shift_id = $1;
+WHERE shift_id = $1 and company_id = $2;
 
 -- name: EnableShiftWithId :exec
 UPDATE work_shifts
 SET is_active = TRUE,
     updated_at = now()
-WHERE shift_id = $1;
+WHERE shift_id = $1 and company_id = $2;
 

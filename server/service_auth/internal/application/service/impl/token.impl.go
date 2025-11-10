@@ -19,6 +19,7 @@ import (
 	sharedCache "github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/cache"
 	sharedCrypto "github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/crypto"
 	sharedRandom "github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/random"
+	
 )
 
 /**
@@ -165,6 +166,21 @@ func (t *TokenService) CreateUserToken(ctx context.Context, input model.CreateTo
 		global.Logger.Warn("user not found", "user_id", input.UserId.String())
 		return nil, errors.New("user not found")
 	}
+	// Get company ID
+	companyRepo, err := domainRepo.GetCompanyRepository()
+	if err != nil {
+		global.Logger.Error("Error getting company repository: ", err)
+		return nil, err
+	}
+	companyReps, err := companyRepo.GetCompanyUser(ctx, &domainModel.GetCompanyUserInput{UserID: input.UserId})
+	if err != nil {
+		global.Logger.Error("Error getting company user: ", err)
+		return nil, err
+	}
+	companyId := ""
+	if companyReps != nil {
+		companyId = companyReps.CompanyID.String()
+	}
 	// Create access token
 	tokenService := domainToken.GetTokenService()
 	tokenUuid := uuid.New()
@@ -172,10 +188,11 @@ func (t *TokenService) CreateUserToken(ctx context.Context, input model.CreateTo
 	accessToken, err := tokenService.CreateUserToken(
 		ctx,
 		&domainModel.TokenUserJwtInput{
-			UserId:  input.UserId.String(),
-			TokenId: tokenUuid.String(),
-			Expires: time.Now().Add(accessTokenTTl),
-			Role:    userExist.Role,
+			UserId:    input.UserId.String(),
+			TokenId:   tokenUuid.String(),
+			Expires:   time.Now().Add(accessTokenTTl),
+			Role:      userExist.Role,
+			CompanyId: companyId,
 		},
 	)
 	if err != nil {
@@ -259,9 +276,10 @@ func (t *TokenService) ParseTokenUser(ctx context.Context, input model.ParseToke
 	}
 
 	return &model.ParseTokenUserOutput{
-		UserId:  tokenResp.UserId,
-		TokenId: tokenResp.TokenId,
-		Role:    tokenResp.Role,
+		UserId:    tokenResp.UserId,
+		TokenId:   tokenResp.TokenId,
+		Role:      tokenResp.Role,
+		CompanyId: tokenResp.CompanyId,
 	}, nil
 }
 

@@ -85,11 +85,16 @@ const disableShiftWithId = `-- name: DisableShiftWithId :exec
 UPDATE work_shifts
 SET is_active = FALSE,
     updated_at = now()
-WHERE shift_id = $1
+WHERE shift_id = $1 and company_id = $2
 `
 
-func (q *Queries) DisableShiftWithId(ctx context.Context, shiftID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, disableShiftWithId, shiftID)
+type DisableShiftWithIdParams struct {
+	ShiftID   pgtype.UUID
+	CompanyID pgtype.UUID
+}
+
+func (q *Queries) DisableShiftWithId(ctx context.Context, arg DisableShiftWithIdParams) error {
+	_, err := q.db.Exec(ctx, disableShiftWithId, arg.ShiftID, arg.CompanyID)
 	return err
 }
 
@@ -97,11 +102,16 @@ const enableShiftWithId = `-- name: EnableShiftWithId :exec
 UPDATE work_shifts
 SET is_active = TRUE,
     updated_at = now()
-WHERE shift_id = $1
+WHERE shift_id = $1 and company_id = $2
 `
 
-func (q *Queries) EnableShiftWithId(ctx context.Context, shiftID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, enableShiftWithId, shiftID)
+type EnableShiftWithIdParams struct {
+	ShiftID   pgtype.UUID
+	CompanyID pgtype.UUID
+}
+
+func (q *Queries) EnableShiftWithId(ctx context.Context, arg EnableShiftWithIdParams) error {
+	_, err := q.db.Exec(ctx, enableShiftWithId, arg.ShiftID, arg.CompanyID)
 	return err
 }
 
@@ -171,25 +181,18 @@ const listShifts = `-- name: ListShifts :many
 SELECT shift_id, company_id, name, description, start_time, end_time, break_duration_minutes, grace_period_minutes, early_departure_minutes, work_days, is_flexible, overtime_after_minutes, is_active, created_at, updated_at
 FROM work_shifts
 WHERE company_id = $1
-  AND ( ($2::boolean IS NULL) OR (is_active = $2) )
 ORDER BY name
-LIMIT $3 OFFSET $4
+LIMIT $2 OFFSET $3
 `
 
 type ListShiftsParams struct {
 	CompanyID pgtype.UUID
-	Column2   bool
 	Limit     int32
 	Offset    int32
 }
 
 func (q *Queries) ListShifts(ctx context.Context, arg ListShiftsParams) ([]WorkShift, error) {
-	rows, err := q.db.Query(ctx, listShifts,
-		arg.CompanyID,
-		arg.Column2,
-		arg.Limit,
-		arg.Offset,
-	)
+	rows, err := q.db.Query(ctx, listShifts, arg.CompanyID, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

@@ -7,6 +7,17 @@ import "fmt"
 //	Define key cache
 //
 // =================================
+
+// Key get list shift in company prefix
+func GetKeyListShiftInCompanyPrefix(companyHashId string) string {
+	return fmt.Sprintf("company:shift:list:%s:", companyHashId)
+}
+
+// Key get list shift in company
+func GetKeyListShiftInCompany(companyHashId string, limit int) string {
+	return fmt.Sprintf("company:shift:list:%s:%d", companyHashId, limit)
+}
+
 // Key info list device in company
 func GetKeyListDeviceInCompany(companyHashId string, limit int, size int) string {
 	return fmt.Sprintf("company:device:list:%s:%d:%d", companyHashId, limit, size)

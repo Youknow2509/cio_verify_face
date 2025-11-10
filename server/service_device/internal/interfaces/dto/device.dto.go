@@ -7,11 +7,12 @@ package dto
 // Update status device request
 type UpdateStatusDeviceRequest struct {
 	DeviceId string `json:"device_id" validate:"required"`
-	Status   int    `json:"status" validate:"required,oneof=0 1 2 3"` // 0: OFFLINE, 1: ONLINE, 2: MAINTENANCE, 3: ERROR
+	Status   int    `json:"status" validate:"oneof=0 1 2 3"` // 0: OFFLINE, 1: ONLINE, 2: MAINTENANCE, 3: ERROR
 }
 
 // Create device request
 type CreateDeviceRequest struct {
+	CompanyId    string `json:"company_id" validate:"omitempty"`
 	DeviceName   string `json:"device_name" validate:"required,min=3,max=100"`
 	Address      string `json:"address" validate:"omitempty,max=255"`
 	DeviceType   int    `json:"device_type" validate:"omitempty,oneof=0 1 2 3"` // 0: FACE_TERMINAL, 1: MOBILE_APP, 2: WEB_CAMERA, 3: IOT_SENSOR

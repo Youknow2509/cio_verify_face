@@ -14,6 +14,7 @@ import (
 	domainRepo "github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/repository"
 	domainToken "github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/token"
 	global "github.com/youknow2509/cio_verify_face/server/service_device/internal/global"
+	utils "github.com/youknow2509/cio_verify_face/server/service_device/internal/shared/utils"
 	sharedCache "github.com/youknow2509/cio_verify_face/server/service_device/internal/shared/utils/cache"
 	sharedCrypto "github.com/youknow2509/cio_verify_face/server/service_device/internal/shared/utils/crypto"
 	sharedRandom "github.com/youknow2509/cio_verify_face/server/service_device/internal/shared/utils/random"
@@ -68,25 +69,13 @@ func (d *DeviceService) UpdateStatusDevice(ctx context.Context, input *model.Upd
 		}
 	}
 	// Rm cache of device info
-	userRepo, _ := domainRepo.GetUserRepository()
-	companyInfo, err := userRepo.GetCompanyIdOfUser(
-		ctx,
-		&domainModel.GetCompanyIdOfUserInput{
-			UserID: input.UserId,
-		},
-	)
-	if err != nil {
-		return nil
-	}
-	if companyInfo == nil {
-		return nil
-	}
+	limit, offset := utils.GetPagination(constants.PageDefault, constants.SizeDefault)
 	key := []string{
 		sharedCache.GetKeyDeviceBase(sharedCrypto.GetHash(input.DeviceId.String())),
 		sharedCache.GetKeyListDeviceInCompany(
-			sharedCrypto.GetHash(companyInfo.CompanyID.String()),
-			20,
-			1,
+			sharedCrypto.GetHash(input.CompanyId.String()),
+			limit,
+			offset,
 		),
 	}
 	go func() {
@@ -159,25 +148,13 @@ func (d *DeviceService) RefreshDeviceToken(ctx context.Context, input *model.Ref
 		constants.TTL_DEVICE_TOKEN,
 	)
 	// Rm cache of device info
-	userRepo, _ := domainRepo.GetUserRepository()
-	companyInfo, err := userRepo.GetCompanyIdOfUser(
-		ctx,
-		&domainModel.GetCompanyIdOfUserInput{
-			UserID: input.UserId,
-		},
-	)
-	if err != nil {
-		return nil, nil
-	}
-	if companyInfo == nil {
-		return nil, nil
-	}
+	limit, offset := utils.GetPagination(constants.PageDefault, constants.SizeDefault)
 	keyRm := []string{
 		sharedCache.GetKeyDeviceBase(sharedCrypto.GetHash(input.DeviceId.String())),
 		sharedCache.GetKeyListDeviceInCompany(
-			sharedCrypto.GetHash(companyInfo.CompanyID.String()),
-			20,
-			1,
+			sharedCrypto.GetHash(input.CompanyId.String()),
+			limit,
+			offset,
 		),
 	}
 	go func() {
@@ -337,25 +314,13 @@ func (d *DeviceService) UpdateInfoDevice(ctx context.Context, input *model.Updat
 		}
 	}
 	// Rm cache of device info
-	userRepo, _ := domainRepo.GetUserRepository()
-	companyInfo, err := userRepo.GetCompanyIdOfUser(
-		ctx,
-		&domainModel.GetCompanyIdOfUserInput{
-			UserID: input.UserId,
-		},
-	)
-	if err != nil {
-		return nil
-	}
-	if companyInfo == nil {
-		return nil
-	}
+	limit, offset := utils.GetPagination(constants.PageDefault, constants.SizeDefault)
 	key := []string{
 		sharedCache.GetKeyDeviceBase(sharedCrypto.GetHash(input.DeviceId.String())),
 		sharedCache.GetKeyListDeviceInCompany(
-			sharedCrypto.GetHash(companyInfo.CompanyID.String()),
-			20,
-			1,
+			sharedCrypto.GetHash(input.CompanyId.String()),
+			limit,
+			offset,
 		),
 	}
 	go func() {
@@ -437,25 +402,13 @@ func (d *DeviceService) UpdateLocationDevice(ctx context.Context, input *model.U
 		}
 	}
 	// Rm cache of device info
-	userRepo, _ := domainRepo.GetUserRepository()
-	companyInfo, err := userRepo.GetCompanyIdOfUser(
-		ctx,
-		&domainModel.GetCompanyIdOfUserInput{
-			UserID: input.UserId,
-		},
-	)
-	if err != nil {
-		return nil
-	}
-	if companyInfo == nil {
-		return nil
-	}
+	limit, offset := utils.GetPagination(constants.PageDefault, constants.SizeDefault)
 	key := []string{
 		sharedCache.GetKeyDeviceBase(sharedCrypto.GetHash(input.DeviceId.String())),
 		sharedCache.GetKeyListDeviceInCompany(
-			sharedCrypto.GetHash(companyInfo.CompanyID.String()),
-			20,
-			1,
+			sharedCrypto.GetHash(input.CompanyId.String()),
+			limit,
+			offset,
 		),
 	}
 	go func() {
@@ -536,25 +489,13 @@ func (d *DeviceService) UpdateNameDevice(ctx context.Context, input *model.Updat
 		}
 	}
 	// Rm cache of device info
-	userRepo, _ := domainRepo.GetUserRepository()
-	companyInfo, err := userRepo.GetCompanyIdOfUser(
-		ctx,
-		&domainModel.GetCompanyIdOfUserInput{
-			UserID: input.UserId,
-		},
-	)
-	if err != nil {
-		return nil
-	}
-	if companyInfo == nil {
-		return nil
-	}
+	limit, offset := utils.GetPagination(constants.PageDefault, constants.SizeDefault)
 	key := []string{
 		sharedCache.GetKeyDeviceBase(sharedCrypto.GetHash(input.DeviceId.String())),
 		sharedCache.GetKeyListDeviceInCompany(
-			sharedCrypto.GetHash(companyInfo.CompanyID.String()),
-			20,
-			1,
+			sharedCrypto.GetHash(input.CompanyId.String()),
+			limit,
+			offset,
 		),
 	}
 	go func() {
@@ -571,14 +512,6 @@ func (d *DeviceService) UpdateNameDevice(ctx context.Context, input *model.Updat
 // CreateNewDevice implements service.IDeviceService.
 func (d *DeviceService) CreateNewDevice(ctx context.Context, input *model.CreateNewDeviceInput) (*model.CreateNewDeviceOutput, *applicationError.Error) {
 	// Check permission
-	domainUser, err := domainRepo.GetUserRepository()
-	if err != nil {
-		global.Logger.Error("Error when get user repository", "err", err)
-		return nil, &applicationError.Error{
-			ErrorSystem: err,
-			ErrorClient: "System is busy now. Please try again later.",
-		}
-	}
 	if input.Role > 1 {
 		return nil, &applicationError.Error{
 			ErrorSystem: nil,
@@ -586,31 +519,19 @@ func (d *DeviceService) CreateNewDevice(ctx context.Context, input *model.Create
 		}
 	}
 	// Get company id
-	companyInfo, err := domainUser.GetCompanyIdOfUser(
-		ctx,
-		&domainModel.GetCompanyIdOfUserInput{
-			UserID: input.UserId,
-		},
-	)
-	if err != nil {
-		global.Logger.Error("Error when get company id of user", "err", err)
-		return nil, &applicationError.Error{
-			ErrorSystem: err,
-			ErrorClient: "System is busy now. Please try again later.",
-		}
-	}
-	if companyInfo == nil {
-		return nil, &applicationError.Error{
-			ErrorSystem: nil,
-			ErrorClient: "you don't have permission to create device.",
-		}
+	var companyId uuid.UUID
+	if input.Role == domainModel.RoleManager {
+		companyId = input.CompanyId
+	} else {
+		// For admin
+		companyId = input.CompanyIdReq
 	}
 	// Create new device
 	deviceUuid := uuid.New()
 	deviceRepo, _ := domainRepo.GetDeviceRepository()
 	deviceModel := &domainModel.NewDevice{
 		DeviceId:     deviceUuid,
-		CompanyId:    companyInfo.CompanyID,
+		CompanyId:    companyId,
 		Name:         input.DeviceName,
 		Address:      input.Address,
 		SerialNumber: input.SerialNumber,
@@ -642,7 +563,7 @@ func (d *DeviceService) CreateNewDevice(ctx context.Context, input *model.Create
 	}
 	return &model.CreateNewDeviceOutput{
 		DeviceId:     deviceUuid.String(),
-		CompanyId:    companyInfo.CompanyID.String(),
+		CompanyId:    companyId.String(),
 		Name:         input.DeviceName,
 		Address:      input.Address,
 		SerialNumber: input.SerialNumber,
@@ -716,25 +637,13 @@ func (d *DeviceService) DeleteDeviceById(ctx context.Context, input *model.Delet
 		}
 	}
 	// Rm cache of device info
-	userRepo, _ := domainRepo.GetUserRepository()
-	companyInfo, err := userRepo.GetCompanyIdOfUser(
-		ctx,
-		&domainModel.GetCompanyIdOfUserInput{
-			UserID: input.UserId,
-		},
-	)
-	if err != nil {
-		return nil
-	}
-	if companyInfo == nil {
-		return nil
-	}
+	limit, offset := utils.GetPagination(constants.PageDefault, constants.SizeDefault)
 	key := []string{
 		sharedCache.GetKeyDeviceBase(sharedCrypto.GetHash(input.DeviceId.String())),
 		sharedCache.GetKeyListDeviceInCompany(
-			sharedCrypto.GetHash(companyInfo.CompanyID.String()),
-			20,
-			1,
+			sharedCrypto.GetHash(input.CompanyId.String()),
+			limit,
+			offset,
 		),
 	}
 	go func() {
@@ -845,36 +754,19 @@ func (d *DeviceService) GetListDevices(ctx context.Context, input *model.ListDev
 			ErrorClient: "You don't have permission to get device info.",
 		}
 	}
-	// Get company if not input
-	if input.CompanyId == uuid.Nil || input.CompanyId.String() == "" {
-		userRepo, _ := domainRepo.GetUserRepository()
-		companyInfo, err := userRepo.GetCompanyIdOfUser(
-			ctx,
-			&domainModel.GetCompanyIdOfUserInput{
-				UserID: input.UserId,
-			},
-		)
-		if err != nil {
-			global.Logger.Error("Error when get company id of user", "err", err)
-			return nil, &applicationError.Error{
-				ErrorSystem: err,
-				ErrorClient: "System is busy now. Please try again later.",
-			}
-		}
-		if companyInfo == nil {
-			return nil, &applicationError.Error{
-				ErrorSystem: nil,
-				ErrorClient: "you don't have permission to get device info.",
-			}
-		}
-		input.CompanyId = companyInfo.CompanyID
+	// Get company
+	var companyId uuid.UUID
+	if input.Role == domainModel.RoleManager {
+		companyId = input.CompanyId
+	} else {
+		// For admin
+		companyId = input.CompanyIdReq
 	}
 	// Get device info
 	deviceRepo, _ := domainRepo.GetDeviceRepository()
 	cacheService, _ := domainCache.GetDistributedCache()
-	limit := input.Size
-	offset := (input.Page - 1) * input.Size
-	key := sharedCache.GetKeyListDeviceInCompany(sharedCrypto.GetHash(input.CompanyId.String()), limit, offset)
+	limit, offset := utils.GetPagination(input.Page, input.Size)
+	key := sharedCache.GetKeyListDeviceInCompany(sharedCrypto.GetHash(companyId.String()), limit, offset)
 	var deviceInfoCache domainModel.ListDeviceInCompanyOutput
 	deviceInfoCacheStr, err := cacheService.Get(ctx, key)
 	if err != nil {
@@ -893,7 +785,7 @@ func (d *DeviceService) GetListDevices(ctx context.Context, input *model.ListDev
 		deviceInfo, err := deviceRepo.ListDeviceInCompany(
 			ctx,
 			&domainModel.ListDeviceInCompanyInput{
-				CompanyId: input.CompanyId,
+				CompanyId: companyId,
 				Limit:     limit,
 				Offset:    offset,
 			},
@@ -921,28 +813,6 @@ func (d *DeviceService) GetListDevices(ctx context.Context, input *model.ListDev
 		); err != nil {
 			global.Logger.Error("Error when set list device info in cache", "err", err)
 			// Not return error if cache error
-		}
-	}
-	// Check user in company
-	userRepo, _ := domainRepo.GetUserRepository()
-	userInfo, err := userRepo.UserExistsInCompany(
-		ctx,
-		&domainModel.UserExistsInCompanyInput{
-			UserID:    input.UserId,
-			CompanyID: input.CompanyId,
-		},
-	)
-	if err != nil {
-		global.Logger.Error("Error when check user in company", "err", err)
-		return nil, &applicationError.Error{
-			ErrorSystem: err,
-			ErrorClient: "System is busy now. Please try again later.",
-		}
-	}
-	if !userInfo && input.Role == domainModel.RoleManager {
-		return nil, &applicationError.Error{
-			ErrorSystem: nil,
-			ErrorClient: "You don't have permission to get device info.",
 		}
 	}
 	out := make([]*model.GetDeviceByIdOutput, 0)

@@ -1,5 +1,26 @@
 basePath: /api
 definitions:
+  dto.AddShiftEmployeeListReq:
+    properties:
+      company_id:
+        type: string
+      effective_from:
+        type: integer
+      effective_to:
+        type: integer
+      employee_ids:
+        items:
+          type: string
+        type: array
+      shift_id:
+        type: string
+    required:
+    - company_id
+    - effective_from
+    - effective_to
+    - employee_ids
+    - shift_id
+    type: object
   dto.AddShiftEmployeeReq:
     properties:
       effective_from:
@@ -15,6 +36,22 @@ definitions:
     - effective_to
     - employee_id
     - shift_id
+    type: object
+  dto.ChangeStatusShiftReq:
+    properties:
+      company_id:
+        type: string
+      shift_id:
+        type: string
+      status:
+        enum:
+        - 0
+        - 1
+        type: integer
+    required:
+    - company_id
+    - shift_id
+    - status
     type: object
   dto.CreateShiftReq:
     properties:
@@ -253,6 +290,37 @@ paths:
       summary: Create shift information
       tags:
       - Shift
+  /api/v1/employee/shift/add/list:
+    post:
+      consumes:
+      - application/json
+      description: Add shift employee list for company
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Add Shift Employee List Request
+        in: body
+        name: dto
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AddShiftEmployeeListReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Add shift employee list
+      tags:
+      - Shift
   /api/v1/employee/shift/disable:
     post:
       consumes:
@@ -316,6 +384,34 @@ paths:
       tags:
       - Shift
   /api/v1/shift:
+    get:
+      consumes:
+      - application/json
+      description: Get list shift information for company
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Get list shift information
+      tags:
+      - Shift
     post:
       consumes:
       - application/json
@@ -429,6 +525,37 @@ paths:
           schema:
             $ref: '#/definitions/dto.ErrResponseData'
       summary: Edit shift information
+      tags:
+      - Shift
+  /api/v1/shift/status:
+    post:
+      consumes:
+      - application/json
+      description: Change status shift information for company
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Change Status Shift Request
+        in: body
+        name: dto
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ChangeStatusShiftReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Change status shift
       tags:
       - Shift
   /api/v1/user/edit/effective:

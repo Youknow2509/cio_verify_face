@@ -5,6 +5,20 @@ import (
 	constants "github.com/youknow2509/cio_verify_face/server/service_device/internal/constants"
 )
 
+// v.v
+// Get limmit and offset for pagination
+func GetPagination(page int, size int) (int, int) {
+	if page <= 0 {
+		page = constants.PageDefault
+	}
+	if size <= 0 {
+		size = constants.SizeDefault
+	}
+	offset := (page - 1) * size
+	limit := size
+	return limit, offset
+}
+
 // =================================
 //
 //	Kafka utils

@@ -181,9 +181,10 @@ func toModelParseUserTokenInput(req *pb.ParseUserTokenRequest) (model.ParseToken
 
 func toPbParseUserTokenResponse(out *model.ParseTokenUserOutput) (*pb.ParseUserTokenResponse, error) {
 	return &pb.ParseUserTokenResponse{
-		UserId: out.UserId,
-		Roles:  int32(out.Role),
-		TokenId: out.TokenId,
+		UserId:     out.UserId,
+		Roles:      int32(out.Role),
+		CompanyId:  out.CompanyId,
+		TokenId:    out.TokenId,
 		ExpriresAt: out.Expires.Unix(),
 	}, nil
 }

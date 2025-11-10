@@ -32,3 +32,8 @@ const (
 	DeviceTypeMobile  = 2
 	DeviceTypeDesktop = 3
 )
+
+const (
+	PageDefault = 1
+	SizeDefault = 20
+)

@@ -5,6 +5,8 @@ definitions:
       address:
         maxLength: 255
         type: string
+      company_id:
+        type: string
       device_name:
         maxLength: 100
         minLength: 3
@@ -139,7 +141,6 @@ definitions:
         type: integer
     required:
     - device_id
-    - status
     type: object
 externalDocs:
   description: OpenAPI

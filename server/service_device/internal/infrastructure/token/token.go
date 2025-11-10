@@ -53,6 +53,7 @@ func (t *TokenService) ParseUserToken(ctx context.Context, token string) (*domai
 		Role:      int(resp.Roles),
 		TokenId:   resp.TokenId,
 		ExpiresAt: time.Unix(resp.ExpriresAt, 0),
+		CompanyId: resp.CompanyId,
 	}, nil
 }
 

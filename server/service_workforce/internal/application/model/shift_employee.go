@@ -10,12 +10,32 @@ import (
 // Shift Employee application model
 // =================================================
 
+// For add shift employee list
+type AddShiftEmployeeListInput struct {
+	// User info
+	UserId      uuid.UUID `json:"user_id"`
+	SessionId   uuid.UUID `json:"session_id"`
+	Role        int       `json:"role"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
+	//
+	CompanyRequestId uuid.UUID `json:"company_request_id"`
+	ShiftId          uuid.UUID `json:"shift_id"`
+	EffectiveFrom    time.Time `json:"effective_from"`
+	EffectiveTo      time.Time `json:"effective_to"`
+	EmployeeIDs      []uuid.UUID `json:"employee_ids"`
+}
+
 // For AddShiftEmployee
 type AddShiftEmployeeInput struct {
 	// User info
-	UserId    uuid.UUID `json:"user_id"`
-	SessionId uuid.UUID `json:"session_id"`
-	Role      int       `json:"role"`
+	UserId      uuid.UUID `json:"user_id"`
+	SessionId   uuid.UUID `json:"session_id"`
+	Role        int       `json:"role"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 	//
 	EmployeeId    uuid.UUID `json:"employee_id"`
 	ShiftId       uuid.UUID `json:"shift_id"`
@@ -29,9 +49,12 @@ type AddShiftEmployeeOutput struct {
 // For DeleteShiftUser
 type DeleteShiftUserInput struct {
 	// User info
-	UserId    uuid.UUID `json:"user_id"`
-	SessionId uuid.UUID `json:"session_id"`
-	Role      int       `json:"role"`
+	UserId      uuid.UUID `json:"user_id"`
+	SessionId   uuid.UUID `json:"session_id"`
+	Role        int       `json:"role"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 	//
 	ShiftUserId uuid.UUID `json:"shift_user_id"`
 }
@@ -39,9 +62,12 @@ type DeleteShiftUserInput struct {
 // For DisableShiftUser
 type DisableShiftUserInput struct {
 	// User info
-	UserId    uuid.UUID `json:"user_id"`
-	SessionId uuid.UUID `json:"session_id"`
-	Role      int       `json:"role"`
+	UserId      uuid.UUID `json:"user_id"`
+	SessionId   uuid.UUID `json:"session_id"`
+	Role        int       `json:"role"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 	//
 	ShiftUserId uuid.UUID `json:"shift_user_id"`
 }
@@ -49,9 +75,12 @@ type DisableShiftUserInput struct {
 // For EditShiftForUserWithEffectiveDate
 type EditShiftForUserWithEffectiveDateInput struct {
 	// User info
-	UserId    uuid.UUID `json:"user_id"`
-	SessionId uuid.UUID `json:"session_id"`
-	Role      int       `json:"role"`
+	UserId      uuid.UUID `json:"user_id"`
+	SessionId   uuid.UUID `json:"session_id"`
+	Role        int       `json:"role"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 	//
 	ShiftUserId      uuid.UUID `json:"shift_user_id"`
 	NewEffectiveFrom time.Time `json:"new_effective_from"`
@@ -61,9 +90,12 @@ type EditShiftForUserWithEffectiveDateInput struct {
 // For EnableShiftUser
 type EnableShiftUserInput struct {
 	// User info
-	UserId    uuid.UUID `json:"user_id"`
-	SessionId uuid.UUID `json:"session_id"`
-	Role      int       `json:"role"`
+	UserId      uuid.UUID `json:"user_id"`
+	SessionId   uuid.UUID `json:"session_id"`
+	Role        int       `json:"role"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 	//
 	ShiftUserId uuid.UUID `json:"shift_user_id"`
 }
@@ -71,9 +103,12 @@ type EnableShiftUserInput struct {
 // For GetShiftForUserWithEffectiveDate
 type GetShiftForUserWithEffectiveDateInput struct {
 	// User info
-	UserId    uuid.UUID `json:"user_id"`
-	SessionId uuid.UUID `json:"session_id"`
-	Role      int       `json:"role"`
+	UserId      uuid.UUID `json:"user_id"`
+	SessionId   uuid.UUID `json:"session_id"`
+	Role        int       `json:"role"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 	//
 	EffectiveFrom time.Time `json:"effective_from"`
 	EffectiveTo   time.Time `json:"effective_to"`

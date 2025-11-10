@@ -19,6 +19,7 @@ type IShiftUserRepository interface {
 	EnableEmployeeShift(ctx context.Context, employeeShiftID uuid.UUID) error
 	AddShiftForEmployee(ctx context.Context, input *model.AddShiftForEmployeeInput) error
 	CheckUserExistShift(ctx context.Context, input *model.CheckUserExistShiftInput) (bool, error)
+	AddListShiftForEmployees(ctx context.Context, input *model.AddListShiftForEmployeesInput) error
 }
 
 /**

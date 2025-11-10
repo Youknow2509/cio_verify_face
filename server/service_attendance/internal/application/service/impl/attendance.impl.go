@@ -41,6 +41,7 @@ func (a *AttendanceService) CheckInUser(ctx context.Context, input *model.CheckI
 	ok, err := checkUserManagerOrAdminForUser(
 		ctx,
 		input.UserID,
+		input.CompanyId,
 		input.UserCheckInId,
 		input.Role,
 	)
@@ -111,7 +112,7 @@ func (a *AttendanceService) CheckInUser(ctx context.Context, input *model.CheckI
 	companyReps, err := userRepo.GetCompanyIdUser(
 		ctx,
 		&domainModel.GetCompanyIdUserInput{
-			UserID: input.UserID,
+			UserID: input.UserCheckInId,
 		},
 	)
 	if err != nil {
@@ -122,7 +123,7 @@ func (a *AttendanceService) CheckInUser(ctx context.Context, input *model.CheckI
 	// build domain input and call repository
 	repoInput := &domainModel.AddCheckInRecordInput{
 		CompanyID:           companyId,
-		EmployeeID:          input.UserID,
+		EmployeeID:          input.UserCheckInId,
 		DeviceID:            input.DeviceId,
 		VerificationMethod:  input.VerificationMethod,
 		VerificationScore:   input.VerificationScore,
@@ -146,9 +147,9 @@ func (a *AttendanceService) CheckInUser(ctx context.Context, input *model.CheckI
 func (a *AttendanceService) CheckOutUser(ctx context.Context, input *model.CheckOutInput) *applicationErrors.Error {
 	// Instance use
 	var (
-		repo   domainRepo.IAttendanceRepository
+		repo     domainRepo.IAttendanceRepository
 		userRepo domainRepo.IUserRepository
-		logger domainLogger.ILogger
+		logger   domainLogger.ILogger
 	)
 	logger = global.Logger
 	repo = domainRepo.GetAttendanceRepository()
@@ -157,6 +158,7 @@ func (a *AttendanceService) CheckOutUser(ctx context.Context, input *model.Check
 	ok, err := checkUserManagerOrAdminForUser(
 		ctx,
 		input.UserID,
+		input.CompanyId,
 		input.UserCheckOutId,
 		input.Role,
 	)
@@ -179,7 +181,7 @@ func (a *AttendanceService) CheckOutUser(ctx context.Context, input *model.Check
 	companyReps, err := userRepo.GetCompanyIdUser(
 		ctx,
 		&domainModel.GetCompanyIdUserInput{
-			UserID: input.UserID,
+			UserID: input.UserCheckOutId,
 		},
 	)
 	if err != nil {
@@ -190,7 +192,7 @@ func (a *AttendanceService) CheckOutUser(ctx context.Context, input *model.Check
 	// build domain input and call repository
 	repoInput := &domainModel.AddCheckOutRecordInput{
 		CompanyID:           companyId,
-		EmployeeID:          input.UserID,
+		EmployeeID:          input.UserCheckOutId,
 		DeviceID:            input.DeviceId,
 		VerificationMethod:  input.VerificationMethod,
 		VerificationScore:   input.VerificationScore,
@@ -215,14 +217,12 @@ func (a *AttendanceService) GetMyRecords(ctx context.Context, input *model.GetMy
 	// Instance use
 	var (
 		repo             domainRepo.IAttendanceRepository
-		userRepo         domainRepo.IUserRepository
 		distributedCache domainCache.IDistributedCache
 		logger           domainLogger.ILogger
 	)
 	logger = global.Logger
 	distributedCache, _ = domainCache.GetDistributedCache()
 	repo = domainRepo.GetAttendanceRepository()
-	userRepo = domainRepo.GetUserRepository()
 	// determine time range
 	var start time.Time
 	var end time.Time
@@ -236,22 +236,11 @@ func (a *AttendanceService) GetMyRecords(ctx context.Context, input *model.GetMy
 	} else {
 		end = input.EndDate
 	}
-	// Get company ID of user
-	companyReps, err := userRepo.GetCompanyIdUser(
-		ctx,
-		&domainModel.GetCompanyIdUserInput{
-			UserID: input.UserID,
-		},
-	)
-	if err != nil {
-		logger.Error("GetCompanyIdUser failed", "error", err)
-		return nil, &applicationErrors.Error{ErrorSystem: err}
-	}
 	// Try cache first (keyed by user + date range + page)
 	cacheKey := ""
 	if lc, err := domainCache.GetLocalCache(); err == nil {
 		cacheKey = utilsCache.GetKeyAttendanceDeviceRecords(
-			utilsCrypto.GetHash(companyReps.CompanyID.String()),
+			utilsCrypto.GetHash(input.CompanyId.String()),
 			utilsCrypto.GetHash(input.UserID.String()),
 			input.Page,
 			input.Size,
@@ -267,7 +256,7 @@ func (a *AttendanceService) GetMyRecords(ctx context.Context, input *model.GetMy
 
 	// build repo input; repository requires company and device - company not available here so use nil UUID
 	repoInput := &domainModel.GetAttendanceRecordRangeTimeInput{
-		CompanyID: companyReps.CompanyID,
+		CompanyID: input.CompanyId,
 		DeviceID:  uuid.Nil,
 		StartTime: start.Unix(),
 		EndTime:   end.Unix(),
@@ -334,6 +323,7 @@ func (a *AttendanceService) GetRecords(ctx context.Context, input *model.GetAtte
 	ok, err := checkUserManagerOrAdmin(
 		ctx,
 		input.UserID,
+		input.CompanyIdUser,
 		input.CompanyId,
 		input.Role,
 	)
@@ -441,24 +431,26 @@ func NewAttendanceService() service.IAttendanceService {
 func checkUserManagerOrAdmin(
 	ctx context.Context,
 	userReq uuid.UUID,
+	companyIdUserReq uuid.UUID,
 	companyId uuid.UUID,
 	role int,
 ) (bool, error) {
 	// Instance use
 	var (
-		repo             domainRepo.IUserRepository
 		localCache       domainCache.ILocalCache
 		distributedCache domainCache.IDistributedCache
 	)
 	localCache, _ = domainCache.GetLocalCache()
 	distributedCache, _ = domainCache.GetDistributedCache()
-	repo = domainRepo.GetUserRepository()
 	// Check user role
-	if role >= domainModel.RoleManager {
+	if role > domainModel.RoleManager {
 		return false, nil
 	}
 	if role == domainModel.RoleAdmin {
 		return true, nil
+	}
+	if companyIdUserReq != companyId {
+		return false, nil
 	}
 	// Check cache first
 	cacheKey := utilsCache.GetKeyUserIsManagerCompany(
@@ -479,37 +471,21 @@ func checkUserManagerOrAdmin(
 			return true, nil
 		}
 	}
-	// Check from repository
-	isManager, err := repo.UserIsManagerCompany(
-		ctx,
-		&domainModel.UserIsManagerCompanyInput{
-			UserID:    userReq,
-			CompanyID: companyId,
-		},
-	)
-	if err != nil {
-		return false, err
-	}
 	// Cache result if is manager
-	if isManager {
-		cacheKey := utilsCache.GetKeyUserIsManagerCompany(
-			utilsCrypto.GetHash(userReq.String()),
-			utilsCrypto.GetHash(companyId.String()),
-		)
-		if localCache != nil {
-			_ = localCache.SetTTL(ctx, cacheKey, "1", 300)
-		}
-		if distributedCache != nil {
-			_ = distributedCache.SetTTL(ctx, cacheKey, "1", 600)
-		}
+	if localCache != nil {
+		_ = localCache.SetTTL(ctx, cacheKey, "1", 300)
 	}
-	return isManager, nil
+	if distributedCache != nil {
+		_ = distributedCache.SetTTL(ctx, cacheKey, "1", 600)
+	}
+	return true, nil
 }
 
 // Check permission user manager or admin for user
 func checkUserManagerOrAdminForUser(
 	ctx context.Context,
 	userReq uuid.UUID,
+	userReqCompanyId uuid.UUID,
 	user uuid.UUID,
 	role int,
 ) (bool, error) {
@@ -548,19 +524,12 @@ func checkUserManagerOrAdminForUser(
 			return true, nil
 		}
 	}
-	// Get company ID of user
-	companyId, err := repo.GetCompanyIdUser(ctx, &domainModel.GetCompanyIdUserInput{
-		UserID: userReq,
-	})
-	if err != nil {
-		return false, err
-	}
 	// Check from repository
 	isManager, err := repo.UserIsManagerCompany(
 		ctx,
 		&domainModel.UserIsManagerCompanyInput{
 			UserID:    userReq,
-			CompanyID: companyId.CompanyID,
+			CompanyID: userReqCompanyId,
 		},
 	)
 	if err != nil {

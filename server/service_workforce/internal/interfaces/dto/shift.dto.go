@@ -4,6 +4,13 @@ package dto
 // Shift DTO
 // =======================================
 
+// Change status shift
+type ChangeStatusShiftReq struct {
+	ShiftId   string `json:"shift_id" validate:"required"`
+	CompanyId string `json:"company_id" validate:"required"`
+	Status    int    `json:"status" validate:"required,oneof=0 1"`
+}
+
 // Edit shift
 type EditShiftReq struct {
 	ShiftId               string `json:"shift_id" validate:"required"`

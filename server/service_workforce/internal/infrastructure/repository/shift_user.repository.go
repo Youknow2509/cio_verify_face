@@ -22,6 +22,30 @@ type ShiftUserRepository struct {
 	pool *pgxpool.Pool
 }
 
+// AddListShiftForEmployees implements repository.IShiftUserRepository.
+func (s *ShiftUserRepository) AddListShiftForEmployees(ctx context.Context, input *model.AddListShiftForEmployeesInput) error {
+	if input == nil {
+		return errors.New("input cannot be nil")
+	}
+
+	listError := make([]error, 0)
+	for _, employeeId := range input.EmployeeIDs {
+		err := s.db.AddShiftForEmployee(ctx, database.AddShiftForEmployeeParams{
+			EmployeeID:    pgtype.UUID{Valid: true, Bytes: employeeId},
+			ShiftID:       pgtype.UUID{Valid: true, Bytes: input.ShiftID},
+			EffectiveFrom: toPgDate(input.EffectiveFrom),
+			EffectiveTo:   toPgDate(input.EffectiveTo),
+		})
+		if err != nil {
+			listError = append(listError, err)
+		}
+	}
+	if len(listError) > 0 {
+		return errors.New("one or more errors occurred while adding shifts for employees")
+	}
+	return nil
+}
+
 // NewShiftUserRepository create new instance and implement IShiftUserRepository
 func NewShiftUserRepository(
 	postgresConnect *pgxpool.Pool,
@@ -138,7 +162,6 @@ func (s *ShiftUserRepository) CheckUserExistShift(ctx context.Context, input *mo
 	}
 	return true, nil
 }
-
 
 // Helper functions for type conversion
 func toPgTimestamp(t time.Time) pgtype.Timestamptz {

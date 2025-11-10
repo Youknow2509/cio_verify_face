@@ -8,6 +8,11 @@
 -- created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
 -- UNIQUE(employee_id, shift_id, effective_from, effective_to)
 
+-- name: CountEmployeesInShift :one
+SELECT COUNT(DISTINCT employee_id) AS employee_count
+FROM employee_shifts
+WHERE shift_id = $1;
+
 -- name: GetShiftEmployeeWithEffectiveDate :many
 SELECT 
     employee_shift_id,

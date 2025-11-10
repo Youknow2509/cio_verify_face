@@ -12,12 +12,13 @@ import (
 // ShiftEmployee application interface service
 // =================================================
 type IShiftEmployeeService interface {
-	AddShiftEmployee(ctx context.Context, input *model.AddShiftEmployeeInput) (**model.AddShiftEmployeeOutput, *applicationError.Error)
+	AddShiftEmployee(ctx context.Context, input *model.AddShiftEmployeeInput) *applicationError.Error
 	DeleteShiftUser(ctx context.Context, input *model.DeleteShiftUserInput) *applicationError.Error
 	DisableShiftUser(ctx context.Context, input *model.DisableShiftUserInput) *applicationError.Error
 	EditShiftForUserWithEffectiveDate(ctx context.Context, input *model.EditShiftForUserWithEffectiveDateInput) *applicationError.Error
 	EnableShiftUser(ctx context.Context, input *model.EnableShiftUserInput) *applicationError.Error
 	GetShiftForUserWithEffectiveDate(ctx context.Context, input *model.GetShiftForUserWithEffectiveDateInput) (*model.GetShiftForUserWithEffectiveDateOutput, *applicationError.Error)
+	AddListShiftEmployee(ctx context.Context, input *model.AddShiftEmployeeListInput) *applicationError.Error
 }
 
 /**

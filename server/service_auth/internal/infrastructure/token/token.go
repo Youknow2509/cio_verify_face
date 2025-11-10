@@ -21,8 +21,9 @@ import (
 type (
 	TokenUserJwtClaim struct {
 		jwt.RegisteredClaims
-		UserId string `json:"user_id"`
-		Role   int    `json:"role"`
+		UserId    string `json:"user_id"`
+		Role      int    `json:"role"`
+		CompanyId string `json:"company_id"`
 	}
 
 	TokenUserRefreshJwtClaim struct {
@@ -190,8 +191,9 @@ func (t *TokenService) CreateUserToken(ctx context.Context, input *domainModel.T
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
 			ID:        input.TokenId,
 		},
-		UserId: input.UserId,
-		Role:   input.Role,
+		UserId:    input.UserId,
+		Role:      input.Role,
+		CompanyId: input.CompanyId,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, tokenClaim)
 	return token.SignedString([]byte(t.secret))
@@ -266,6 +268,7 @@ func (t *TokenService) ParseUserToken(ctx context.Context, tokenString string) (
 			output := &domainModel.TokenUserJwtOutput{
 				UserId:    out.UserId,
 				TokenId:   out.ID,
+				CompanyId: out.CompanyId,
 				Role:      out.Role,
 				Issuer:    out.Issuer,
 				Subject:   out.Subject,
@@ -290,6 +293,7 @@ func (t *TokenService) ParseUserToken(ctx context.Context, tokenString string) (
 		UserId:    out.UserId,
 		TokenId:   out.ID,
 		Role:      out.Role,
+		CompanyId: out.CompanyId,
 		Issuer:    out.Issuer,
 		Subject:   out.Subject,
 		Audience:  out.Audience,

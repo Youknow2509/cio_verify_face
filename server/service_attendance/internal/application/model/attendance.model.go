@@ -18,6 +18,7 @@ type GetMyRecordsInput struct {
 	Role        int       `json:"role"`
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 }
 type GetMyRecordsOutput struct {
 	Records []AttendanceRecordInfo `json:"records"`
@@ -33,6 +34,7 @@ type GetAttendanceRecordByIDInput struct {
 	Role        int       `json:"role"`
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 }
 
 // For GetRecords method
@@ -44,11 +46,12 @@ type GetAttendanceRecordsInput struct {
 	Page      int       `json:"page,omitempty"`
 	Size      int       `json:"size,omitempty"`
 	// Session info
-	UserID      uuid.UUID `json:"user_id"`
-	SessionID   uuid.UUID `json:"session_id"`
-	Role        int       `json:"role"`
-	ClientIp    string    `json:"client_ip"`
-	ClientAgent string    `json:"client_agent"`
+	UserID        uuid.UUID `json:"user_id"`
+	SessionID     uuid.UUID `json:"session_id"`
+	Role          int       `json:"role"`
+	ClientIp      string    `json:"client_ip"`
+	ClientAgent   string    `json:"client_agent"`
+	CompanyIdUser   uuid.UUID `json:"company_id_user"`
 }
 type AttendanceRecordOutput struct {
 	Records []AttendanceRecordInfo `json:"records"`
@@ -78,6 +81,7 @@ type CheckInInput struct {
 	Role        int       `json:"role"`
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 }
 
 // For CheckOut method
@@ -95,6 +99,7 @@ type CheckOutInput struct {
 	Role        int       `json:"role"`
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
 }
 
 // ===========================
