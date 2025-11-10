@@ -18,8 +18,8 @@ type IShiftRepository interface {
 	UpdateTimeShift(ctx context.Context, input *model.UpdateTimeShiftInput) error
 	DeleteShift(ctx context.Context, shiftID uuid.UUID) error
 	GetShiftsIdForCompany(ctx context.Context, companyID uuid.UUID, limit, offset int32) ([]uuid.UUID, error)
-	DisableShiftWithId(ctx context.Context, shiftID uuid.UUID) error
-	EnableShiftWithId(ctx context.Context, shiftID uuid.UUID) error
+	DisableShiftWithId(ctx context.Context, input *model.DisableShiftInput) error
+	EnableShiftWithId(ctx context.Context, input *model.EnableShiftInput) error
 }
 
 /**

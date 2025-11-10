@@ -10,6 +10,18 @@ import (
 	"github.com/google/uuid"
 )
 
+// DisableShiftInput carries data to disable a shift
+type DisableShiftInput struct {
+	ShiftID   uuid.UUID
+	CompanyId uuid.UUID
+}
+
+// EnableShiftInput carries data to enable a shift
+type EnableShiftInput struct {
+	ShiftID   uuid.UUID
+	CompanyId uuid.UUID
+}
+
 // Shift entity (domain-facing)
 type Shift struct {
 	ShiftID               uuid.UUID

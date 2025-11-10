@@ -18,6 +18,8 @@ type IShiftService interface {
 	EditShift(ctx context.Context, input *model.EditShiftInput) *applicationError.Error
 	CreateShift(ctx context.Context, input *model.CreateShiftInput) (*model.CreateShiftOutput, *applicationError.Error)
 	GetDetailShift(ctx context.Context, input *model.GetDetailShiftInput) (*model.GetDetailShiftOutput, *applicationError.Error)
+	GetListShift(ctx context.Context, input *model.GetListShiftInput) ([]*model.GetDetailShiftOutput, *applicationError.Error)
+	ChangeStatusShift(ctx context.Context, input *model.ChangeStatusShiftInput) *applicationError.Error
 }
 
 /**

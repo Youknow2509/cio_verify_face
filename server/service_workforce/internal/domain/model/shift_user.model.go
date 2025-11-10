@@ -10,6 +10,15 @@ import (
 	"github.com/google/uuid"
 )
 
+// For add list shift assignments to multiple employees
+type AddListShiftForEmployeesInput struct {
+	ShiftID       uuid.UUID
+	CompanyID     uuid.UUID
+	EffectiveFrom time.Time
+	EffectiveTo   time.Time
+	EmployeeIDs   []uuid.UUID
+}
+
 // Row returned from GetShiftEmployeeWithEffectiveDate
 type EmployeeShiftRow struct {
 	EmployeeShiftID uuid.UUID

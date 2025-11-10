@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/google/uuid"
 	applicationError "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/application/error"
 	applicationModel "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/application/model"
 	service "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/application/service"
@@ -31,12 +32,58 @@ type ShiftEmployeeService struct {
 	localCache       cache.ILocalCache
 }
 
+// AddListShiftEmployee implements service.IShiftEmployeeService.
+func (s *ShiftEmployeeService) AddListShiftEmployee(ctx context.Context, input *applicationModel.AddShiftEmployeeListInput) *applicationError.Error {
+	// Validate input
+	if input == nil {
+		s.logger.Error("AddListShiftEmployee - Input is nil")
+		return &applicationError.Error{
+			ErrorSystem: fmt.Errorf("input is nil"),
+			ErrorClient: "Invalid input data",
+		}
+	}
+	// Get company req and check permission
+	var companyId uuid.UUID
+	if input.CompanyRequestId == input.CompanyId {
+		companyId = input.CompanyRequestId
+	} else if input.Role == domainModel.RoleAdmin {
+		companyId = input.CompanyRequestId
+	} else {
+		s.logger.Error("AddListShiftEmployee - User does not have permission to add employees to this company", "user_id", input.UserId, "company_request_id", input.CompanyRequestId, "company_id", input.CompanyId)
+		return &applicationError.Error{
+			ErrorSystem: fmt.Errorf("user does not have permission to add employees to this company"),
+			ErrorClient: "You do not have permission to add employees to this company",
+		}
+	}
+	s.logger.Info("AddListShiftEmployee - Start", "user_id", input.UserId, "number_of_employees", len(input.EmployeeIDs))
+	// Call repository
+	reqRepo := &domainModel.AddListShiftForEmployeesInput{
+		CompanyID:     companyId,
+		ShiftID:       input.ShiftId,
+		EmployeeIDs:   input.EmployeeIDs,
+		EffectiveFrom: input.EffectiveFrom,
+		EffectiveTo:   input.EffectiveTo,
+	}
+	err := s.shiftUserRepo.AddListShiftForEmployees(
+		ctx,
+		reqRepo,
+	)
+	if err != nil {
+		s.logger.Error("AddListShiftEmployee - Failed to add shifts to employees", "error", err)
+		return &applicationError.Error{
+			ErrorSystem: err,
+			ErrorClient: "Failed to add shifts to employees",
+		}
+	}	
+	return nil
+}
+
 // AddShiftEmployee implements service.IShiftEmployeeService.
-func (s *ShiftEmployeeService) AddShiftEmployee(ctx context.Context, input *applicationModel.AddShiftEmployeeInput) (**applicationModel.AddShiftEmployeeOutput, *applicationError.Error) {
+func (s *ShiftEmployeeService) AddShiftEmployee(ctx context.Context, input *applicationModel.AddShiftEmployeeInput) *applicationError.Error {
 	// Validate input
 	if input == nil {
 		s.logger.Error("AddShiftEmployee - Input is nil")
-		return nil, &applicationError.Error{
+		return &applicationError.Error{
 			ErrorSystem: fmt.Errorf("input is nil"),
 			ErrorClient: "Invalid input data",
 		}
@@ -56,7 +103,7 @@ func (s *ShiftEmployeeService) AddShiftEmployee(ctx context.Context, input *appl
 	exists, err := s.shiftUserRepo.CheckUserExistShift(ctx, checkInput)
 	if err != nil {
 		s.logger.Error("AddShiftEmployee - Failed to check existing shift", "error", err)
-		return nil, &applicationError.Error{
+		return &applicationError.Error{
 			ErrorSystem: err,
 			ErrorClient: "Failed to check existing shift",
 		}
@@ -64,7 +111,7 @@ func (s *ShiftEmployeeService) AddShiftEmployee(ctx context.Context, input *appl
 
 	if exists {
 		s.logger.Warn("AddShiftEmployee - Employee already has a shift in this time range", "employee_id", input.EmployeeId)
-		return nil, &applicationError.Error{
+		return &applicationError.Error{
 			ErrorSystem: fmt.Errorf("employee already has a shift in this time range"),
 			ErrorClient: "Employee already has a shift in this time range",
 		}
@@ -82,7 +129,7 @@ func (s *ShiftEmployeeService) AddShiftEmployee(ctx context.Context, input *appl
 	err = s.shiftUserRepo.AddShiftForEmployee(ctx, domainInput)
 	if err != nil {
 		s.logger.Error("AddShiftEmployee - Failed to add shift to employee", "error", err)
-		return nil, &applicationError.Error{
+		return &applicationError.Error{
 			ErrorSystem: err,
 			ErrorClient: "Failed to add shift to employee",
 		}
@@ -99,11 +146,7 @@ func (s *ShiftEmployeeService) AddShiftEmployee(ctx context.Context, input *appl
 
 	s.logger.Info("AddShiftEmployee - Success", "employee_id", input.EmployeeId)
 
-	output := &applicationModel.AddShiftEmployeeOutput{
-		ShiftUserId: "created",
-	}
-
-	return &output, nil
+	return nil
 }
 
 // DeleteShiftUser implements service.IShiftEmployeeService.

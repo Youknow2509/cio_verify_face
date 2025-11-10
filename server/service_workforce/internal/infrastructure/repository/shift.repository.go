@@ -22,6 +22,44 @@ type ShiftRepository struct {
 	pool *pgxpool.Pool
 }
 
+// DisableShiftWithId implements repository.IShiftRepository.
+func (s *ShiftRepository) DisableShiftWithId(ctx context.Context, input *model.DisableShiftInput) error {
+	if input == nil {
+		return errors.New("input cannot be nil")
+	}
+	err := s.db.DisableShiftWithId(ctx, database.DisableShiftWithIdParams{
+		ShiftID:   pgtype.UUID{Valid: true, Bytes: input.ShiftID},
+		CompanyID: pgtype.UUID{Valid: true, Bytes: input.CompanyId},
+	})
+	switch err {
+	case nil:
+		return nil
+	case pgx.ErrNoRows:
+		return errors.New("no shift found with the given ID and company ID")
+	default:
+		return err
+	}
+}
+
+// EnableShiftWithId implements repository.IShiftRepository.
+func (s *ShiftRepository) EnableShiftWithId(ctx context.Context, input *model.EnableShiftInput) error {
+	if input == nil {
+		return errors.New("input cannot be nil")
+	}
+	err := s.db.EnableShiftWithId(ctx, database.EnableShiftWithIdParams{
+		ShiftID:   pgtype.UUID{Valid: true, Bytes: input.ShiftID},
+		CompanyID: pgtype.UUID{Valid: true, Bytes: input.CompanyId},
+	})
+	switch err {
+	case nil:
+		return nil
+	case pgx.ErrNoRows:
+		return errors.New("no shift found with the given ID and company ID")
+	default:
+		return err
+	}
+}
+
 // NewShiftRepository create new instance and implement IShiftRepository
 func NewShiftRepository(
 	postgresConnect *pgxpool.Pool,
@@ -47,14 +85,6 @@ func toPgTime(t time.Time) pgtype.Time {
 
 func toPgInt4(i int32) pgtype.Int4 {
 	return pgtype.Int4{Int32: i, Valid: true}
-}
-
-func toPgBool(b bool) pgtype.Bool {
-	return pgtype.Bool{Bool: b, Valid: true}
-}
-
-func toPgTimestamptz(t time.Time) pgtype.Timestamptz {
-	return pgtype.Timestamptz{Time: t, Valid: true}
 }
 
 func fromPgText(t pgtype.Text) string {
@@ -240,20 +270,4 @@ func (s *ShiftRepository) GetShiftsIdForCompany(ctx context.Context, companyID u
 		}
 	}
 	return ids, nil
-}
-
-// DisableShiftWithId implements repository.IShiftRepository.
-func (s *ShiftRepository) DisableShiftWithId(ctx context.Context, shiftID uuid.UUID) error {
-	if shiftID == uuid.Nil {
-		return errors.New("shiftID cannot be empty")
-	}
-	return s.db.DisableShiftWithId(ctx, pgtype.UUID{Valid: true, Bytes: shiftID})
-}
-
-// EnableShiftWithId implements repository.IShiftRepository.
-func (s *ShiftRepository) EnableShiftWithId(ctx context.Context, shiftID uuid.UUID) error {
-	if shiftID == uuid.Nil {
-		return errors.New("shiftID cannot be empty")
-	}
-	return s.db.EnableShiftWithId(ctx, pgtype.UUID{Valid: true, Bytes: shiftID})
 }

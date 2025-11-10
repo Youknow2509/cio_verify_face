@@ -85,11 +85,16 @@ const disableShiftWithId = `-- name: DisableShiftWithId :exec
 UPDATE work_shifts
 SET is_active = FALSE,
     updated_at = now()
-WHERE shift_id = $1
+WHERE shift_id = $1 and company_id = $2
 `
 
-func (q *Queries) DisableShiftWithId(ctx context.Context, shiftID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, disableShiftWithId, shiftID)
+type DisableShiftWithIdParams struct {
+	ShiftID   pgtype.UUID
+	CompanyID pgtype.UUID
+}
+
+func (q *Queries) DisableShiftWithId(ctx context.Context, arg DisableShiftWithIdParams) error {
+	_, err := q.db.Exec(ctx, disableShiftWithId, arg.ShiftID, arg.CompanyID)
 	return err
 }
 
@@ -97,11 +102,16 @@ const enableShiftWithId = `-- name: EnableShiftWithId :exec
 UPDATE work_shifts
 SET is_active = TRUE,
     updated_at = now()
-WHERE shift_id = $1
+WHERE shift_id = $1 and company_id = $2
 `
 
-func (q *Queries) EnableShiftWithId(ctx context.Context, shiftID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, enableShiftWithId, shiftID)
+type EnableShiftWithIdParams struct {
+	ShiftID   pgtype.UUID
+	CompanyID pgtype.UUID
+}
+
+func (q *Queries) EnableShiftWithId(ctx context.Context, arg EnableShiftWithIdParams) error {
+	_, err := q.db.Exec(ctx, enableShiftWithId, arg.ShiftID, arg.CompanyID)
 	return err
 }
 

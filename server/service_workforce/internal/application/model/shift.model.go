@@ -10,6 +10,34 @@ import (
 // Shift application model
 // =================================================
 
+// For ChangeStatusShift
+type ChangeStatusShiftInput struct {
+	// User info
+	UserId      uuid.UUID `json:"user_id"`
+	UserSession uuid.UUID `json:"user_session"`
+	Role        int       `json:"role"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
+	//
+	CompanyIdReq uuid.UUID `json:"company_id_req"`
+	ShiftId      uuid.UUID `json:"shift_id"`
+	IsActive     bool      `json:"is_active"`
+}
+
+// For GetListShift
+type GetListShiftInput struct {
+	// User info
+	UserId      uuid.UUID `json:"user_id"`
+	UserSession uuid.UUID `json:"user_session"`
+	Role        int       `json:"role"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
+	//
+	Page         int       `json:"page"`
+}
+
 // For DeleteShift
 type DeleteShiftInput struct {
 	// User info

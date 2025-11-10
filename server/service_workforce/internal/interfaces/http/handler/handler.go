@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"strconv"
 	"time"
 
 	gin "github.com/gin-gonic/gin"
@@ -24,6 +25,8 @@ type iHandler interface {
 	GetDetailShift(*gin.Context)
 	EditShift(*gin.Context)
 	DeleteShift(*gin.Context)
+	GetListShift(*gin.Context)
+	ChangeStatusShift(*gin.Context)
 	// For shift employee
 	GetShiftForUserWithEffectiveDate(*gin.Context)
 	EditShiftForUserWithEffectiveDate(*gin.Context)
@@ -31,12 +34,250 @@ type iHandler interface {
 	DisableShiftForUser(*gin.Context)
 	DeleteShiftForUser(*gin.Context)
 	AddShiftEmployee(*gin.Context)
+	AddShiftEmployeeList(*gin.Context)
 }
 
 /**
  * Handler struct
  */
 type Handler struct{}
+
+// AddShiftEmployeeList implements iHandler.
+// @Summary      Add shift employee list
+// @Description  Add shift employee list for company
+// @Tags         Shift
+// @Accept       json
+// @Produce      json
+// @Param		 authorization header string true "Bearer <token>"
+// @Param        dto body dto.AddShiftEmployeeListReq true "Add Shift Employee List Request"
+// @Success      200  {object}  dto.ResponseData
+// @Failure      400  {object}  dto.ErrResponseData
+// @Router       /api/v1/employee/shift/add/list [post]
+func (h *Handler) AddShiftEmployeeList(g *gin.Context) {
+	// get req
+	var req dto.AddShiftEmployeeListReq
+	if err := g.ShouldBind(&req); err != nil {
+		response.ErrorResponse(g, 400, "Data input error")
+		return
+	}
+	// Validate req
+	validateMiddleware, ok := g.Get(constants.MIDDLEWARE_VALIDATE_SERVICE_NAME)
+	if !ok {
+		response.ErrorResponse(g, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+	validate, ok := validateMiddleware.(*validator.Validate)
+	if !ok {
+		response.ErrorResponse(g, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+	if err := validate.Struct(&req); err != nil {
+		response.ErrorResponse(g, 400, "Validation error")
+		return
+	}
+	// Get data auth from context
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(g)
+	if !ok {
+		response.ErrorResponse(g, response.ErrorCodeAuthSessionInvalid, "Invalid auth session")
+		return
+	}
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
+	}
+	userUuid, _ := uuidShared.ParseUUID(userId)
+	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	shiftUuid, err := uuidShared.ParseUUID(req.ShiftId)
+	if err != nil {
+		response.ErrorResponse(g, 400, "Invalid shift ID")
+		return
+	}
+	companyIdReq, err := uuidShared.ParseUUID(req.CompanyId)
+	if err != nil {
+		response.ErrorResponse(g, 400, "Invalid company ID")
+		return
+	}
+	listUserIdAdd := make([]uuid.UUID, 0)
+	for _, id := range req.EmployeeIDs {
+		userUuid, err := uuidShared.ParseUUID(id)
+		if err != nil {
+			response.ErrorResponse(g, 400, "Invalid employee ID: "+id)
+			return
+		}
+		listUserIdAdd = append(listUserIdAdd, userUuid)
+	}
+	// make request to service add shift employee list
+	appReq := applicationModel.AddShiftEmployeeListInput{
+		// User info
+		UserId:      userUuid,
+		SessionId:   sessionUuid,
+		Role:        userRole,
+		ClientIp:    g.ClientIP(),
+		ClientAgent: g.Request.UserAgent(),
+		CompanyId:   companyUuid,
+		//
+		CompanyRequestId: companyIdReq,
+		ShiftId:          shiftUuid,
+		EffectiveFrom:    time.Unix(req.EffectiveFrom, 0),
+		EffectiveTo:      time.Unix(req.EffectiveTo, 0),
+		EmployeeIDs:      listUserIdAdd,
+	}
+	// Call service add shift employee list
+	errReq := applicationService.GetShiftEmployeeService().AddListShiftEmployee(
+		g,
+		&appReq,
+	)
+	if errReq != nil {
+		if errReq.ErrorSystem != nil {
+			response.ErrorResponse(g, response.ErrorCodeSystemTemporary, "Internal server error")
+			return
+		}
+		response.ErrorResponse(g, 400, errReq.ErrorClient)
+		return
+	}
+	response.SuccessResponse(g, 200, "Add shift employee list successfully")
+}
+
+// ChangeStatusShift implements iHandler.
+// @Summary      Change status shift
+// @Description  Change status shift information for company
+// @Tags         Shift
+// @Accept       json
+// @Produce      json
+// @Param		 authorization header string true "Bearer <token>"
+// @Param        dto body dto.ChangeStatusShiftReq true "Change Status Shift Request"
+// @Success      200  {object}  dto.ResponseData
+// @Failure      400  {object}  dto.ErrResponseData
+// @Router       /api/v1/shift/status [post]
+func (h *Handler) ChangeStatusShift(g *gin.Context) {
+	// Get req
+	var req dto.ChangeStatusShiftReq
+	if err := g.ShouldBind(&req); err != nil {
+		response.ErrorResponse(g, 400, "Data input error")
+		return
+	}
+	// Validate req
+	validateMiddleware, ok := g.Get(constants.MIDDLEWARE_VALIDATE_SERVICE_NAME)
+	if !ok {
+		response.ErrorResponse(g, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+	validate, ok := validateMiddleware.(*validator.Validate)
+	if !ok {
+		response.ErrorResponse(g, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+	if err := validate.Struct(&req); err != nil {
+		response.ErrorResponse(g, 400, "Validation error")
+		return
+	}
+	// Get data auth from context
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(g)
+	if !ok {
+		response.ErrorResponse(g, response.ErrorCodeAuthSessionInvalid, "Invalid auth session")
+		return
+	}
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
+	}
+	userUuid, _ := uuidShared.ParseUUID(userId)
+	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	shiftUuid, err := uuidShared.ParseUUID(req.ShiftId)
+	if err != nil {
+		response.ErrorResponse(g, 400, "Invalid shift ID")
+		return
+	}
+	companyIdReq, err := uuidShared.ParseUUID(req.CompanyId)
+	if err != nil {
+		response.ErrorResponse(g, 400, "Invalid company ID")
+		return
+	}
+	// Call service change status shift
+	errReq := applicationService.GetShiftService().ChangeStatusShift(
+		g,
+		&applicationModel.ChangeStatusShiftInput{
+			// User info
+			UserId:      userUuid,
+			UserSession: sessionUuid,
+			Role:        userRole,
+			ClientIp:    g.ClientIP(),
+			ClientAgent: g.Request.UserAgent(),
+			CompanyId:   companyUuid,
+			//
+			CompanyIdReq: companyIdReq,
+			ShiftId:      shiftUuid,
+			IsActive:     req.Status == 1,
+		},
+	)
+	if errReq != nil {
+		if errReq.ErrorSystem != nil {
+			response.ErrorResponse(g, response.ErrorCodeSystemTemporary, "Internal server error")
+			return
+		}
+		response.ErrorResponse(g, 400, errReq.ErrorClient)
+		return
+	}
+	response.SuccessResponse(g, 200, "Change status shift successfully")
+}
+
+// GetListShift implements iHandler.
+// @Summary      Get list shift information
+// @Description  Get list shift information for company
+// @Tags         Shift
+// @Accept       json
+// @Produce      json
+// @Param		 authorization header string true "Bearer <token>"
+// @Param        page query int false "Page number"
+// @Success      200  {object}  dto.ResponseData
+// @Failure      400  {object}  dto.ErrResponseData
+// @Router       /api/v1/shift [get]
+func (h *Handler) GetListShift(g *gin.Context) {
+	// Get page query
+	pageStr := g.DefaultQuery("page", constants.DEFAULT_PAGE_STRING)
+	// Validate and parse page
+	pageInt, err := strconv.Atoi(pageStr)
+	if err != nil || pageInt <= 0 {
+		response.ErrorResponse(g, 400, "Invalid page number")
+		return
+	}
+	// Get data auth from context
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(g)
+	if !ok {
+		response.ErrorResponse(g, response.ErrorCodeAuthSessionInvalid, "Invalid auth session")
+		return
+	}
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
+	}
+	userUuid, _ := uuidShared.ParseUUID(userId)
+	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	// Call to service get list shift
+	reps, errReq := applicationService.GetShiftService().GetListShift(
+		g,
+		&applicationModel.GetListShiftInput{
+			// User info
+			UserId:      userUuid,
+			UserSession: sessionUuid,
+			Role:        userRole,
+			ClientIp:    g.ClientIP(),
+			ClientAgent: g.Request.UserAgent(),
+			CompanyId:   companyUuid,
+			//
+			Page: pageInt,
+		},
+	)
+	if errReq != nil {
+		if errReq.ErrorSystem != nil {
+			response.ErrorResponse(g, response.ErrorCodeSystemTemporary, "Internal server error")
+			return
+		}
+		response.ErrorResponse(g, 400, errReq.ErrorClient)
+		return
+	}
+	response.SuccessResponse(g, 200, reps)
+}
 
 // AddShiftEmployee implements iHandler.
 // @Summary      Create shift information
@@ -96,7 +337,7 @@ func (h *Handler) AddShiftEmployee(c *gin.Context) {
 		return
 	}
 	// Call service create shift employee
-	reps, errReq := applicationService.GetShiftEmployeeService().AddShiftEmployee(
+	errReq := applicationService.GetShiftEmployeeService().AddShiftEmployee(
 		c,
 		&applicationModel.AddShiftEmployeeInput{
 			// User info
@@ -121,7 +362,7 @@ func (h *Handler) AddShiftEmployee(c *gin.Context) {
 		response.ErrorResponse(c, 400, errReq.ErrorClient)
 		return
 	}
-	response.SuccessResponse(c, 200, reps)
+	response.SuccessResponse(c, 200, "Add shift employee successfully")
 }
 
 // CreateShift implements iHandler.

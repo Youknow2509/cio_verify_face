@@ -10,6 +10,23 @@ import (
 // Shift Employee application model
 // =================================================
 
+// For add shift employee list
+type AddShiftEmployeeListInput struct {
+	// User info
+	UserId      uuid.UUID `json:"user_id"`
+	SessionId   uuid.UUID `json:"session_id"`
+	Role        int       `json:"role"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
+	//
+	CompanyRequestId uuid.UUID `json:"company_request_id"`
+	ShiftId          uuid.UUID `json:"shift_id"`
+	EffectiveFrom    time.Time `json:"effective_from"`
+	EffectiveTo      time.Time `json:"effective_to"`
+	EmployeeIDs      []uuid.UUID `json:"employee_ids"`
+}
+
 // For AddShiftEmployee
 type AddShiftEmployeeInput struct {
 	// User info

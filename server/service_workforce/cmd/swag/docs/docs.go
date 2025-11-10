@@ -118,6 +118,53 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/employee/shift/add/list": {
+            "post": {
+                "description": "Add shift employee list for company",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shift"
+                ],
+                "summary": "Add shift employee list",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer \u003ctoken\u003e",
+                        "name": "authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Add Shift Employee List Request",
+                        "name": "dto",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.AddShiftEmployeeListReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ResponseData"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrResponseData"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/employee/shift/disable": {
             "post": {
                 "description": "Disable shift for user information for company",
@@ -251,6 +298,48 @@ const docTemplate = `{
             }
         },
         "/api/v1/shift": {
+            "get": {
+                "description": "Get list shift information for company",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shift"
+                ],
+                "summary": "Get list shift information",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer \u003ctoken\u003e",
+                        "name": "authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ResponseData"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrResponseData"
+                        }
+                    }
+                }
+            },
             "post": {
                 "description": "Create shift information for company",
                 "consumes": [
@@ -325,6 +414,53 @@ const docTemplate = `{
                         "required": true,
                         "schema": {
                             "$ref": "#/definitions/dto.EditShiftReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ResponseData"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrResponseData"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/shift/status": {
+            "post": {
+                "description": "Change status shift information for company",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shift"
+                ],
+                "summary": "Change status shift",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer \u003ctoken\u003e",
+                        "name": "authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Change Status Shift Request",
+                        "name": "dto",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ChangeStatusShiftReq"
                         }
                     }
                 ],
@@ -474,6 +610,36 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "dto.AddShiftEmployeeListReq": {
+            "type": "object",
+            "required": [
+                "company_id",
+                "effective_from",
+                "effective_to",
+                "employee_ids",
+                "shift_id"
+            ],
+            "properties": {
+                "company_id": {
+                    "type": "string"
+                },
+                "effective_from": {
+                    "type": "integer"
+                },
+                "effective_to": {
+                    "type": "integer"
+                },
+                "employee_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                },
+                "shift_id": {
+                    "type": "string"
+                }
+            }
+        },
         "dto.AddShiftEmployeeReq": {
             "type": "object",
             "required": [
@@ -494,6 +660,29 @@ const docTemplate = `{
                 },
                 "shift_id": {
                     "type": "string"
+                }
+            }
+        },
+        "dto.ChangeStatusShiftReq": {
+            "type": "object",
+            "required": [
+                "company_id",
+                "shift_id",
+                "status"
+            ],
+            "properties": {
+                "company_id": {
+                    "type": "string"
+                },
+                "shift_id": {
+                    "type": "string"
+                },
+                "status": {
+                    "type": "integer",
+                    "enum": [
+                        0,
+                        1
+                    ]
                 }
             }
         },

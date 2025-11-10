@@ -66,11 +66,11 @@ LIMIT $2 OFFSET $3;
 UPDATE work_shifts
 SET is_active = FALSE,
     updated_at = now()
-WHERE shift_id = $1;
+WHERE shift_id = $1 and company_id = $2;
 
 -- name: EnableShiftWithId :exec
 UPDATE work_shifts
 SET is_active = TRUE,
     updated_at = now()
-WHERE shift_id = $1;
+WHERE shift_id = $1 and company_id = $2;
 

@@ -14,6 +14,8 @@ import (
 	"github.com/youknow2509/cio_verify_face/server/service_workforce/internal/domain/logger"
 	domainModel "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/domain/model"
 	"github.com/youknow2509/cio_verify_face/server/service_workforce/internal/domain/repository"
+	utilsCache "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/shared/utils/cache"
+	utilsCrypto "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/shared/utils/crypto"
 )
 
 const (
@@ -30,6 +32,167 @@ type ShiftService struct {
 	logger           logger.ILogger
 	distributedCache cache.IDistributedCache
 	localCache       cache.ILocalCache
+}
+
+// ChangeStatusShift implements service.IShiftService.
+func (s *ShiftService) ChangeStatusShift(ctx context.Context, input *applicationModel.ChangeStatusShiftInput) *applicationError.Error {
+	if input == nil {
+		s.logger.Error("ChangeStatusShift - Input is nil")
+		return &applicationError.Error{
+			ErrorSystem: fmt.Errorf("input is nil"),
+			ErrorClient: "Invalid input data",
+		}
+	}
+
+	s.logger.Info("ChangeStatusShift - Start", "user_id", input.UserId, "shift_id", input.ShiftId, "is_active", input.IsActive)
+
+	// Check permissions
+	if input.Role == domainModel.RoleManager &&
+		input.CompanyIdReq != input.CompanyId {
+		s.logger.Error("ChangeStatusShift - Permission denied", "user_id", input.UserId, "company_id_req", input.CompanyIdReq, "company_id", input.CompanyId)
+		return &applicationError.Error{
+			ErrorSystem: fmt.Errorf("permission denied"),
+			ErrorClient: "You do not have permission to change the status of this shift",
+		}
+	}
+	var companyId uuid.UUID
+	if input.Role == domainModel.RoleManager && input.CompanyIdReq == input.CompanyId {
+		companyId = input.CompanyId
+	} else {
+		companyId = input.CompanyIdReq
+	}
+
+	// Call repository
+	switch input.IsActive {
+	case true:
+		err := s.shiftRepo.EnableShiftWithId(
+			ctx,
+			&domainModel.EnableShiftInput{
+				ShiftID:   input.ShiftId,
+				CompanyId: companyId,
+			},
+		)
+		if err != nil {
+			s.logger.Error("ChangeStatusShift - Failed to activate shift", "error", err, "shift_id", input.ShiftId)
+			return &applicationError.Error{
+				ErrorSystem: err,
+				ErrorClient: "Failed to activate shift",
+			}
+		}
+	case false:
+		err := s.shiftRepo.DisableShiftWithId(
+			ctx,
+			&domainModel.DisableShiftInput{
+				ShiftID:   input.ShiftId,
+				CompanyId: companyId,
+			},
+		)
+		if err != nil {
+			s.logger.Error("ChangeStatusShift - Failed to deactivate shift", "error", err, "shift_id", input.ShiftId)
+			return &applicationError.Error{
+				ErrorSystem: err,
+				ErrorClient: "Failed to deactivate shift",
+			}
+		}
+	}
+	s.logger.Info("ChangeStatusShift - Success", "shift_id", input.ShiftId, "is_active", input.IsActive)
+
+	return nil
+}
+
+// GetListShift implements service.IShiftService.
+func (s *ShiftService) GetListShift(ctx context.Context, input *applicationModel.GetListShiftInput) ([]*applicationModel.GetDetailShiftOutput, *applicationError.Error) {
+	if input == nil {
+		s.logger.Error("GetListShift - Input is nil")
+		return nil, &applicationError.Error{
+			ErrorSystem: fmt.Errorf("input is nil"),
+			ErrorClient: "Invalid input data",
+		}
+	}
+	s.logger.Info("GetListShift - Start", "user_id", input.UserId, "company_id", input.CompanyId)
+	// Get data in cache
+	key := utilsCache.GetKeyListShiftInCompany(
+		utilsCrypto.GetHash(input.CompanyId.String()),
+		input.Page,
+	)
+	cachedData := ""
+	// Try to get from local cache first
+	if data, err := s.localCache.Get(ctx, key); err == nil && data != "" {
+		s.logger.Info("GetListShift - Cache hit (local)", "company_id", input.CompanyId, "page", input.Page)
+		cachedData = data
+	}
+	// Try to get from distributed cache
+	if cachedData == "" {
+		if data, err := s.distributedCache.Get(ctx, key); err == nil && data != "" {
+			s.logger.Info("GetListShift - Cache hit (distributed)", "company_id", input.CompanyId, "page", input.Page)
+			cachedData = data
+		}
+	}
+	if cachedData != "" {
+		var output []*applicationModel.GetDetailShiftOutput
+		if unmarshalErr := json.Unmarshal([]byte(cachedData), &output); unmarshalErr == nil {
+			return output, nil
+		} else {
+			s.logger.Warn("GetListShift - Failed to unmarshal cache data", "error", unmarshalErr)
+		}
+	}
+	// Call repository
+	limit := 20
+	offset := (input.Page - 1) * limit
+	reps, err := s.shiftRepo.ListShifts(
+		ctx,
+		&domainModel.ListShiftsInput{
+			CompanyID: input.CompanyId,
+			Limit:     int32(limit),
+			Offset:    int32(offset),
+		},
+	)
+	if err != nil {
+		s.logger.Error("GetListShift - Failed to get shift list", "error", err, "company_id", input.CompanyId)
+		return nil, &applicationError.Error{
+			ErrorSystem: err,
+			ErrorClient: "Failed to get shift list",
+		}
+	}
+
+	// Convert to application model
+	var output []*applicationModel.GetDetailShiftOutput
+	for _, shift := range reps {
+		// Convert work days from []int32 to []int
+		workDays := make([]int, len(shift.WorkDays))
+		for i, day := range shift.WorkDays {
+			workDays[i] = int(day)
+		}
+		output = append(output, &applicationModel.GetDetailShiftOutput{
+			ShiftId:               shift.ShiftID.String(),
+			CompanyId:             shift.CompanyID.String(),
+			Name:                  shift.Name,
+			Description:           shift.Description,
+			StartTime:             shift.StartTime,
+			EndTime:               shift.EndTime,
+			BreakDurationMinutes:  int(shift.BreakDurationMinutes),
+			GracePeriodMinutes:    int(shift.GracePeriodMinutes),
+			EarlyDepartureMinutes: int(shift.EarlyDepartureMinutes),
+			WorkDays:              workDays,
+			IsActive:              shift.IsActive,
+		})
+	}
+
+	// Cache the result
+	if jsonData, jsonErr := json.Marshal(output); jsonErr == nil {
+		// Store in distributed cache
+		if setErr := s.distributedCache.SetTTL(ctx, key, string(jsonData), shiftCacheTTL); setErr != nil {
+			s.logger.Warn("GetListShift - Failed to set distributed cache", "error", setErr)
+		}
+		// Store in local cache
+		if setErr := s.localCache.SetTTL(ctx, key, string(jsonData), shiftCacheTTL); setErr != nil {
+			s.logger.Warn("GetListShift - Failed to set local cache", "error", setErr)
+		}
+	}
+
+	s.logger.Info("GetListShift - Success", "company_id", input.CompanyId, "page", input.Page)
+
+	return output, nil
 }
 
 // CreateShift implements service.IShiftService.
