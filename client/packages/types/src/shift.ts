@@ -47,3 +47,77 @@ export interface ShiftFormData {
     overtime_after_minutes: number;
     is_active: boolean;
 }
+
+// API Request/Response Types
+export interface ResponseData<T = any> {
+    code: number;
+    data?: T;
+    message?: string;
+}
+
+export interface ErrResponseData {
+    code: number;
+    error: string;
+    detail?: any;
+}
+
+// Shift API Request DTOs
+export interface CreateShiftReq {
+    company_id: string;
+    name: string;
+    description?: string;
+    start_time: number; // Unix timestamp in seconds
+    end_time: number; // Unix timestamp in seconds
+    break_duration_minutes: number;
+    grace_period_minutes: number;
+    early_departure_minutes: number;
+    work_days: number[]; // 1=Monday, 7=Sunday
+}
+
+export interface EditShiftReq extends CreateShiftReq {
+    shift_id: string;
+}
+
+export interface ChangeStatusShiftReq {
+    company_id: string;
+    shift_id: string;
+    status: 0 | 1; // 0=inactive, 1=active
+}
+
+// Employee Shift API Request DTOs
+export interface AddShiftEmployeeReq {
+    employee_id: string;
+    shift_id: string;
+    effective_from: number; // Unix timestamp
+    effective_to: number; // Unix timestamp
+}
+
+export interface AddShiftEmployeeListReq {
+    company_id: string;
+    employee_ids: string[];
+    shift_id: string;
+    effective_from: number; // Unix timestamp
+    effective_to: number; // Unix timestamp
+}
+
+export interface ShiftEmployeeEffectiveDateReq {
+    user_id?: string;
+    effective_from: number; // Unix timestamp
+    effective_to: number; // Unix timestamp
+    page: number;
+    size: number;
+}
+
+export interface ShiftEmployeeEditEffectiveDateReq {
+    shift_user_id: string;
+    new_effective_from: number; // Unix timestamp
+    new_effective_to: number; // Unix timestamp
+}
+
+export interface EnableShiftForUserReq {
+    shift_user_id: string;
+}
+
+export interface DisableShiftForUserReq {
+    shift_user_id: string;
+}

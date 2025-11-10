@@ -22,9 +22,16 @@ import {
     IconButton,
     Chip,
     Alert,
+    CircularProgress,
+    Snackbar,
 } from '@mui/material';
 import { Save, ArrowBack, Delete, Add } from '@mui/icons-material';
 import type { Shift, EmployeeShift } from '@face-attendance/types';
+import {
+    addEmployeeListToShift,
+    deleteEmployeeShift,
+    dateStringToTimestamp,
+} from '@face-attendance/utils';
 
 interface Employee {
     id: string;
@@ -102,13 +109,28 @@ export const ShiftAssignmentPage: React.FC = () => {
         effective_to: '',
     });
 
+    const [loading, setLoading] = useState(false);
+    const [snackbar, setSnackbar] = useState<{
+        open: boolean;
+        message: string;
+        severity: 'success' | 'error';
+    }>({
+        open: false,
+        message: '',
+        severity: 'success',
+    });
+
     // Tìm shift được chọn (nếu có)
     const selectedShift = id ? shifts.find((s) => s.shift_id === id) : null;
 
     const handleAddAssignment = () => {
         // ✅ Validate: phải chọn ít nhất 1 nhân viên
         if (formData.employee_ids.length === 0 || !formData.shift_id) {
-            alert('Vui lòng chọn ít nhất một nhân viên và ca làm việc');
+            setSnackbar({
+                open: true,
+                message: 'Vui lòng chọn ít nhất một nhân viên và ca làm việc',
+                severity: 'error',
+            });
             return;
         }
 
@@ -151,10 +173,118 @@ export const ShiftAssignmentPage: React.FC = () => {
         );
     };
 
-    const handleSubmit = () => {
-        // TODO: Call API to save all assignments
-        console.log('Saving assignments:', assignments);
-        navigate('/shifts');
+    const handleSubmit = async () => {
+        if (assignments.length === 0) {
+            setSnackbar({
+                open: true,
+                message: 'Vui lòng thêm ít nhất một phân công',
+                severity: 'error',
+            });
+            return;
+        }
+
+        try {
+            setLoading(true);
+
+            // Get company_id from localStorage or auth store
+            const companyId = localStorage.getItem('company_id') || '1';
+
+            // Group assignments by shift_id to call API efficiently
+            const groupedByShift = assignments.reduce((acc, assignment) => {
+                if (!acc[assignment.shift_id]) {
+                    acc[assignment.shift_id] = [];
+                }
+                acc[assignment.shift_id].push(assignment);
+                return acc;
+            }, {} as Record<string, EmployeeShift[]>);
+
+            // Call API for each shift
+            for (const [shiftId, shiftAssignments] of Object.entries(
+                groupedByShift
+            )) {
+                const requestData = {
+                    company_id: companyId,
+                    shift_id: shiftId,
+                    employee_ids: shiftAssignments.map((a) => a.employee_id),
+                    effective_from: dateStringToTimestamp(
+                        shiftAssignments[0].effective_from
+                    ),
+                    effective_to: shiftAssignments[0].effective_to
+                        ? dateStringToTimestamp(
+                              shiftAssignments[0].effective_to
+                          )
+                        : dateStringToTimestamp(
+                              new Date(
+                                  new Date().setFullYear(
+                                      new Date().getFullYear() + 10
+                                  )
+                              )
+                                  .toISOString()
+                                  .split('T')[0]
+                          ), // Default 10 years if no end date
+                };
+
+                const response = await addEmployeeListToShift(requestData);
+
+                if (response.code !== 200) {
+                    throw new Error(response.message || 'Phân công thất bại');
+                }
+            }
+
+            setSnackbar({
+                open: true,
+                message: `Phân công thành công ${assignments.length} nhân viên`,
+                severity: 'success',
+            });
+
+            // Navigate back after short delay
+            setTimeout(() => {
+                navigate('/shifts');
+            }, 1500);
+        } catch (err: any) {
+            console.error('Error saving assignments:', err);
+            setSnackbar({
+                open: true,
+                message:
+                    err.response?.data?.error ||
+                    'Đã xảy ra lỗi khi phân công ca làm việc',
+                severity: 'error',
+            });
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleDeleteAssignment = async (assignmentId: string) => {
+        // If it's a temporary assignment (not saved yet), just remove from list
+        if (assignmentId.startsWith('temp-')) {
+            handleRemoveAssignment(assignmentId);
+            return;
+        }
+
+        try {
+            const response = await deleteEmployeeShift(assignmentId);
+            if (response.code === 200) {
+                setSnackbar({
+                    open: true,
+                    message: 'Xóa phân công thành công',
+                    severity: 'success',
+                });
+                handleRemoveAssignment(assignmentId);
+            } else {
+                throw new Error(response.message || 'Xóa thất bại');
+            }
+        } catch (err: any) {
+            setSnackbar({
+                open: true,
+                message: err.response?.data?.error || 'Không thể xóa phân công',
+                severity: 'error',
+            });
+        }
+    };
+
+    const handleCloseSnackbar = () => {
+        setSnackbar({ ...snackbar, open: false });
     };
 
     return (
@@ -484,10 +614,11 @@ export const ShiftAssignmentPage: React.FC = () => {
                                                             size="small"
                                                             color="error"
                                                             onClick={() =>
-                                                                handleRemoveAssignment(
+                                                                handleDeleteAssignment(
                                                                     assignment.employee_shift_id
                                                                 )
                                                             }
+                                                            disabled={loading}
                                                         >
                                                             <Delete />
                                                         </IconButton>
@@ -505,10 +636,19 @@ export const ShiftAssignmentPage: React.FC = () => {
                                         fullWidth
                                         variant="contained"
                                         color="primary"
-                                        startIcon={<Save />}
+                                        startIcon={
+                                            loading ? (
+                                                <CircularProgress size={20} />
+                                            ) : (
+                                                <Save />
+                                            )
+                                        }
                                         onClick={handleSubmit}
+                                        disabled={loading}
                                     >
-                                        Lưu tất cả phân công
+                                        {loading
+                                            ? 'Đang lưu...'
+                                            : `Lưu ${assignments.length} phân công`}
                                     </Button>
                                 </Box>
                             )}
@@ -516,6 +656,22 @@ export const ShiftAssignmentPage: React.FC = () => {
                     </Card>
                 </Grid>
             </Grid>
+
+            {/* Snackbar for notifications */}
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={6000}
+                onClose={handleCloseSnackbar}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            >
+                <Alert
+                    onClose={handleCloseSnackbar}
+                    severity={snackbar.severity}
+                    sx={{ width: '100%' }}
+                >
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 };
