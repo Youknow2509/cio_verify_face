@@ -1,8 +1,11 @@
 .PHONY: help
 .PHONY: goose_create goose_up goose_down goose_status goose_fix goose_redo goose_reset goose_clean goose_up_by_one
-.PHONY: docker_compose_up docker_compose_down docker_builds docker_build_service
+.PHONY: docker_compose_up docker_compose_down docker_builds docker_build_service docker_run_resource
 
 .ALL: help
+
+# Project Name
+PROJECT_NAME ?= cio_verify_face
 
 # List Variables Goose
 GOOSE=goose
@@ -55,9 +58,16 @@ help:
 	@echo "\t docker_compose_down \t Docker compose down"
 	@echo "\t docker_builds \t Docker build all services and push to registry"
 	@echo "\t docker_build_service \t Docker build a specific service and push to registry"
+	@echo "\t docker_run_resource \t Docker run resource containers"
 
 	@echo "  help - Show this help message"
 
+# Docker Run Resource Containers
+docker_run_resource:
+	@echo "Running resource containers"
+	cd environment/docker && docker compose -p $(PROJECT_NAME) -f docker-compose-dev.yml up -d
+
+# Docker build a specific service and push to registry
 docker_build_service:
 	@echo "Building Docker image for service $(SERVICE) and pushing to registry"
 	docker buildx bake --file ${DOCKER_BAKE_FILE} --push $(SERVICE) 
