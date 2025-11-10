@@ -77,6 +77,29 @@ func (q *Queries) CheckUserExistShift(ctx context.Context, arg CheckUserExistShi
 	return i, err
 }
 
+const countEmployeesInShift = `-- name: CountEmployeesInShift :one
+
+SELECT COUNT(DISTINCT employee_id) AS employee_count
+FROM employee_shifts
+WHERE shift_id = $1
+`
+
+// Table: employee_shifts
+// employee_shift_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+// employee_id UUID NOT NULL REFERENCES employees(employee_id) ON DELETE CASCADE,
+// shift_id UUID NOT NULL REFERENCES work_shifts(shift_id) ON DELETE CASCADE,
+// effective_from DATE NOT NULL,
+// effective_to DATE,
+// is_active BOOLEAN DEFAULT TRUE,
+// created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+// UNIQUE(employee_id, shift_id, effective_from, effective_to)
+func (q *Queries) CountEmployeesInShift(ctx context.Context, shiftID pgtype.UUID) (int64, error) {
+	row := q.db.QueryRow(ctx, countEmployeesInShift, shiftID)
+	var employee_count int64
+	err := row.Scan(&employee_count)
+	return employee_count, err
+}
+
 const deleteEmployeeShift = `-- name: DeleteEmployeeShift :exec
 DELETE FROM employee_shifts
 WHERE employee_shift_id = $1
@@ -128,7 +151,6 @@ func (q *Queries) EnableEmployeeShift(ctx context.Context, employeeShiftID pgtyp
 }
 
 const getShiftEmployeeWithEffectiveDate = `-- name: GetShiftEmployeeWithEffectiveDate :many
-
 SELECT 
     employee_shift_id,
     shift_id,
@@ -158,15 +180,6 @@ type GetShiftEmployeeWithEffectiveDateRow struct {
 	IsActive        pgtype.Bool
 }
 
-// Table: employee_shifts
-// employee_shift_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-// employee_id UUID NOT NULL REFERENCES employees(employee_id) ON DELETE CASCADE,
-// shift_id UUID NOT NULL REFERENCES work_shifts(shift_id) ON DELETE CASCADE,
-// effective_from DATE NOT NULL,
-// effective_to DATE,
-// is_active BOOLEAN DEFAULT TRUE,
-// created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-// UNIQUE(employee_id, shift_id, effective_from, effective_to)
 func (q *Queries) GetShiftEmployeeWithEffectiveDate(ctx context.Context, arg GetShiftEmployeeWithEffectiveDateParams) ([]GetShiftEmployeeWithEffectiveDateRow, error) {
 	rows, err := q.db.Query(ctx, getShiftEmployeeWithEffectiveDate,
 		arg.EmployeeID,

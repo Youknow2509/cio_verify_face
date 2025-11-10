@@ -35,7 +35,7 @@ type GetListShiftInput struct {
 	ClientAgent string    `json:"client_agent"`
 	CompanyId   uuid.UUID `json:"company_id"`
 	//
-	Page         int       `json:"page"`
+	Page int `json:"page"`
 }
 
 // For DeleteShift
@@ -123,4 +123,5 @@ type GetDetailShiftOutput struct {
 	EarlyDepartureMinutes int       `json:"early_departure_minutes"`
 	WorkDays              []int     `json:"work_days"`
 	IsActive              bool      `json:"is_active"`
+	EmployeeCount         int64      `json:"employee_count"`
 }

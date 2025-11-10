@@ -8,6 +8,11 @@ import "fmt"
 //
 // =================================
 
+// Key get list shift in company prefix
+func GetKeyListShiftInCompanyPrefix(companyHashId string) string {
+	return fmt.Sprintf("company:shift:list:%s:", companyHashId)
+}
+
 // Key get list shift in company
 func GetKeyListShiftInCompany(companyHashId string, limit int) string {
 	return fmt.Sprintf("company:shift:list:%s:%d", companyHashId, limit)

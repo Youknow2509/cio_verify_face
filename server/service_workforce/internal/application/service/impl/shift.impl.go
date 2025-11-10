@@ -158,9 +158,26 @@ func (s *ShiftService) GetListShift(ctx context.Context, input *applicationModel
 		s.logger.Info("GetListShift - No shifts found", "company_id", input.CompanyId)
 		return []*applicationModel.GetDetailShiftOutput{}, nil
 	}
+	// Count employees in each shift
+	listEmployeeCount := make([]int64, len(reps))
+	for idx, shift := range reps {
+		countReps, countErr := s.shiftRepo.CountEmployeesInShift(
+			ctx,
+			&domainModel.CountEmployeesInShiftInput{
+				ShiftId: shift.ShiftID,
+			},
+		)
+		if countErr != nil {
+			s.logger.Warn("GetListShift - Failed to count employees in shift", "error", countErr, "shift_id", shift.ShiftID)
+			listEmployeeCount[idx] = 0
+		} else {
+			listEmployeeCount[idx] = countReps.Count
+		}
+	}
+
 	// Convert to application model
 	var output []*applicationModel.GetDetailShiftOutput
-	for _, shift := range reps {
+	for idx, shift := range reps {
 		// Convert work days from []int32 to []int
 		workDays := make([]int, len(shift.WorkDays))
 		for i, day := range shift.WorkDays {
@@ -178,6 +195,7 @@ func (s *ShiftService) GetListShift(ctx context.Context, input *applicationModel
 			EarlyDepartureMinutes: int(shift.EarlyDepartureMinutes),
 			WorkDays:              workDays,
 			IsActive:              shift.IsActive,
+			EmployeeCount:         listEmployeeCount[idx],
 		})
 	}
 

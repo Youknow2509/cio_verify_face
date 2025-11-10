@@ -22,6 +22,19 @@ type ShiftRepository struct {
 	pool *pgxpool.Pool
 }
 
+// CountEmployeesInShift implements repository.IShiftRepository.
+func (s *ShiftRepository) CountEmployeesInShift(ctx context.Context, input *model.CountEmployeesInShiftInput) (*model.CountEmployeesInShiftOutput, error) {
+	reps, err := s.db.CountEmployeesInShift(ctx,
+		pgtype.UUID{Valid: true, Bytes: input.ShiftId},
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &model.CountEmployeesInShiftOutput{
+		Count: reps,
+	}, nil
+}
+
 // DisableShiftWithId implements repository.IShiftRepository.
 func (s *ShiftRepository) DisableShiftWithId(ctx context.Context, input *model.DisableShiftInput) error {
 	if input == nil {

@@ -12,6 +12,7 @@ import (
  * Interface for Shift repository
  */
 type IShiftRepository interface {
+	CountEmployeesInShift(ctx context.Context, input *model.CountEmployeesInShiftInput) (*model.CountEmployeesInShiftOutput, error)
 	CreateShift(ctx context.Context, input *model.CreateShiftInput) (uuid.UUID, error)
 	ListShifts(ctx context.Context, input *model.ListShiftsInput) ([]*model.Shift, error)
 	GetShiftByID(ctx context.Context, shiftID uuid.UUID) (*model.Shift, error)

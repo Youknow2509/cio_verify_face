@@ -10,6 +10,15 @@ import (
 	"github.com/google/uuid"
 )
 
+// For CountEmployeesInShift
+type CountEmployeesInShiftInput struct {
+	ShiftId   uuid.UUID `json:"shift_id"`
+}
+
+type CountEmployeesInShiftOutput struct {
+	Count int64 `json:"count"`
+}
+
 // DisableShiftInput carries data to disable a shift
 type DisableShiftInput struct {
 	ShiftID   uuid.UUID

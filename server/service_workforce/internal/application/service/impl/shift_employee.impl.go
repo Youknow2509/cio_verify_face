@@ -14,6 +14,8 @@ import (
 	"github.com/youknow2509/cio_verify_face/server/service_workforce/internal/domain/logger"
 	domainModel "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/domain/model"
 	"github.com/youknow2509/cio_verify_face/server/service_workforce/internal/domain/repository"
+	utilsCache "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/shared/utils/cache"
+	utilsCrypto "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/shared/utils/crypto"
 )
 
 const (
@@ -74,7 +76,21 @@ func (s *ShiftEmployeeService) AddListShiftEmployee(ctx context.Context, input *
 			ErrorSystem: err,
 			ErrorClient: "Failed to add shifts to employees",
 		}
-	}	
+	}
+	// rm cache list workforce company
+	key := utilsCache.GetKeyListShiftInCompanyPrefix(
+		utilsCrypto.GetHash(input.CompanyId.String()),
+	)
+	lua := "for i, name in ipairs(redis.call('KEYS', ARGV[1])) do redis.call('DEL', name); end"
+	if _, delErr := s.distributedCache.LuaScript(
+		ctx,
+		lua,
+		[]string{},
+		[]string{key},
+	); delErr != nil {
+		s.logger.Warn("AddListShiftEmployee - Failed to delete list shift cache in company", "error", delErr)
+	}
+
 	return nil
 }
 
@@ -173,7 +189,20 @@ func (s *ShiftEmployeeService) DeleteShiftUser(ctx context.Context, input *appli
 	}
 
 	s.logger.Info("DeleteShiftUser - Success", "shift_user_id", input.ShiftUserId)
-
+	// rm cache list workforce company
+	key := utilsCache.GetKeyListShiftInCompanyPrefix(
+		utilsCrypto.GetHash(input.CompanyId.String()),
+	)
+	lua := "for i, name in ipairs(redis.call('KEYS', ARGV[1])) do redis.call('DEL', name); end"
+	if _, delErr := s.distributedCache.LuaScript(
+		ctx,
+		lua,
+		[]string{},
+		[]string{key},
+	); delErr != nil {
+		s.logger.Warn("AddListShiftEmployee - Failed to delete list shift cache in company", "error", delErr)
+	}
+	
 	return nil
 }
 
