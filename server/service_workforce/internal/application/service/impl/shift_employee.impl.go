@@ -159,6 +159,34 @@ func (s *ShiftEmployeeService) AddListShiftEmployee(ctx context.Context, input *
 		}
 	}
 	s.logger.Info("AddListShiftEmployee - Start", "user_id", input.UserId, "number_of_employees", len(input.EmployeeIDs))
+	// Check user exist shift in time range
+	for _, empId := range input.EmployeeIDs {
+		checkInput := &domainModel.CheckUserExistShiftInput{
+			EmployeeID:    empId,
+			EffectiveFrom: input.EffectiveFrom,
+			EffectiveTo:   input.EffectiveTo,
+			Limit:         1,
+			Offset:        0,
+		}
+
+		exists, err := s.shiftUserRepo.CheckUserExistShift(ctx, checkInput)
+		if err != nil {
+			s.logger.Error("AddListShiftEmployee - Failed to check existing shift for employee", "employee_id", empId, "error", err)
+			return &applicationError.Error{
+				ErrorSystem: err,
+				ErrorClient: "Failed to check existing shift for employee",
+			}
+		}
+
+		if exists {
+			s.logger.Warn("AddListShiftEmployee - Employee already has a shift in this time range", "employee_id", empId)
+			return &applicationError.Error{
+				ErrorSystem: fmt.Errorf("employee already has a shift in this time range"),
+				ErrorClient: fmt.Sprintf("Employee with ID %s already has a shift in this time range", empId.String()),
+			}
+		}
+	}
+	
 	// Call repository
 	reqRepo := &domainModel.AddListShiftForEmployeesInput{
 		CompanyID:     companyId,
