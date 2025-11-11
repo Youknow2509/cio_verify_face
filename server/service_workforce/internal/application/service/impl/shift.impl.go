@@ -103,9 +103,6 @@ func (s *ShiftService) ChangeStatusShift(ctx context.Context, input *application
 	if delErr := s.distributedCache.DeleteByPrefix(ctx, keyCacheListShiftPrefix); delErr != nil {
 		s.logger.Warn("ChangeStatusShift - Failed to delete list shift cache from distributed cache", "error", delErr)
 	}
-	if delErr := s.localCache.Delete(ctx, keyCacheListShiftPrefix); delErr != nil {
-		s.logger.Warn("ChangeStatusShift - Failed to delete list shift cache from local cache", "error", delErr)
-	}
 	// Delte shift info cache
 	if delErr := s.distributedCache.Delete(ctx, keyInfoShift); delErr != nil {
 		s.logger.Warn("ChangeStatusShift - Failed to delete shift info cache from distributed cache", "error", delErr)
@@ -222,7 +219,7 @@ func (s *ShiftService) GetListShift(ctx context.Context, input *applicationModel
 			s.logger.Warn("GetListShift - Failed to set distributed cache", "error", setErr)
 		}
 		// Store in local cache
-		if setErr := s.localCache.SetTTL(ctx, key, string(jsonData), constants.TTL_Shift_Cache); setErr != nil {
+		if setErr := s.localCache.SetTTL(ctx, key, string(jsonData), 3); setErr != nil {
 			s.logger.Warn("GetListShift - Failed to set local cache", "error", setErr)
 		}
 	}
@@ -439,7 +436,7 @@ func (s *ShiftService) GetDetailShift(ctx context.Context, input *applicationMod
 		if unmarshalErr := json.Unmarshal([]byte(cachedData), &output); unmarshalErr == nil {
 			// Store in local cache for faster access next time
 			if jsonData, _ := json.Marshal(output); len(jsonData) > 0 {
-				_ = s.localCache.SetTTL(ctx, cacheKey, string(jsonData), constants.TTL_Shift_Cache)
+				_ = s.localCache.SetTTL(ctx, cacheKey, string(jsonData), 2)
 			}
 			return &output, nil
 		} else {
@@ -486,7 +483,7 @@ func (s *ShiftService) GetDetailShift(ctx context.Context, input *applicationMod
 			s.logger.Warn("GetDetailShift - Failed to set distributed cache", "error", setErr)
 		}
 		// Store in local cache
-		if setErr := s.localCache.SetTTL(ctx, cacheKey, string(jsonData), constants.TTL_Shift_Cache); setErr != nil {
+		if setErr := s.localCache.SetTTL(ctx, cacheKey, string(jsonData), 3); setErr != nil {
 			s.logger.Warn("GetDetailShift - Failed to set local cache", "error", setErr)
 		}
 	}
