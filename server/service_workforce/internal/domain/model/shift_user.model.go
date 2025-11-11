@@ -10,6 +10,12 @@ import (
 	"github.com/google/uuid"
 )
 
+// For IsUserManagetShift
+type IsUserManagetShiftInput struct {
+	CompanyUserID uuid.UUID
+	ShiftID       uuid.UUID
+}
+
 // For enable employee shift assignment
 type EnableEmployeeShiftIInput struct {
 	EmployeeID uuid.UUID

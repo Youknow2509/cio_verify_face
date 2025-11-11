@@ -11,6 +11,7 @@ import (
  * Interface for ShiftUser repository
  */
 type IShiftUserRepository interface {
+	IsUserManagetShift(ctx context.Context, input *model.IsUserManagetShiftInput) (bool, error)
 	GetShiftEmployeeWithEffectiveDate(ctx context.Context, input *model.GetShiftEmployeeWithEffectiveDateInput) ([]*model.EmployeeShiftRow, error)
 	EditEffectiveShiftForEmployee(ctx context.Context, input *model.EditEffectiveShiftForEmployeeInput) error
 	DeleteEmployeeShift(ctx context.Context, input *model.DeleteEmployeeShiftInput) error

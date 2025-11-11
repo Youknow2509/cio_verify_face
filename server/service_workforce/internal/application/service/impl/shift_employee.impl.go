@@ -24,10 +24,115 @@ import (
 // =================================================
 type ShiftEmployeeService struct {
 	shiftUserRepo    repository.IShiftUserRepository
+	shiftRepo        repository.IShiftRepository
 	userRepo         repository.IUserRepository
 	logger           logger.ILogger
 	distributedCache cache.IDistributedCache
 	localCache       cache.ILocalCache
+}
+
+// GetInfoEmployeeInShift implements service.IShiftEmployeeService.
+func (s *ShiftEmployeeService) GetInfoEmployeeInShift(ctx context.Context, input *applicationModel.GetInfoEmployeeInShiftInput) ([]*applicationModel.EmployeeInfoInShiftBase, *applicationError.Error) {
+	if input == nil {
+		s.logger.Error("GetInfoEmployeeInShift - Input is nil")
+		return nil, &applicationError.Error{
+			ErrorSystem: fmt.Errorf("input is nil"),
+			ErrorClient: "Invalid input data",
+		}
+	}
+	// Check permission
+	if input.Role == domainModel.RoleManager {
+		ok, err := s.shiftUserRepo.IsUserManagetShift(
+			ctx,
+			&domainModel.IsUserManagetShiftInput{
+				ShiftID:       input.ShiftId,
+				CompanyUserID: input.CompanyId,
+			},
+		)
+		if err != nil {
+			s.logger.Error("GetInfoEmployeeInShift - Failed to check user permission", "error", err)
+			return nil, &applicationError.Error{
+				ErrorSystem: err,
+				ErrorClient: "Failed to check user permission",
+			}
+		}
+		if !ok {
+			s.logger.Error("GetInfoEmployeeInShift - User does not have permission to view shift employee info", "user_id", input.UserId, "shift_id", input.ShiftId)
+			return nil, &applicationError.Error{
+				ErrorSystem: fmt.Errorf("user does not have permission to view shift employee info"),
+				ErrorClient: "You do not have permission to view this shift employee info",
+			}
+		}
+	}
+	// Get data in cache
+	key := utilsCache.GetKeyInfoEmployeeInShift(
+		utilsCrypto.GetHash(input.ShiftId.String()),
+	)
+
+	// Try local cache first
+	if cachedData, err := s.localCache.Get(ctx, key); err == nil && cachedData != "" {
+		var employeeInfo []*applicationModel.EmployeeInfoInShiftBase
+		if err := json.Unmarshal([]byte(cachedData), &employeeInfo); err == nil {
+			s.logger.Info("GetInfoEmployeeInShift - Cache hit (local)", "shift_id", input.ShiftId)
+			return employeeInfo, nil
+		}
+		s.logger.Warn("GetInfoEmployeeInShift - Failed to unmarshal local cache", "error", err)
+	}
+
+	// Try distributed cache next
+	if cachedData, err := s.distributedCache.Get(ctx, key); err == nil && cachedData != "" {
+		var employeeInfo []*applicationModel.EmployeeInfoInShiftBase
+		if err := json.Unmarshal([]byte(cachedData), &employeeInfo); err == nil {
+			s.logger.Info("GetInfoEmployeeInShift - Cache hit (distributed)", "shift_id", input.ShiftId)
+			return employeeInfo, nil
+		}
+		s.logger.Warn("GetInfoEmployeeInShift - Failed to unmarshal distributed cache", "error", err)
+	}
+
+	// Cache miss — proceed to fetch from source
+	s.logger.Info("GetInfoEmployeeInShift - Cache miss", "shift_id", input.ShiftId)
+
+	// Call repository
+	reps, err := s.shiftRepo.GetInfoEmployeeInShift(
+		ctx,
+		&domainModel.GetInfoEmployeeInShiftInput{
+			CompanyId: input.CompanyId,
+			CurShidId: input.ShiftId,
+		},
+	)
+	if err != nil {
+		s.logger.Error("GetInfoEmployeeInShift - Failed to get employee info in shift", "error", err)
+		return nil, &applicationError.Error{
+			ErrorSystem: err,
+			ErrorClient: "Failed to get employee info in shift",
+		}
+	}
+	if len(reps) == 0 {
+		s.logger.Info("GetInfoEmployeeInShift - No employees found in shift", "shift_id", input.ShiftId)
+		return []*applicationModel.EmployeeInfoInShiftBase{}, nil
+	}
+
+	// Map domain model to application model
+	output := make([]*applicationModel.EmployeeInfoInShiftBase, 0)
+	for _, r := range reps {
+		output = append(output, &applicationModel.EmployeeInfoInShiftBase{
+			UserId:         r.UserId.String(),
+			Name:           r.Name,
+			NumberEmployee: r.NumberEmployee,
+			CurrentShift:   r.CurrentShift,
+			ShiftActive:    r.ShiftActive,
+		})
+	}
+
+	// Cache the result for future requests
+	if data, err := json.Marshal(output); err == nil {
+		// Store in local cache (ignore errors - cache is non-critical)
+		_ = s.localCache.SetTTL(ctx, key, string(data), 2) // adjust TTL as needed
+		// Store in distributed cache
+		_ = s.distributedCache.SetTTL(ctx, key, string(data), constants.TTL_Info_Base_Employee_In_Shift)
+	}
+
+	return output, nil
 }
 
 // AddListShiftEmployee implements service.IShiftEmployeeService.
@@ -426,8 +531,8 @@ func (s *ShiftEmployeeService) GetShiftForUserWithEffectiveDate(ctx context.Cont
 	// Create cache key based on user and date range
 	cacheKey := utilsCache.GetKeyShiftEmployeeWithEffectiveDate(
 		utilsCrypto.GetHash(input.UserId.String()),
-		fmt.Sprintf("%d", input.EffectiveFrom),
-		fmt.Sprintf("%d", input.EffectiveTo),
+		fmt.Sprintf("%d", input.EffectiveFrom.Unix()),
+		fmt.Sprintf("%d", input.EffectiveTo.Unix()),
 		input.Page,
 		input.Size,
 	)
@@ -510,6 +615,11 @@ func NewShiftEmployeeService() service.IShiftEmployeeService {
 		panic(fmt.Sprintf("Failed to get shift user repository: %v", err))
 	}
 
+	shiftRepo, err := repository.GetShiftRepository()
+	if err != nil {
+		panic(fmt.Sprintf("Failed to get shift repository: %v", err))
+	}
+
 	userRepo, err := repository.GetUserRepository()
 	if err != nil {
 		panic(fmt.Sprintf("Failed to get user repository: %v", err))
@@ -532,6 +642,7 @@ func NewShiftEmployeeService() service.IShiftEmployeeService {
 
 	return &ShiftEmployeeService{
 		shiftUserRepo:    shiftUserRepo,
+		shiftRepo:        shiftRepo,
 		userRepo:         userRepo,
 		logger:           log,
 		distributedCache: distributedCache,

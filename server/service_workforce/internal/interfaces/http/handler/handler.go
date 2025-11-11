@@ -35,12 +35,70 @@ type iHandler interface {
 	DeleteShiftUser(*gin.Context)
 	AddShiftEmployee(*gin.Context)
 	AddShiftEmployeeList(*gin.Context)
+	GetInfoEmployeeInShift(*gin.Context)
 }
 
 /**
  * Handler struct
  */
 type Handler struct{}
+
+// GetInfoEmployeeInShift implements iHandler.
+// @Summary      Get info employee in shift
+// @Description  Get info employee in shift for company
+// @Tags         Shift
+// @Accept       json
+// @Produce      json
+// @Param		 authorization header string true "Bearer <token>"// @Param        id path string true "Shift ID"
+// @Success      200  {object}  dto.ResponseData
+// @Failure      400  {object}  dto.ErrResponseData
+// @Router       /api/v1/employee/shift/employee/{id} [get]
+func (h *Handler) GetInfoEmployeeInShift(g *gin.Context) {
+	// Get id in path
+	idShiftStr := g.Param("id")
+	shiftUuid, err := uuidShared.ParseUUID(idShiftStr)
+	if err != nil {
+		response.ErrorResponse(g, 400, "Invalid shift ID")
+		return
+	}
+	// Get sessoin in req
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(g)
+	if !ok {
+		response.ErrorResponse(g, response.ErrorCodeAuthSessionInvalid, "Invalid auth session")
+		return
+	}
+	// Validate uuid
+	userUuid, _ := uuidShared.ParseUUID(userId)
+	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
+	}
+	// Call to application service
+	reps, errReq := applicationService.GetShiftEmployeeService().GetInfoEmployeeInShift(
+		g,
+		&applicationModel.GetInfoEmployeeInShiftInput{
+			// User info
+			UserId:      userUuid,
+			SessionId:   sessionUuid,
+			Role:        userRole,
+			ClientIp:    g.ClientIP(),
+			ClientAgent: g.Request.UserAgent(),
+			CompanyId:   companyUuid,
+			//
+			ShiftId: shiftUuid,
+		},
+	)
+	if errReq != nil {
+		if errReq.ErrorSystem != nil {
+			response.ErrorResponse(g, response.ErrorCodeSystemTemporary, "Internal server error")
+			return
+		}
+		response.ErrorResponse(g, 400, errReq.ErrorClient)
+		return
+	}
+	response.SuccessResponse(g, 200, reps)
+}
 
 // AddShiftEmployeeList implements iHandler.
 // @Summary      Add shift employee list

@@ -12,7 +12,6 @@ import (
 )
 
 const createShift = `-- name: CreateShift :one
-
 INSERT INTO work_shifts (
   company_id, name, description, start_time, end_time,
   break_duration_minutes, grace_period_minutes, early_departure_minutes,
@@ -37,23 +36,6 @@ type CreateShiftParams struct {
 	WorkDays              []int32
 }
 
-// CREATE TABLE IF NOT EXISTS work_shifts (
-// shift_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-// company_id UUID NOT NULL REFERENCES companies(company_id) ON DELETE CASCADE,
-// name VARCHAR(255) NOT NULL,
-// description TEXT,
-// start_time TIME NOT NULL,
-// end_time TIME NOT NULL,
-// break_duration_minutes INTEGER DEFAULT 0,
-// grace_period_minutes INTEGER DEFAULT 15, -- Late arrival tolerance
-// early_departure_minutes INTEGER DEFAULT 15, -- Early leave tolerance
-// work_days INTEGER[] DEFAULT ARRAY[1,2,3,4,5], -- 1=Monday, 7=Sunday
-// is_flexible BOOLEAN DEFAULT FALSE,
-// overtime_after_minutes INTEGER DEFAULT 480, -- 8 hours = 480 minutes
-// is_active BOOLEAN DEFAULT TRUE,
-// created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-// updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-// )
 func (q *Queries) CreateShift(ctx context.Context, arg CreateShiftParams) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, createShift,
 		arg.CompanyID,
@@ -113,6 +95,66 @@ type EnableShiftWithIdParams struct {
 func (q *Queries) EnableShiftWithId(ctx context.Context, arg EnableShiftWithIdParams) error {
 	_, err := q.db.Exec(ctx, enableShiftWithId, arg.ShiftID, arg.CompanyID)
 	return err
+}
+
+const getInfoEmployeeInShift = `-- name: GetInfoEmployeeInShift :many
+SELECT 
+    e.employee_id,
+    e.employee_code,
+    u.full_name,
+    CASE 
+        WHEN es.shift_id = $2 THEN TRUE 
+        ELSE FALSE 
+    END AS current_shift,
+    ws.name AS shift_active
+FROM employees e
+INNER JOIN users u ON e.employee_id = u.user_id
+LEFT JOIN employee_shifts es ON e.employee_id = es.employee_id 
+    AND es.is_active = TRUE
+    AND es.effective_from <= CURRENT_DATE 
+    AND (es.effective_to IS NULL OR es.effective_to >= CURRENT_DATE)
+LEFT JOIN work_shifts ws ON es.shift_id = ws.shift_id
+WHERE e.company_id = $1
+ORDER BY e.employee_code
+`
+
+type GetInfoEmployeeInShiftParams struct {
+	CompanyID pgtype.UUID
+	ShiftID   pgtype.UUID
+}
+
+type GetInfoEmployeeInShiftRow struct {
+	EmployeeID   pgtype.UUID
+	EmployeeCode string
+	FullName     string
+	CurrentShift bool
+	ShiftActive  pgtype.Text
+}
+
+func (q *Queries) GetInfoEmployeeInShift(ctx context.Context, arg GetInfoEmployeeInShiftParams) ([]GetInfoEmployeeInShiftRow, error) {
+	rows, err := q.db.Query(ctx, getInfoEmployeeInShift, arg.CompanyID, arg.ShiftID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetInfoEmployeeInShiftRow
+	for rows.Next() {
+		var i GetInfoEmployeeInShiftRow
+		if err := rows.Scan(
+			&i.EmployeeID,
+			&i.EmployeeCode,
+			&i.FullName,
+			&i.CurrentShift,
+			&i.ShiftActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getShiftByID = `-- name: GetShiftByID :one
@@ -175,6 +217,43 @@ func (q *Queries) GetShiftsIdForCompany(ctx context.Context, arg GetShiftsIdForC
 		return nil, err
 	}
 	return items, nil
+}
+
+const isUserManagetShift = `-- name: IsUserManagetShift :one
+
+SELECT shift_id 
+FROM work_shifts
+WHERE shift_id = $1 AND company_id = $2
+LIMIT 1
+`
+
+type IsUserManagetShiftParams struct {
+	ShiftID   pgtype.UUID
+	CompanyID pgtype.UUID
+}
+
+// CREATE TABLE IF NOT EXISTS work_shifts (
+// shift_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+// company_id UUID NOT NULL REFERENCES companies(company_id) ON DELETE CASCADE,
+// name VARCHAR(255) NOT NULL,
+// description TEXT,
+// start_time TIME NOT NULL,
+// end_time TIME NOT NULL,
+// break_duration_minutes INTEGER DEFAULT 0,
+// grace_period_minutes INTEGER DEFAULT 15, -- Late arrival tolerance
+// early_departure_minutes INTEGER DEFAULT 15, -- Early leave tolerance
+// work_days INTEGER[] DEFAULT ARRAY[1,2,3,4,5], -- 1=Monday, 7=Sunday
+// is_flexible BOOLEAN DEFAULT FALSE,
+// overtime_after_minutes INTEGER DEFAULT 480, -- 8 hours = 480 minutes
+// is_active BOOLEAN DEFAULT TRUE,
+// created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+// updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+// )
+func (q *Queries) IsUserManagetShift(ctx context.Context, arg IsUserManagetShiftParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, isUserManagetShift, arg.ShiftID, arg.CompanyID)
+	var shift_id pgtype.UUID
+	err := row.Scan(&shift_id)
+	return shift_id, err
 }
 
 const listShifts = `-- name: ListShifts :many

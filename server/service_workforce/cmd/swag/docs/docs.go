@@ -259,6 +259,44 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/employee/shift/employee/{id}": {
+            "get": {
+                "description": "Get info employee in shift for company",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shift"
+                ],
+                "summary": "Get info employee in shift",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer \u003ctoken\u003e",
+                        "name": "authorization",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ResponseData"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrResponseData"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/employee/shift/enable": {
             "post": {
                 "description": "Enable shift for user information for company",

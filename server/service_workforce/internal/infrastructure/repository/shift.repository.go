@@ -22,6 +22,33 @@ type ShiftRepository struct {
 	pool *pgxpool.Pool
 }
 
+// GetInfoEmployeeInShift implements repository.IShiftRepository.
+func (s *ShiftRepository) GetInfoEmployeeInShift(ctx context.Context, input *model.GetInfoEmployeeInShiftInput) ([]*model.EmployeeInShiftRow, error) {
+	if input == nil {
+		return nil, errors.New("input cannot be nil")
+	}
+
+	rows, err := s.db.GetInfoEmployeeInShift(ctx, database.GetInfoEmployeeInShiftParams{
+		CompanyID: pgtype.UUID{Valid: true, Bytes: input.CompanyId},
+		ShiftID:   pgtype.UUID{Valid: true, Bytes: input.CurShidId},
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	out := make([]*model.EmployeeInShiftRow, 0, len(rows))
+	for _, r := range rows {
+		out = append(out, &model.EmployeeInShiftRow{
+			UserId:         r.EmployeeID.Bytes,
+			NumberEmployee: r.EmployeeCode,
+			Name:           r.FullName,
+			CurrentShift:   r.CurrentShift,
+			ShiftActive:    fromPgText(r.ShiftActive),
+		})
+	}
+	return out, nil
+}
+
 // CountEmployeesInShift implements repository.IShiftRepository.
 func (s *ShiftRepository) CountEmployeesInShift(ctx context.Context, input *model.CountEmployeesInShiftInput) (*model.CountEmployeesInShiftOutput, error) {
 	reps, err := s.db.CountEmployeesInShift(ctx,

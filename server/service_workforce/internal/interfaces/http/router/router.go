@@ -34,8 +34,9 @@ func (r *HttpRouterManager) InitRoutes(group *gin.RouterGroup) {
 		shiftEmployeeRouterV1.POST("/edit/effective", handler.NewHandler().EditShiftUserWithEffectiveDate) // Edit shift for user with effective date
 		shiftEmployeeRouterV1.POST("/enable", handler.NewHandler().EnableShiftUser)                        // Enable shift for user
 		shiftEmployeeRouterV1.POST("/disable", handler.NewHandler().DisableShiftUser)                      // Disable shift for user
-		shiftEmployeeRouterV1.POST("/delete", handler.NewHandler().DeleteShiftUser)                         // Delete shift for user
-		shiftEmployeeRouterV1.POST("/add", handler.NewHandler().AddShiftEmployee)                             // Add shift employee
-		shiftEmployeeRouterV1.POST("/add/list", handler.NewHandler().AddShiftEmployeeList)                    // Add shift employee list
+		shiftEmployeeRouterV1.POST("/delete", handler.NewHandler().DeleteShiftUser)                        // Delete shift for user
+		shiftEmployeeRouterV1.POST("/add", handler.NewHandler().AddShiftEmployee)                          // Add shift employee
+		shiftEmployeeRouterV1.POST("/add/list", handler.NewHandler().AddShiftEmployeeList)                 // Add shift employee list
+		shiftEmployeeRouterV1.GET("/employee/:id", handler.NewHandler().GetInfoEmployeeInShift)            // Get info employee in shift
 	}
 }

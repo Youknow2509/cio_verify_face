@@ -22,6 +22,24 @@ type ShiftUserRepository struct {
 	pool *pgxpool.Pool
 }
 
+// IsUserManagetShift implements repository.IShiftUserRepository.
+func (s *ShiftUserRepository) IsUserManagetShift(ctx context.Context, input *model.IsUserManagetShiftInput) (bool, error) {
+	_, err := s.db.IsUserManagetShift(
+		ctx,
+		database.IsUserManagetShiftParams{
+			ShiftID:   pgtype.UUID{Valid: true, Bytes: input.ShiftID},
+			CompanyID: pgtype.UUID{Valid: true, Bytes: input.CompanyUserID},
+		},
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
+}
+
 // DeleteEmployeeShift implements repository.IShiftUserRepository.
 func (s *ShiftUserRepository) DeleteEmployeeShift(ctx context.Context, input *model.DeleteEmployeeShiftInput) error {
 	if input == nil {
@@ -194,17 +212,6 @@ func (s *ShiftUserRepository) CheckUserExistShift(ctx context.Context, input *mo
 }
 
 // Helper functions for type conversion
-func toPgTimestamp(t time.Time) pgtype.Timestamptz {
-	return pgtype.Timestamptz{Time: t, Valid: true}
-}
-
-func fromPgTimestamp(t pgtype.Timestamptz) time.Time {
-	if t.Valid {
-		return t.Time
-	}
-	return time.Time{}
-}
-
 func toPgDate(t time.Time) pgtype.Date {
 	return pgtype.Date{Time: t, Valid: true}
 }
@@ -214,10 +221,6 @@ func fromPgDate(d pgtype.Date) time.Time {
 		return d.Time
 	}
 	return time.Time{}
-}
-
-func toPgBoolValue(b bool) pgtype.Bool {
-	return pgtype.Bool{Bool: b, Valid: true}
 }
 
 func fromPgBoolValue(b pgtype.Bool) bool {

@@ -8,8 +8,9 @@ package constants
 
 const (
 	// Shift
-	TTL_Shift_Cache          = 60 * 30 // 30 minutes
-	TTL_Shift_Employee_Cache = 60 * 30 // 30 minutes
+	TTL_Shift_Cache                 = 60 * 30 // 30 minutes
+	TTL_Shift_Employee_Cache        = 60 * 30 // 30 minutes
+	TTL_Info_Base_Employee_In_Shift = 60 * 5  // 5 minutes
 )
 
 const (
