@@ -4,6 +4,18 @@ package dto
 // Shift employee DTO
 // =======================================
 
+// GetInfoEmployeeInShiftReq request
+type GetInfoEmployeeInShiftReq struct {
+	ShiftId string `json:"shift_id" validate:"required"`
+	Page    int    `json:"page" validate:"gte=1"`
+}
+
+// GetInfoEmployeeDonotInShiftReq request
+type GetInfoEmployeeDonotInShiftReq struct {
+	ShiftId string `json:"shift_id" validate:"required"`
+	Page    int    `json:"page" validate:"gte=1"`
+}
+
 // DisableShiftUserReq request
 type DisableShiftUserReq struct {
 	ShiftId    string `json:"shift_id" validate:"required"`

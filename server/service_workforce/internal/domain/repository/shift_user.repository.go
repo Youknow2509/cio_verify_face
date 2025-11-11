@@ -11,6 +11,9 @@ import (
  * Interface for ShiftUser repository
  */
 type IShiftUserRepository interface {
+	GetListEmployeeDonotInShift(ctx context.Context, input *model.GetListEmployyeShiftInput) (*model.GetListEmployyeShiftOutput, error)
+	GetListEmployeeInShift(ctx context.Context, input *model.GetListEmployyeShiftInput) (*model.GetListEmployyeShiftOutput, error)
+	RemoveListShiftForEmployees(ctx context.Context, input *model.RemoveListShiftForEmployeesInput) error
 	IsUserManagetShift(ctx context.Context, input *model.IsUserManagetShiftInput) (bool, error)
 	GetShiftEmployeeWithEffectiveDate(ctx context.Context, input *model.GetShiftEmployeeWithEffectiveDateInput) ([]*model.EmployeeShiftRow, error)
 	EditEffectiveShiftForEmployee(ctx context.Context, input *model.EditEffectiveShiftForEmployeeInput) error

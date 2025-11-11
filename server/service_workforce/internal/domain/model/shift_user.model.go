@@ -10,6 +10,34 @@ import (
 	"github.com/google/uuid"
 )
 
+// For get list employees in a shift
+type GetListEmployyeShiftInput struct {
+	ShiftID   uuid.UUID
+	CompanyID uuid.UUID
+	Limit     int32
+	Offset    int32
+}
+
+type GetListEmployyeShiftOutput struct {
+	EmployeeIDs []*EmployeeShiftInfoBase
+	Total       int32
+	PageSize    int32
+}
+
+type EmployeeShiftInfoBase struct {
+	EmployeeId          uuid.UUID
+	EmployeeName        string
+	EmployeeCode        string
+	EmployeeShiftName   string
+	EmployeeShiftActive bool
+}
+
+// For rm list shift assignments from multiple employees
+type RemoveListShiftForEmployeesInput struct {
+	ShiftID     uuid.UUID
+	EmployeeIDs []uuid.UUID
+}
+
 // For IsUserManagetShift
 type IsUserManagetShiftInput struct {
 	CompanyUserID uuid.UUID

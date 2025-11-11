@@ -22,6 +22,106 @@ type ShiftUserRepository struct {
 	pool *pgxpool.Pool
 }
 
+// GetListEmployeeDonotInShift implements repository.IShiftUserRepository using sqlc.
+func (s *ShiftUserRepository) GetListEmployeeDonotInShift(ctx context.Context, input *model.GetListEmployyeShiftInput) (*model.GetListEmployyeShiftOutput, error) {
+	if input == nil {
+		return nil, errors.New("input cannot be nil")
+	}
+	// Count total
+	total, err := s.db.CountEmployeesDonotInShiftCurrent(ctx, database.CountEmployeesDonotInShiftCurrentParams{
+		CompanyID: pgtype.UUID{Valid: true, Bytes: input.CompanyID},
+		ShiftID:   pgtype.UUID{Valid: true, Bytes: input.ShiftID},
+	})
+	if err != nil {
+		return nil, err
+	}
+	// Fetch page
+	rows, err := s.db.GetListEmployeeDonotInShift(ctx, database.GetListEmployeeDonotInShiftParams{
+		CompanyID: pgtype.UUID{Valid: true, Bytes: input.CompanyID},
+		ShiftID:   pgtype.UUID{Valid: true, Bytes: input.ShiftID},
+		Limit:     input.Limit,
+		Offset:    input.Offset,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := &model.GetListEmployyeShiftOutput{
+		EmployeeIDs: make([]*model.EmployeeShiftInfoBase, 0, len(rows)),
+		Total:       int32(total),
+		PageSize:    input.Limit,
+	}
+	for _, r := range rows {
+		out.EmployeeIDs = append(out.EmployeeIDs, &model.EmployeeShiftInfoBase{
+			EmployeeId:          r.EmployeeID.Bytes,
+			EmployeeName:        r.FullName,
+			EmployeeCode:        r.EmployeeCode,
+			EmployeeShiftName:   r.ShiftName,
+			EmployeeShiftActive: r.CurrentShift,
+		})
+	}
+	return out, nil
+}
+
+// GetListEmployeeInShift implements repository.IShiftUserRepository using sqlc.
+func (s *ShiftUserRepository) GetListEmployeeInShift(ctx context.Context, input *model.GetListEmployyeShiftInput) (*model.GetListEmployyeShiftOutput, error) {
+	if input == nil {
+		return nil, errors.New("input cannot be nil")
+	}
+	total, err := s.db.CountEmployeesInShiftCurrent(ctx, database.CountEmployeesInShiftCurrentParams{
+		CompanyID: pgtype.UUID{Valid: true, Bytes: input.CompanyID},
+		ShiftID:   pgtype.UUID{Valid: true, Bytes: input.ShiftID},
+	})
+	if err != nil {
+		return nil, err
+	}
+	rows, err := s.db.GetListEmployeeInShift(ctx, database.GetListEmployeeInShiftParams{
+		CompanyID: pgtype.UUID{Valid: true, Bytes: input.CompanyID},
+		ShiftID:   pgtype.UUID{Valid: true, Bytes: input.ShiftID},
+		Limit:     input.Limit,
+		Offset:    input.Offset,
+	})
+	if err != nil {
+		return nil, err
+	}
+	out := &model.GetListEmployyeShiftOutput{
+		EmployeeIDs: make([]*model.EmployeeShiftInfoBase, 0, len(rows)),
+		Total:       int32(total),
+		PageSize:    input.Limit,
+	}
+	for _, r := range rows {
+		out.EmployeeIDs = append(out.EmployeeIDs, &model.EmployeeShiftInfoBase{
+			EmployeeId:          r.EmployeeID.Bytes,
+			EmployeeName:        r.FullName,
+			EmployeeCode:        r.EmployeeCode,
+			EmployeeShiftName:   r.ShiftName,
+			EmployeeShiftActive: r.CurrentShift,
+		})
+	}
+	return out, nil
+}
+
+// RemoveListShiftForEmployees implements repository.IShiftUserRepository.
+func (s *ShiftUserRepository) RemoveListShiftForEmployees(ctx context.Context, input *model.RemoveListShiftForEmployeesInput) error {
+	if input == nil {
+		return errors.New("input cannot be nil")
+	}
+
+	listError := make([]error, 0)
+	for _, employeeId := range input.EmployeeIDs {
+		err := s.db.DeleteEmployeeShift(ctx, database.DeleteEmployeeShiftParams{
+			EmployeeID: pgtype.UUID{Valid: true, Bytes: employeeId},
+			ShiftID:    pgtype.UUID{Valid: true, Bytes: input.ShiftID},
+		})
+		if err != nil {
+			listError = append(listError, err)
+		}
+	}
+	if len(listError) > 0 {
+		return errors.New("one or more errors occurred while removing shifts for employees")
+	}
+	return nil
+}
+
 // IsUserManagetShift implements repository.IShiftUserRepository.
 func (s *ShiftUserRepository) IsUserManagetShift(ctx context.Context, input *model.IsUserManagetShiftInput) (bool, error) {
 	_, err := s.db.IsUserManagetShift(

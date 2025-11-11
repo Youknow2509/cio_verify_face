@@ -35,6 +35,7 @@ type iHandler interface {
 	DeleteShiftUser(*gin.Context)
 	AddShiftEmployee(*gin.Context)
 	AddShiftEmployeeList(*gin.Context)
+	GetInfoEmployeeDonotInShift(*gin.Context)
 	GetInfoEmployeeInShift(*gin.Context)
 }
 
@@ -43,41 +44,59 @@ type iHandler interface {
  */
 type Handler struct{}
 
-// GetInfoEmployeeInShift implements iHandler.
-// @Summary      Get info employee in shift
-// @Description  Get info employee in shift for company
+// GetInfoEmployeeDonotInShift implements iHandler.
+// @Summary      Get info employee donot in shift
+// @Description  Get info employee donot in shift for company
 // @Tags         Shift
 // @Accept       json
 // @Produce      json
-// @Param		 authorization header string true "Bearer <token>"// @Param        id path string true "Shift ID"
+// @Param		 authorization header string true "Bearer <token>"
+// @Param        dto body dto.GetInfoEmployeeDonotInShiftReq true "Get Info Employee Donot In Shift Request"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/employee/shift/employee/{id} [get]
-func (h *Handler) GetInfoEmployeeInShift(g *gin.Context) {
-	// Get id in path
-	idShiftStr := g.Param("id")
-	shiftUuid, err := uuidShared.ParseUUID(idShiftStr)
-	if err != nil {
-		response.ErrorResponse(g, 400, "Invalid shift ID")
+// @Router       /v1/employee/shift/not_in [post]
+func (h *Handler) GetInfoEmployeeDonotInShift(g *gin.Context) {
+	var req dto.GetInfoEmployeeDonotInShiftReq
+	if err := g.ShouldBind(&req); err != nil {
+		response.ErrorResponse(g, 400, "Data input error")
 		return
 	}
-	// Get sessoin in req
+	// Validate req
+	validateMiddleware, ok := g.Get(constants.MIDDLEWARE_VALIDATE_SERVICE_NAME)
+	if !ok {
+		response.ErrorResponse(g, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+	validate, ok := validateMiddleware.(*validator.Validate)
+	if !ok {
+		response.ErrorResponse(g, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+	if err := validate.Struct(&req); err != nil {
+		response.ErrorResponse(g, 400, "Validation error")
+		return
+	}
+	// Get data auth from context
 	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(g)
 	if !ok {
 		response.ErrorResponse(g, response.ErrorCodeAuthSessionInvalid, "Invalid auth session")
 		return
 	}
-	// Validate uuid
-	userUuid, _ := uuidShared.ParseUUID(userId)
-	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
 	var companyUuid uuid.UUID
 	if companyId != "" {
 		companyUuid, _ = uuidShared.ParseUUID(companyId)
 	}
-	// Call to application service
-	reps, errReq := applicationService.GetShiftEmployeeService().GetInfoEmployeeInShift(
+	userUuid, _ := uuidShared.ParseUUID(userId)
+	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	shiftUuid, err := uuidShared.ParseUUID(req.ShiftId)
+	if err != nil {
+		response.ErrorResponse(g, 400, "Invalid shift ID")
+		return
+	}
+	// call service get info employee donot in shift
+	resp, errResp := applicationService.GetShiftEmployeeService().GetListEmployeeDonotInShift(
 		g,
-		&applicationModel.GetInfoEmployeeInShiftInput{
+		&applicationModel.GetListEmployeeShiftInput{
 			// User info
 			UserId:      userUuid,
 			SessionId:   sessionUuid,
@@ -87,17 +106,94 @@ func (h *Handler) GetInfoEmployeeInShift(g *gin.Context) {
 			CompanyId:   companyUuid,
 			//
 			ShiftId: shiftUuid,
+			Page:    req.Page,
 		},
 	)
-	if errReq != nil {
-		if errReq.ErrorSystem != nil {
+	if errResp != nil {
+		if errResp.ErrorSystem != nil {
 			response.ErrorResponse(g, response.ErrorCodeSystemTemporary, "Internal server error")
 			return
 		}
-		response.ErrorResponse(g, 400, errReq.ErrorClient)
+		response.ErrorResponse(g, 400, errResp.ErrorClient)
 		return
 	}
-	response.SuccessResponse(g, 200, reps)
+	response.SuccessResponse(g, 200, resp)
+}
+
+// GetInfoEmployeeInShift implements iHandler.
+// @Summary      Get info employee in shift
+// @Description  Get info employee in shift for company
+// @Tags         Shift
+// @Accept       json
+// @Produce      json
+// @Param		 authorization header string true "Bearer <token>"
+// @Param        dto body dto.GetInfoEmployeeInShiftReq true "Get Info Employee In Shift Request"
+// @Success      200  {object}  dto.ResponseData
+// @Failure      400  {object}  dto.ErrResponseData
+// @Router       /v1/employee/shift/in [post]
+func (h *Handler) GetInfoEmployeeInShift(g *gin.Context) {
+	var req dto.GetInfoEmployeeInShiftReq
+	if err := g.ShouldBind(&req); err != nil {
+		response.ErrorResponse(g, 400, "Data input error")
+		return
+	}
+	// Validate req
+	validateMiddleware, ok := g.Get(constants.MIDDLEWARE_VALIDATE_SERVICE_NAME)
+	if !ok {
+		response.ErrorResponse(g, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+	validate, ok := validateMiddleware.(*validator.Validate)
+	if !ok {
+		response.ErrorResponse(g, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+	if err := validate.Struct(&req); err != nil {
+		response.ErrorResponse(g, 400, "Validation error")
+		return
+	}
+	// Get data auth from context
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(g)
+	if !ok {
+		response.ErrorResponse(g, response.ErrorCodeAuthSessionInvalid, "Invalid auth session")
+		return
+	}
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
+	}
+	userUuid, _ := uuidShared.ParseUUID(userId)
+	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	shiftUuid, err := uuidShared.ParseUUID(req.ShiftId)
+	if err != nil {
+		response.ErrorResponse(g, 400, "Invalid shift ID")
+		return
+	}
+	// call service get info employee donot in shift
+	resp, errResp := applicationService.GetShiftEmployeeService().GetListEmployeeInShift(
+		g,
+		&applicationModel.GetListEmployeeShiftInput{
+			// User info
+			UserId:      userUuid,
+			SessionId:   sessionUuid,
+			Role:        userRole,
+			ClientIp:    g.ClientIP(),
+			ClientAgent: g.Request.UserAgent(),
+			CompanyId:   companyUuid,
+			//
+			ShiftId: shiftUuid,
+			Page:    req.Page,
+		},
+	)
+	if errResp != nil {
+		if errResp.ErrorSystem != nil {
+			response.ErrorResponse(g, response.ErrorCodeSystemTemporary, "Internal server error")
+			return
+		}
+		response.ErrorResponse(g, 400, errResp.ErrorClient)
+		return
+	}
+	response.SuccessResponse(g, 200, resp)
 }
 
 // AddShiftEmployeeList implements iHandler.
@@ -110,7 +206,7 @@ func (h *Handler) GetInfoEmployeeInShift(g *gin.Context) {
 // @Param        dto body dto.AddShiftEmployeeListReq true "Add Shift Employee List Request"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/employee/shift/add/list [post]
+// @Router       /v1/employee/shift/add/list [post]
 func (h *Handler) AddShiftEmployeeList(g *gin.Context) {
 	// get req
 	var req dto.AddShiftEmployeeListReq
@@ -206,7 +302,7 @@ func (h *Handler) AddShiftEmployeeList(g *gin.Context) {
 // @Param        dto body dto.ChangeStatusShiftReq true "Change Status Shift Request"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/shift/status [post]
+// @Router       /v1/shift/status [post]
 func (h *Handler) ChangeStatusShift(g *gin.Context) {
 	// Get req
 	var req dto.ChangeStatusShiftReq
@@ -289,7 +385,7 @@ func (h *Handler) ChangeStatusShift(g *gin.Context) {
 // @Param        page query int false "Page number"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/shift [get]
+// @Router       /v1/shift [get]
 func (h *Handler) GetListShift(g *gin.Context) {
 	// Get page query
 	pageStr := g.DefaultQuery("page", constants.DEFAULT_PAGE_STRING)
@@ -347,7 +443,7 @@ func (h *Handler) GetListShift(g *gin.Context) {
 // @Param        dto body dto.AddShiftEmployeeReq true "Create Shift Request"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/employee/shift/add [post]
+// @Router       /v1/employee/shift/add [post]
 func (h *Handler) AddShiftEmployee(c *gin.Context) {
 	// Get req
 	var req dto.AddShiftEmployeeReq
@@ -433,7 +529,7 @@ func (h *Handler) AddShiftEmployee(c *gin.Context) {
 // @Param        dto body dto.CreateShiftReq true "Create Shift Request"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/shift [post]
+// @Router       /v1/shift [post]
 func (h *Handler) CreateShift(c *gin.Context) {
 	// Binding data req
 	var req dto.CreateShiftReq
@@ -518,7 +614,7 @@ func (h *Handler) CreateShift(c *gin.Context) {
 // @Param		 authorization header string true "Bearer <token>"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/shift/{id} [delete]
+// @Router       /v1/shift/{id} [delete]
 func (h *Handler) DeleteShift(c *gin.Context) {
 	shiftId := c.Param("id")
 	shiftUuid, err := uuidShared.ParseUUID(shiftId)
@@ -574,7 +670,7 @@ func (h *Handler) DeleteShift(c *gin.Context) {
 // @Param 		 req body dto.DeleteShiftUserReq true "Delete Shift User Request"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/employee/shift/delete [post]
+// @Router       /v1/employee/shift/delete [post]
 func (h *Handler) DeleteShiftUser(c *gin.Context) {
 	// Get req
 	var req dto.DeleteShiftUserReq
@@ -658,7 +754,7 @@ func (h *Handler) DeleteShiftUser(c *gin.Context) {
 // @Param        dto body dto.DisableShiftUserReq true "Disable Shift For User Request"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/employee/shift/disable [post]
+// @Router       /v1/employee/shift/disable [post]
 func (h *Handler) DisableShiftUser(c *gin.Context) {
 	// Get req
 	var req dto.DisableShiftUserReq
@@ -737,7 +833,7 @@ func (h *Handler) DisableShiftUser(c *gin.Context) {
 // @Param        dto body dto.EditShiftReq true "Edit Shift Request"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/shift/edit [post]
+// @Router       /v1/shift/edit [post]
 func (h *Handler) EditShift(c *gin.Context) {
 	// Get req
 	var req dto.EditShiftReq
@@ -828,7 +924,7 @@ func (h *Handler) EditShift(c *gin.Context) {
 // @Param        dto body dto.ShiftEmployeeEditEffectiveDateReq true "Edit Shift Request"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/user/edit/effective [post]
+// @Router       /v1/user/edit/effective [post]
 func (h *Handler) EditShiftUserWithEffectiveDate(c *gin.Context) {
 	// Get req
 	var req dto.ShiftEmployeeEditEffectiveDateReq
@@ -910,7 +1006,7 @@ func (h *Handler) EditShiftUserWithEffectiveDate(c *gin.Context) {
 // @Param        dto body dto.EnableShiftUserReq true "Enable Shift For User Request"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/employee/shift/enable [post]
+// @Router       /v1/employee/shift/enable [post]
 func (h *Handler) EnableShiftUser(c *gin.Context) {
 	var req dto.EnableShiftUserReq
 	if err := c.ShouldBind(&req); err != nil {
@@ -990,7 +1086,7 @@ func (h *Handler) EnableShiftUser(c *gin.Context) {
 // @Param        id  path string  true  "Shift ID"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/shift/{id} [get]
+// @Router       /v1/shift/{id} [get]
 func (h *Handler) GetDetailShift(c *gin.Context) {
 	// Get id in path
 	shiftId := c.Param("id")
@@ -1047,7 +1143,7 @@ func (h *Handler) GetDetailShift(c *gin.Context) {
 // @Param        dto body dto.ShiftEmployeeEffectiveDateReq true "Get Shift For User With Effective Date Request"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /api/v1/employee/shift [post]
+// @Router       /v1/employee/shift [post]
 func (h *Handler) GetShiftUserWithEffectiveDate(c *gin.Context) {
 	// Get req
 	var req dto.ShiftEmployeeEffectiveDateReq

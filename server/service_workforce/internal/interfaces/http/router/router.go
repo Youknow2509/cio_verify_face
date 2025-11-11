@@ -37,6 +37,7 @@ func (r *HttpRouterManager) InitRoutes(group *gin.RouterGroup) {
 		shiftEmployeeRouterV1.POST("/delete", handler.NewHandler().DeleteShiftUser)                        // Delete shift for user
 		shiftEmployeeRouterV1.POST("/add", handler.NewHandler().AddShiftEmployee)                          // Add shift employee
 		shiftEmployeeRouterV1.POST("/add/list", handler.NewHandler().AddShiftEmployeeList)                 // Add shift employee list
-		shiftEmployeeRouterV1.GET("/employee/:id", handler.NewHandler().GetInfoEmployeeInShift)            // Get info employee in shift
+		shiftEmployeeRouterV1.POST("/not_in", handler.NewHandler().GetInfoEmployeeDonotInShift)            // Get info employee donot in shift
+		shiftEmployeeRouterV1.POST("/in", handler.NewHandler().GetInfoEmployeeInShift)                     // Get info employee in shift
 	}
 }

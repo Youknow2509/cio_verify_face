@@ -10,6 +10,49 @@ import (
 // Shift Employee application model
 // =================================================
 
+// For remove shift employee list
+type RemoveShiftEmployeeListInput struct {
+	// User info
+	UserId      uuid.UUID `json:"user_id"`
+	SessionId   uuid.UUID `json:"session_id"`
+	Role        int       `json:"role"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
+	//
+	ShiftId     uuid.UUID   `json:"shift_id"`
+	EmployeeIDs []uuid.UUID `json:"employee_ids"`
+}
+
+// For GetListEmployeeInShift
+type GetListEmployeeShiftInput struct {
+	// User info
+	UserId      uuid.UUID `json:"user_id"`
+	SessionId   uuid.UUID `json:"session_id"`
+	Role        int       `json:"role"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+	CompanyId   uuid.UUID `json:"company_id"`
+	//
+	ShiftId uuid.UUID `json:"shift_id"`
+	Page    int       `json:"page"`
+}
+
+type GetListEmployeeShiftOutput struct {
+	Total     int                        `json:"total"`
+	Size      int                        `json:"size"`
+	Page      int                        `json:"page"`
+	Employees []*EmployeeInfoInShiftBase `json:"employees"`
+}
+
+type EmployeeInfoInShiftBase struct {
+	EmployeeId          uuid.UUID `json:"employee_id"`
+	EmployeeName        string    `json:"employee_name"`
+	EmployeeCode        string    `json:"employee_code"`
+	EmployeeShiftName   string    `json:"employee_shift_name"`
+	EmployeeShiftActive bool      `json:"employee_shift_active"`
+}
+
 // For GetInfoEmployeeInShift
 type GetInfoEmployeeInShiftInput struct {
 	// User info
@@ -21,14 +64,6 @@ type GetInfoEmployeeInShiftInput struct {
 	CompanyId   uuid.UUID `json:"company_id"`
 	//
 	ShiftId uuid.UUID `json:"shift_id"`
-}
-
-type EmployeeInfoInShiftBase struct {
-	UserId         string `json:"user_id"`
-	NumberEmployee string `json:"number_employee"`
-	Name           string `json:"user_name"`
-	CurrentShift   bool   `json:"current_shift"`
-	ShiftActive    string `json:"shift_active"`
 }
 
 // For add shift employee list

@@ -31,108 +31,324 @@ type ShiftEmployeeService struct {
 	localCache       cache.ILocalCache
 }
 
-// GetInfoEmployeeInShift implements service.IShiftEmployeeService.
-func (s *ShiftEmployeeService) GetInfoEmployeeInShift(ctx context.Context, input *applicationModel.GetInfoEmployeeInShiftInput) ([]*applicationModel.EmployeeInfoInShiftBase, *applicationError.Error) {
+// GetListEmployeeDonotInShift implements service.IShiftEmployeeService.
+func (s *ShiftEmployeeService) GetListEmployeeDonotInShift(ctx context.Context, input *applicationModel.GetListEmployeeShiftInput) (*applicationModel.GetListEmployeeShiftOutput, *applicationError.Error) {
+	// validate input
 	if input == nil {
-		s.logger.Error("GetInfoEmployeeInShift - Input is nil")
 		return nil, &applicationError.Error{
-			ErrorSystem: fmt.Errorf("input is nil"),
+			ErrorSystem: nil,
 			ErrorClient: "Invalid input data",
 		}
 	}
-	// Check permission
-	if input.Role == domainModel.RoleManager {
-		ok, err := s.shiftUserRepo.IsUserManagetShift(
-			ctx,
-			&domainModel.IsUserManagetShiftInput{
-				ShiftID:       input.ShiftId,
-				CompanyUserID: input.CompanyId,
-			},
-		)
-		if err != nil {
-			s.logger.Error("GetInfoEmployeeInShift - Failed to check user permission", "error", err)
-			return nil, &applicationError.Error{
-				ErrorSystem: err,
-				ErrorClient: "Failed to check user permission",
-			}
-		}
-		if !ok {
-			s.logger.Error("GetInfoEmployeeInShift - User does not have permission to view shift employee info", "user_id", input.UserId, "shift_id", input.ShiftId)
-			return nil, &applicationError.Error{
-				ErrorSystem: fmt.Errorf("user does not have permission to view shift employee info"),
-				ErrorClient: "You do not have permission to view this shift employee info",
-			}
-		}
-	}
-	// Get data in cache
-	key := utilsCache.GetKeyInfoEmployeeInShift(
+	// Get company id for shift
+	keyGetCompany := utilsCache.GetKeyCompanyForShift(
 		utilsCrypto.GetHash(input.ShiftId.String()),
 	)
-
-	// Try local cache first
+	companyIdStr := ""
+	// Try to get from local cache first
+	if cachedData, err := s.localCache.Get(ctx, keyGetCompany); err == nil && cachedData != "" {
+		s.logger.Info("RemoveListShiftEmployee - Cache hit (local) for company id", "shift_id", input.ShiftId)
+		companyIdStr = cachedData
+	} else if cachedData, err := s.distributedCache.Get(ctx, keyGetCompany); err == nil && cachedData != "" {
+		s.logger.Info("RemoveListShiftEmployee - Cache hit (distributed) for company id", "shift_id", input.ShiftId)
+		companyIdStr = cachedData
+	} else {
+		// Fetch from repository
+		shift, err := s.shiftRepo.GetShiftByID(ctx, input.ShiftId)
+		if err != nil {
+			s.logger.Error("RemoveListShiftEmployee - Failed to get shift by ID", "error", err)
+			return nil, &applicationError.Error{
+				ErrorSystem: err,
+				ErrorClient: "Failed to get shift information",
+			}
+		}
+		companyIdStr = shift.CompanyID.String()
+		// Cache the company ID
+		if err := s.distributedCache.SetTTL(ctx, keyGetCompany, companyIdStr, int64(constants.TTL_Shift_Cache)); err != nil {
+			s.logger.Warn("RemoveListShiftEmployee - Failed to set distributed cache for company id", "error", err)
+		}
+		if err := s.localCache.SetTTL(ctx, keyGetCompany, companyIdStr, 2); err != nil {
+			s.logger.Warn("RemoveListShiftEmployee - Failed to set local cache for company id", "error", err)
+		}
+	}
+	companyId, _ := uuid.Parse(companyIdStr)
+	// Check permission
+	if input.CompanyId != companyId && input.Role != domainModel.RoleAdmin {
+		s.logger.Error("GetListEmployeeInShift - User does not have permission to view employees in this shift", "user_id", input.UserId, "company_user_id", input.CompanyId, "company_id", companyId)
+		return nil, &applicationError.Error{
+			ErrorSystem: nil,
+			ErrorClient: "You do not have permission to view employees in this shift",
+		}
+	}
+	// Check data in cache
+	limit := constants.DEFAULT_PAGE_SIZE
+	offset := (input.Page - 1) * constants.DEFAULT_PAGE_SIZE
+	key := utilsCache.GetKeyListEmployeeDonotInShift(
+		utilsCrypto.GetHash(input.ShiftId.String()),
+		limit,
+		offset,
+	)
+	var output applicationModel.GetListEmployeeShiftOutput
+	// Try to get from local cache first
 	if cachedData, err := s.localCache.Get(ctx, key); err == nil && cachedData != "" {
-		var employeeInfo []*applicationModel.EmployeeInfoInShiftBase
-		if err := json.Unmarshal([]byte(cachedData), &employeeInfo); err == nil {
-			s.logger.Info("GetInfoEmployeeInShift - Cache hit (local)", "shift_id", input.ShiftId)
-			return employeeInfo, nil
+		s.logger.Info("GetListEmployeeDonotInShift - Cache hit (local) for employee list", "shift_id", input.ShiftId)
+		if unmarshalErr := json.Unmarshal([]byte(cachedData), &output); unmarshalErr == nil {
+			return &output, nil
 		}
-		s.logger.Warn("GetInfoEmployeeInShift - Failed to unmarshal local cache", "error", err)
 	}
-
-	// Try distributed cache next
+	// Try to get from distributed cache
 	if cachedData, err := s.distributedCache.Get(ctx, key); err == nil && cachedData != "" {
-		var employeeInfo []*applicationModel.EmployeeInfoInShiftBase
-		if err := json.Unmarshal([]byte(cachedData), &employeeInfo); err == nil {
-			s.logger.Info("GetInfoEmployeeInShift - Cache hit (distributed)", "shift_id", input.ShiftId)
-			return employeeInfo, nil
+		s.logger.Info("GetListEmployeeDonotInShift - Cache hit (distributed) for employee list", "shift_id", input.ShiftId)
+		if unmarshalErr := json.Unmarshal([]byte(cachedData), &output); unmarshalErr == nil {
+			return &output, nil
 		}
-		s.logger.Warn("GetInfoEmployeeInShift - Failed to unmarshal distributed cache", "error", err)
 	}
-
-	// Cache miss — proceed to fetch from source
-	s.logger.Info("GetInfoEmployeeInShift - Cache miss", "shift_id", input.ShiftId)
-
 	// Call repository
-	reps, err := s.shiftRepo.GetInfoEmployeeInShift(
+	resp, err := s.shiftUserRepo.GetListEmployeeDonotInShift(
 		ctx,
-		&domainModel.GetInfoEmployeeInShiftInput{
-			CompanyId: input.CompanyId,
-			CurShidId: input.ShiftId,
+		&domainModel.GetListEmployyeShiftInput{
+			ShiftID:   input.ShiftId,
+			Limit:     int32(limit),
+			Offset:    int32(offset),
+			CompanyID: companyId,
 		},
 	)
 	if err != nil {
-		s.logger.Error("GetInfoEmployeeInShift - Failed to get employee info in shift", "error", err)
+		s.logger.Error("GetListEmployeeDonotInShift - Failed to get employee list from repository", "error", err)
 		return nil, &applicationError.Error{
 			ErrorSystem: err,
-			ErrorClient: "Failed to get employee info in shift",
+			ErrorClient: "Failed to get employee list",
 		}
 	}
-	if len(reps) == 0 {
-		s.logger.Info("GetInfoEmployeeInShift - No employees found in shift", "shift_id", input.ShiftId)
-		return []*applicationModel.EmployeeInfoInShiftBase{}, nil
+	// Prepare output
+	output = applicationModel.GetListEmployeeShiftOutput{
+		Total:     int(resp.Total),
+		Size:      int(resp.PageSize),
+		Page:      input.Page,
+		Employees: make([]*applicationModel.EmployeeInfoInShiftBase, 0),
 	}
-
-	// Map domain model to application model
-	output := make([]*applicationModel.EmployeeInfoInShiftBase, 0)
-	for _, r := range reps {
-		output = append(output, &applicationModel.EmployeeInfoInShiftBase{
-			UserId:         r.UserId.String(),
-			Name:           r.Name,
-			NumberEmployee: r.NumberEmployee,
-			CurrentShift:   r.CurrentShift,
-			ShiftActive:    r.ShiftActive,
-		})
+	for _, emp := range resp.EmployeeIDs {
+		empInfo := &applicationModel.EmployeeInfoInShiftBase{
+			EmployeeId:          emp.EmployeeId,
+			EmployeeName:        emp.EmployeeName,
+			EmployeeCode:        emp.EmployeeCode,
+			EmployeeShiftName:   emp.EmployeeShiftName,
+			EmployeeShiftActive: emp.EmployeeShiftActive,
+		}
+		output.Employees = append(output.Employees, empInfo)
 	}
+	// Cache the result
+	if data, err := json.Marshal(resp); err == nil {
+		if err := s.distributedCache.SetTTL(ctx, key, string(data), int64(constants.TTL_Shift_Cache)); err != nil {
+			s.logger.Warn("GetListEmployeeDonotInShift - Failed to set distributed cache for employee list", "error", err)
+		}
+		if err := s.localCache.SetTTL(ctx, key, string(data), 2); err != nil {
+			s.logger.Warn("GetListEmployeeDonotInShift - Failed to set local cache for employee list", "error", err)
+		}
+	}
+	return &output, nil
+}
 
-	// Cache the result for future requests
-	if data, err := json.Marshal(output); err == nil {
-		// Store in local cache (ignore errors - cache is non-critical)
-		_ = s.localCache.SetTTL(ctx, key, string(data), 2) // adjust TTL as needed
+// GetListEmployeeInShift implements service.IShiftEmployeeService.
+func (s *ShiftEmployeeService) GetListEmployeeInShift(ctx context.Context, input *applicationModel.GetListEmployeeShiftInput) (*applicationModel.GetListEmployeeShiftOutput, *applicationError.Error) {
+	// validate input
+	if input == nil {
+		return nil, &applicationError.Error{
+			ErrorSystem: nil,
+			ErrorClient: "Invalid input data",
+		}
+	}
+	// Get company id for shift
+	keyGetCompany := utilsCache.GetKeyCompanyForShift(
+		utilsCrypto.GetHash(input.ShiftId.String()),
+	)
+	companyIdStr := ""
+	// Try to get from local cache first
+	if cachedData, err := s.localCache.Get(ctx, keyGetCompany); err == nil && cachedData != "" {
+		s.logger.Info("RemoveListShiftEmployee - Cache hit (local) for company id", "shift_id", input.ShiftId)
+		companyIdStr = cachedData
+	} else if cachedData, err := s.distributedCache.Get(ctx, keyGetCompany); err == nil && cachedData != "" {
+		s.logger.Info("RemoveListShiftEmployee - Cache hit (distributed) for company id", "shift_id", input.ShiftId)
+		companyIdStr = cachedData
+	} else {
+		// Fetch from repository
+		shift, err := s.shiftRepo.GetShiftByID(ctx, input.ShiftId)
+		if err != nil {
+			s.logger.Error("RemoveListShiftEmployee - Failed to get shift by ID", "error", err)
+			return nil, &applicationError.Error{
+				ErrorSystem: err,
+				ErrorClient: "Failed to get shift information",
+			}
+		}
+		companyIdStr = shift.CompanyID.String()
+		// Cache the company ID
+		if err := s.distributedCache.SetTTL(ctx, keyGetCompany, companyIdStr, int64(constants.TTL_Shift_Cache)); err != nil {
+			s.logger.Warn("RemoveListShiftEmployee - Failed to set distributed cache for company id", "error", err)
+		}
+		if err := s.localCache.SetTTL(ctx, keyGetCompany, companyIdStr, 2); err != nil {
+			s.logger.Warn("RemoveListShiftEmployee - Failed to set local cache for company id", "error", err)
+		}
+	}
+	companyId, _ := uuid.Parse(companyIdStr)
+	// Check permission
+	if input.CompanyId != companyId && input.Role != domainModel.RoleAdmin {
+		s.logger.Error("GetListEmployeeInShift - User does not have permission to view employees in this shift", "user_id", input.UserId, "company_user_id", input.CompanyId, "company_id", companyId)
+		return nil, &applicationError.Error{
+			ErrorSystem: nil,
+			ErrorClient: "You do not have permission to view employees in this shift",
+		}
+	}
+	// Check data in cache
+	limit := constants.DEFAULT_PAGE_SIZE
+	offset := (input.Page - 1) * constants.DEFAULT_PAGE_SIZE
+	key := utilsCache.GetKeyListEmployeeInShift(
+		utilsCrypto.GetHash(input.ShiftId.String()),
+		limit,
+		offset,
+	)
+	var output applicationModel.GetListEmployeeShiftOutput
+	// Try to get from local cache first
+	if cachedData, err := s.localCache.Get(ctx, key); err == nil && cachedData != "" {
+		s.logger.Info("GetListEmployeeInShift - Cache hit (local) for employee list", "shift_id", input.ShiftId)
+		if unmarshalErr := json.Unmarshal([]byte(cachedData), &output); unmarshalErr == nil {
+			return &output, nil
+		}
+	}
+	// Try to get from distributed cache
+	if cachedData, err := s.distributedCache.Get(ctx, key); err == nil && cachedData != "" {
+		s.logger.Info("GetListEmployeeInShift - Cache hit (distributed) for employee list", "shift_id", input.ShiftId)
+		if unmarshalErr := json.Unmarshal([]byte(cachedData), &output); unmarshalErr == nil {
+			return &output, nil
+		}
+	}
+	// Call repository
+	resp, err := s.shiftUserRepo.GetListEmployeeInShift(
+		ctx,
+		&domainModel.GetListEmployyeShiftInput{
+			ShiftID:   input.ShiftId,
+			CompanyID: companyId,
+			Limit:     int32(limit),
+			Offset:    int32(offset),
+		},
+	)
+	if err != nil {
+		s.logger.Error("GetListEmployeeInShift - Failed to get employees in shift", "error", err)
+		return nil, &applicationError.Error{
+			ErrorSystem: err,
+			ErrorClient: "Failed to get employees in shift",
+		}
+	}
+	if resp == nil || len(resp.EmployeeIDs) == 0 {
+		return &applicationModel.GetListEmployeeShiftOutput{
+			Total: 0,
+		}, nil
+	}
+	// Prepare output
+	output = applicationModel.GetListEmployeeShiftOutput{
+		Total:     int(resp.Total),
+		Size:      int(resp.PageSize),
+		Page:      input.Page,
+		Employees: make([]*applicationModel.EmployeeInfoInShiftBase, 0),
+	}
+	for _, emp := range resp.EmployeeIDs {
+		empInfo := &applicationModel.EmployeeInfoInShiftBase{
+			EmployeeId:          emp.EmployeeId,
+			EmployeeName:        emp.EmployeeName,
+			EmployeeCode:        emp.EmployeeCode,
+			EmployeeShiftName:   emp.EmployeeShiftName,
+			EmployeeShiftActive: emp.EmployeeShiftActive,
+		}
+		output.Employees = append(output.Employees, empInfo)
+	}
+	// Save cache
+	if jsonData, jsonErr := json.Marshal(output); jsonErr == nil {
 		// Store in distributed cache
-		_ = s.distributedCache.SetTTL(ctx, key, string(data), constants.TTL_Info_Base_Employee_In_Shift)
+		if setErr := s.distributedCache.SetTTL(ctx, key, string(jsonData), int64(constants.TTL_List_Employee_Shift_Cache)); setErr != nil {
+			s.logger.Warn("GetListEmployeeInShift - Failed to set distributed cache for employee list", "error", setErr)
+		}
+		// Store in local cache
+		if setErr := s.localCache.SetTTL(ctx, key, string(jsonData), 2); setErr != nil {
+			s.logger.Warn("GetListEmployeeInShift - Failed to set local cache for employee list", "error", setErr)
+		}
+	}
+	return &output, nil
+}
+
+// RemoveListShiftEmployee implements service.IShiftEmployeeService.
+func (s *ShiftEmployeeService) RemoveListShiftEmployee(ctx context.Context, input *applicationModel.RemoveShiftEmployeeListInput) *applicationError.Error {
+	// Validate input
+	if input == nil {
+		s.logger.Error("RemoveListShiftEmployee - Input is nil")
+		return &applicationError.Error{
+			ErrorSystem: nil,
+			ErrorClient: "Invalid input data",
+		}
+	}
+	// key get company for shift
+	keyGetCompany := utilsCache.GetKeyCompanyForShift(
+		utilsCrypto.GetHash(input.ShiftId.String()),
+	)
+	companyIdStr := ""
+	// Try to get from local cache first
+	if cachedData, err := s.localCache.Get(ctx, keyGetCompany); err == nil && cachedData != "" {
+		s.logger.Info("RemoveListShiftEmployee - Cache hit (local) for company id", "shift_id", input.ShiftId)
+		companyIdStr = cachedData
+	} else if cachedData, err := s.distributedCache.Get(ctx, keyGetCompany); err == nil && cachedData != "" {
+		s.logger.Info("RemoveListShiftEmployee - Cache hit (distributed) for company id", "shift_id", input.ShiftId)
+		companyIdStr = cachedData
+	} else {
+		// Fetch from repository
+		shift, err := s.shiftRepo.GetShiftByID(ctx, input.ShiftId)
+		if err != nil {
+			s.logger.Error("RemoveListShiftEmployee - Failed to get shift by ID", "error", err)
+			return &applicationError.Error{
+				ErrorSystem: err,
+				ErrorClient: "Failed to get shift information",
+			}
+		}
+		companyIdStr = shift.CompanyID.String()
+		// Cache the company ID
+		if err := s.distributedCache.SetTTL(ctx, keyGetCompany, companyIdStr, int64(constants.TTL_Shift_Cache)); err != nil {
+			s.logger.Warn("RemoveListShiftEmployee - Failed to set distributed cache for company id", "error", err)
+		}
+		if err := s.localCache.SetTTL(ctx, keyGetCompany, companyIdStr, 2); err != nil {
+			s.logger.Warn("RemoveListShiftEmployee - Failed to set local cache for company id", "error", err)
+		}
 	}
 
-	return output, nil
+	companyId, _ := uuid.Parse(companyIdStr)
+	// Check permission
+	if input.CompanyId != companyId && input.Role != domainModel.RoleAdmin {
+		s.logger.Error("RemoveListShiftEmployee - User does not have permission to remove employees from this shift", "user_id", input.UserId, "company_user_id", input.CompanyId, "company_id", companyId)
+		return &applicationError.Error{
+			ErrorSystem: nil,
+			ErrorClient: "You do not have permission to remove employees from this shift",
+		}
+	}
+	// Call repository
+	reqRepo := &domainModel.RemoveListShiftForEmployeesInput{
+		ShiftID:     input.ShiftId,
+		EmployeeIDs: input.EmployeeIDs,
+	}
+	err := s.shiftUserRepo.RemoveListShiftForEmployees(
+		ctx,
+		reqRepo,
+	)
+	if err != nil {
+		s.logger.Error("RemoveListShiftEmployee - Failed to remove shifts from employees", "error", err)
+		return &applicationError.Error{
+			ErrorSystem: err,
+			ErrorClient: "Failed to remove shifts from employees",
+		}
+	}
+	// rm cache list workforce company
+	keyListShiftCompanyPrefix := utilsCache.GetKeyListShiftInCompanyPrefix(
+		utilsCrypto.GetHash(companyId.String()),
+	)
+	if err := s.distributedCache.DeleteByPrefix(ctx, keyListShiftCompanyPrefix); err != nil {
+		s.logger.Warn("RemoveListShiftEmployee - Failed to delete list shift cache in company", "error", err)
+	}
+	return nil
 }
 
 // AddListShiftEmployee implements service.IShiftEmployeeService.
@@ -141,7 +357,7 @@ func (s *ShiftEmployeeService) AddListShiftEmployee(ctx context.Context, input *
 	if input == nil {
 		s.logger.Error("AddListShiftEmployee - Input is nil")
 		return &applicationError.Error{
-			ErrorSystem: fmt.Errorf("input is nil"),
+			ErrorSystem: nil,
 			ErrorClient: "Invalid input data",
 		}
 	}
@@ -181,12 +397,12 @@ func (s *ShiftEmployeeService) AddListShiftEmployee(ctx context.Context, input *
 		if exists {
 			s.logger.Warn("AddListShiftEmployee - Employee already has a shift in this time range", "employee_id", empId)
 			return &applicationError.Error{
-				ErrorSystem: fmt.Errorf("employee already has a shift in this time range"),
+				ErrorSystem: nil,
 				ErrorClient: fmt.Sprintf("Employee with ID %s already has a shift in this time range", empId.String()),
 			}
 		}
 	}
-	
+
 	// Call repository
 	reqRepo := &domainModel.AddListShiftForEmployeesInput{
 		CompanyID:     companyId,
@@ -223,7 +439,7 @@ func (s *ShiftEmployeeService) AddShiftEmployee(ctx context.Context, input *appl
 	if input == nil {
 		s.logger.Error("AddShiftEmployee - Input is nil")
 		return &applicationError.Error{
-			ErrorSystem: fmt.Errorf("input is nil"),
+			ErrorSystem: nil,
 			ErrorClient: "Invalid input data",
 		}
 	}
@@ -251,7 +467,7 @@ func (s *ShiftEmployeeService) AddShiftEmployee(ctx context.Context, input *appl
 	if exists {
 		s.logger.Warn("AddShiftEmployee - Employee already has a shift in this time range", "employee_id", input.EmployeeId)
 		return &applicationError.Error{
-			ErrorSystem: fmt.Errorf("employee already has a shift in this time range"),
+			ErrorSystem: nil,
 			ErrorClient: "Employee already has a shift in this time range",
 		}
 	}
@@ -297,7 +513,7 @@ func (s *ShiftEmployeeService) DeleteShiftUser(ctx context.Context, input *appli
 	if input == nil {
 		s.logger.Error("DeleteShiftUser - Input is nil")
 		return &applicationError.Error{
-			ErrorSystem: fmt.Errorf("input is nil"),
+			ErrorSystem: nil,
 			ErrorClient: "Invalid input data",
 		}
 	}
@@ -319,7 +535,7 @@ func (s *ShiftEmployeeService) DeleteShiftUser(ctx context.Context, input *appli
 	if !isUserInCompany && input.Role != domainModel.RoleAdmin {
 		s.logger.Error("DeleteShiftUser - User does not have permission to delete shift assignment", "user_id", input.UserId, "user_id_req", input.UserIdReq, "company_id", input.CompanyId)
 		return &applicationError.Error{
-			ErrorSystem: fmt.Errorf("user does not have permission to delete shift assignment"),
+			ErrorSystem: nil,
 			ErrorClient: "You do not have permission to delete this shift assignment",
 		}
 	}
@@ -364,7 +580,7 @@ func (s *ShiftEmployeeService) DisableShiftUser(ctx context.Context, input *appl
 	if input == nil {
 		s.logger.Error("DisableShiftUser - Input is nil")
 		return &applicationError.Error{
-			ErrorSystem: fmt.Errorf("input is nil"),
+			ErrorSystem: nil,
 			ErrorClient: "Invalid input data",
 		}
 	}
@@ -386,7 +602,7 @@ func (s *ShiftEmployeeService) DisableShiftUser(ctx context.Context, input *appl
 	if !isUserInCompany && input.Role != domainModel.RoleAdmin {
 		s.logger.Error("DeleteShiftUser - User does not have permission to delete shift assignment", "user_id", input.UserId, "user_id_req", input.UserIdReq, "company_id", input.CompanyId)
 		return &applicationError.Error{
-			ErrorSystem: fmt.Errorf("user does not have permission to delete shift assignment"),
+			ErrorSystem: nil,
 			ErrorClient: "You do not have permission to delete this shift assignment",
 		}
 	}
@@ -424,7 +640,7 @@ func (s *ShiftEmployeeService) EditShiftForUserWithEffectiveDate(ctx context.Con
 	if input == nil {
 		s.logger.Error("EditShiftForUserWithEffectiveDate - Input is nil")
 		return &applicationError.Error{
-			ErrorSystem: fmt.Errorf("input is nil"),
+			ErrorSystem: nil,
 			ErrorClient: "Invalid input data",
 		}
 	}
@@ -446,7 +662,7 @@ func (s *ShiftEmployeeService) EditShiftForUserWithEffectiveDate(ctx context.Con
 	if !isUserInCompany && input.Role != domainModel.RoleAdmin {
 		s.logger.Error("DeleteShiftUser - User does not have permission to delete shift assignment", "user_id", input.UserId, "user_id_req", input.UserIdReq, "company_id", input.CompanyId)
 		return &applicationError.Error{
-			ErrorSystem: fmt.Errorf("user does not have permission to delete shift assignment"),
+			ErrorSystem: nil,
 			ErrorClient: "You do not have permission to delete this shift assignment",
 		}
 	}
@@ -489,7 +705,7 @@ func (s *ShiftEmployeeService) EnableShiftUser(ctx context.Context, input *appli
 	if input == nil {
 		s.logger.Error("EnableShiftUser - Input is nil")
 		return &applicationError.Error{
-			ErrorSystem: fmt.Errorf("input is nil"),
+			ErrorSystem: nil,
 			ErrorClient: "Invalid input data",
 		}
 	}
@@ -511,7 +727,7 @@ func (s *ShiftEmployeeService) EnableShiftUser(ctx context.Context, input *appli
 	if !isUserInCompany && input.Role != domainModel.RoleAdmin {
 		s.logger.Error("DeleteShiftUser - User does not have permission to delete shift assignment", "user_id", input.UserId, "user_id_req", input.UserIdReq, "company_id", input.CompanyId)
 		return &applicationError.Error{
-			ErrorSystem: fmt.Errorf("user does not have permission to delete shift assignment"),
+			ErrorSystem: nil,
 			ErrorClient: "You do not have permission to delete this shift assignment",
 		}
 	}
@@ -550,7 +766,7 @@ func (s *ShiftEmployeeService) GetShiftForUserWithEffectiveDate(ctx context.Cont
 	if input == nil {
 		s.logger.Error("GetShiftForUserWithEffectiveDate - Input is nil")
 		return nil, &applicationError.Error{
-			ErrorSystem: fmt.Errorf("input is nil"),
+			ErrorSystem: nil,
 			ErrorClient: "Invalid input data",
 		}
 	}

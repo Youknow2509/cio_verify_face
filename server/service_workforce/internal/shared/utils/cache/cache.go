@@ -8,6 +8,21 @@ import "fmt"
 //
 // =================================
 
+// Key get list employee donot in shift
+func GetKeyListEmployeeDonotInShift(shiftIdHash string, limmit int, offset int) string {
+	return fmt.Sprintf("shift:employee:donot:list:%s:%d:%d", shiftIdHash, limmit, offset)
+}
+
+// Get key list employee in shift
+func GetKeyListEmployeeInShift(shiftIdHash string, limmit int, offset int) string {
+	return fmt.Sprintf("shift:employee:list:%s:%d:%d", shiftIdHash, limmit, offset)
+}
+
+// Key get company for shift
+func GetKeyCompanyForShift(shiftIdHash string) string {
+	return fmt.Sprintf("shift:company:%s", shiftIdHash)
+}
+
 // Key get info base employee in shift
 func GetKeyInfoEmployeeInShift(shiftIdHash string) string {
 	return fmt.Sprintf("shift:employee:info:base:%s", shiftIdHash)

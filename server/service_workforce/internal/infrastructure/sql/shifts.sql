@@ -16,6 +16,86 @@
 -- updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 -- )
 
+-- name: GetListEmployeeInShift :many
+
+-- List employees currently active in a specific shift (as of CURRENT_DATE)
+SELECT 
+        e.employee_id,
+        u.full_name,
+        e.employee_code,
+        ws.name AS shift_name,
+        TRUE AS current_shift
+FROM employee_shifts es
+INNER JOIN employees e ON e.employee_id = es.employee_id
+INNER JOIN users u ON u.user_id = e.employee_id
+INNER JOIN work_shifts ws ON ws.shift_id = es.shift_id
+WHERE e.company_id = $1
+    AND es.shift_id = $2
+    AND es.is_active = TRUE
+    AND es.effective_from <= CURRENT_DATE 
+    AND (es.effective_to IS NULL OR es.effective_to >= CURRENT_DATE)
+ORDER BY e.employee_code
+LIMIT $3 OFFSET $4;
+
+-- name: CountEmployeesInShiftCurrent :one
+-- Count employees currently active in a specific shift (as of CURRENT_DATE)
+SELECT COUNT(1) FROM (
+        SELECT DISTINCT e.employee_id
+        FROM employee_shifts es
+        INNER JOIN employees e ON e.employee_id = es.employee_id
+        WHERE e.company_id = $1
+            AND es.shift_id = $2
+            AND es.is_active = TRUE
+            AND es.effective_from <= CURRENT_DATE
+            AND (es.effective_to IS NULL OR es.effective_to >= CURRENT_DATE)
+) t;
+
+-- name: GetListEmployeeDonotInShift :many
+-- List employees of a company who are NOT currently active in the given shift (as of CURRENT_DATE)
+SELECT 
+        e.employee_id,
+        u.full_name,
+        e.employee_code,
+        COALESCE(ws.name, '') AS shift_name,
+        FALSE AS current_shift
+FROM employees e
+INNER JOIN users u ON u.user_id = e.employee_id
+LEFT JOIN LATERAL (
+        SELECT es.shift_id
+        FROM employee_shifts es
+        WHERE es.employee_id = e.employee_id
+            AND es.is_active = TRUE
+            AND es.effective_from <= CURRENT_DATE
+            AND (es.effective_to IS NULL OR es.effective_to >= CURRENT_DATE)
+        ORDER BY es.effective_from DESC
+        LIMIT 1
+) ca ON TRUE
+LEFT JOIN work_shifts ws ON ws.shift_id = ca.shift_id
+WHERE e.company_id = $1
+    AND NOT EXISTS (
+        SELECT 1 FROM employee_shifts es2
+        WHERE es2.employee_id = e.employee_id
+            AND es2.shift_id = $2
+            AND es2.is_active = TRUE
+            AND es2.effective_from <= CURRENT_DATE
+            AND (es2.effective_to IS NULL OR es2.effective_to >= CURRENT_DATE)
+    )
+ORDER BY e.employee_code
+LIMIT $3 OFFSET $4;
+
+-- name: CountEmployeesDonotInShiftCurrent :one
+-- Count employees of a company who are NOT currently active in the given shift (as of CURRENT_DATE)
+SELECT COUNT(1) FROM employees e
+WHERE e.company_id = $1
+    AND NOT EXISTS (
+        SELECT 1 FROM employee_shifts es
+        WHERE es.employee_id = e.employee_id
+            AND es.shift_id = $2
+            AND es.is_active = TRUE
+            AND es.effective_from <= CURRENT_DATE
+            AND (es.effective_to IS NULL OR es.effective_to >= CURRENT_DATE)
+    );
+
 -- name: IsUserManagetShift :one
 SELECT shift_id 
 FROM work_shifts
