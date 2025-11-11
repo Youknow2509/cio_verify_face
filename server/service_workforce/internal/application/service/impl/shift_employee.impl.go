@@ -10,6 +10,7 @@ import (
 	applicationError "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/application/error"
 	applicationModel "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/application/model"
 	service "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/application/service"
+	"github.com/youknow2509/cio_verify_face/server/service_workforce/internal/constants"
 	"github.com/youknow2509/cio_verify_face/server/service_workforce/internal/domain/cache"
 	"github.com/youknow2509/cio_verify_face/server/service_workforce/internal/domain/logger"
 	domainModel "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/domain/model"
@@ -18,17 +19,12 @@ import (
 	utilsCrypto "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/shared/utils/crypto"
 )
 
-const (
-	// Cache key prefixes for shift employee
-	shiftEmployeeCachePrefix = "shift_employee:"
-	shiftEmployeeCacheTTL    = 1800 // 30 minutes in seconds
-)
-
 // =================================================
 // ShiftEmployee service implementation interface
 // =================================================
 type ShiftEmployeeService struct {
 	shiftUserRepo    repository.IShiftUserRepository
+	userRepo         repository.IUserRepository
 	logger           logger.ILogger
 	distributedCache cache.IDistributedCache
 	localCache       cache.ILocalCache
@@ -81,14 +77,8 @@ func (s *ShiftEmployeeService) AddListShiftEmployee(ctx context.Context, input *
 	key := utilsCache.GetKeyListShiftInCompanyPrefix(
 		utilsCrypto.GetHash(input.CompanyId.String()),
 	)
-	lua := "for i, name in ipairs(redis.call('KEYS', ARGV[1])) do redis.call('DEL', name); end"
-	if _, delErr := s.distributedCache.LuaScript(
-		ctx,
-		lua,
-		[]string{},
-		[]string{key},
-	); delErr != nil {
-		s.logger.Warn("AddListShiftEmployee - Failed to delete list shift cache in company", "error", delErr)
+	if err := s.distributedCache.DeleteByPrefix(ctx, key); err != nil {
+		s.logger.Warn("AddListShiftEmployee - Failed to delete list shift cache in company", "error", err)
 	}
 
 	return nil
@@ -152,7 +142,10 @@ func (s *ShiftEmployeeService) AddShiftEmployee(ctx context.Context, input *appl
 	}
 
 	// Invalidate cache for this employee
-	cacheKey := fmt.Sprintf("%s%s", shiftEmployeeCachePrefix, input.EmployeeId.String())
+	cacheKey := utilsCache.GetKeyShiftEmployee(
+		utilsCrypto.GetHash(input.ShiftId.String()),
+		utilsCrypto.GetHash(input.EmployeeId.String()),
+	)
 	if delErr := s.distributedCache.Delete(ctx, cacheKey); delErr != nil {
 		s.logger.Warn("AddShiftEmployee - Failed to delete from distributed cache", "error", delErr)
 	}
@@ -175,12 +168,37 @@ func (s *ShiftEmployeeService) DeleteShiftUser(ctx context.Context, input *appli
 			ErrorClient: "Invalid input data",
 		}
 	}
-
-	s.logger.Info("DeleteShiftUser - Start", "user_id", input.UserId, "shift_user_id", input.ShiftUserId)
-
-	// Call repository
-	err := s.shiftUserRepo.DeleteEmployeeShift(ctx, input.ShiftUserId)
+	// Get company user and check permission
+	isUserInCompany, err := s.userRepo.UserExistsInCompany(
+		ctx,
+		&domainModel.UserExistsInCompanyInput{
+			CompanyID: input.CompanyId,
+			UserID:    input.UserIdReq,
+		},
+	)
 	if err != nil {
+		s.logger.Error("DeleteShiftUser - Failed to check user in company", "error", err)
+		return &applicationError.Error{
+			ErrorSystem: err,
+			ErrorClient: "Failed to check user in company",
+		}
+	}
+	if !isUserInCompany && input.Role != domainModel.RoleAdmin {
+		s.logger.Error("DeleteShiftUser - User does not have permission to delete shift assignment", "user_id", input.UserId, "user_id_req", input.UserIdReq, "company_id", input.CompanyId)
+		return &applicationError.Error{
+			ErrorSystem: fmt.Errorf("user does not have permission to delete shift assignment"),
+			ErrorClient: "You do not have permission to delete this shift assignment",
+		}
+	}
+	s.logger.Info("DeleteShiftUser - Start", "user_id", input.UserId, "shift_user_id", input.ShiftId)
+	// Call repository
+	if err := s.shiftUserRepo.DeleteEmployeeShift(
+		ctx,
+		&domainModel.DeleteEmployeeShiftInput{
+			ShiftId:    input.ShiftId,
+			EmployeeID: input.UserIdReq,
+		},
+	); err != nil {
 		s.logger.Error("DeleteShiftUser - Failed to delete shift assignment", "error", err)
 		return &applicationError.Error{
 			ErrorSystem: err,
@@ -188,21 +206,22 @@ func (s *ShiftEmployeeService) DeleteShiftUser(ctx context.Context, input *appli
 		}
 	}
 
-	s.logger.Info("DeleteShiftUser - Success", "shift_user_id", input.ShiftUserId)
+	s.logger.Info("DeleteShiftUser - Success", "shift_id", input.ShiftId, "user_id_req", input.UserIdReq)
 	// rm cache list workforce company
-	key := utilsCache.GetKeyListShiftInCompanyPrefix(
+	keyInList := utilsCache.GetKeyListShiftInCompanyPrefix(
 		utilsCrypto.GetHash(input.CompanyId.String()),
 	)
-	lua := "for i, name in ipairs(redis.call('KEYS', ARGV[1])) do redis.call('DEL', name); end"
-	if _, delErr := s.distributedCache.LuaScript(
-		ctx,
-		lua,
-		[]string{},
-		[]string{key},
-	); delErr != nil {
-		s.logger.Warn("AddListShiftEmployee - Failed to delete list shift cache in company", "error", delErr)
+	keyShiftUserInfo := utilsCache.GetKeyShiftEmployee(
+		utilsCrypto.GetHash(input.ShiftId.String()),
+		utilsCrypto.GetHash(input.UserIdReq.String()),
+	)
+	if err := s.distributedCache.DeleteByPrefix(ctx, keyInList); err != nil {
+		s.logger.Warn("DeleteShiftUser - Failed to delete list shift cache in company", "error", err)
 	}
-	
+	if err := s.distributedCache.Delete(ctx, keyShiftUserInfo); err != nil {
+		s.logger.Warn("DeleteShiftUser - Failed to delete shift user info cache", "error", err)
+	}
+
 	return nil
 }
 
@@ -216,21 +235,53 @@ func (s *ShiftEmployeeService) DisableShiftUser(ctx context.Context, input *appl
 			ErrorClient: "Invalid input data",
 		}
 	}
-
-	s.logger.Info("DisableShiftUser - Start", "user_id", input.UserId, "shift_user_id", input.ShiftUserId)
+	// Get company user and check permission
+	isUserInCompany, err := s.userRepo.UserExistsInCompany(
+		ctx,
+		&domainModel.UserExistsInCompanyInput{
+			CompanyID: input.CompanyId,
+			UserID:    input.UserIdReq,
+		},
+	)
+	if err != nil {
+		s.logger.Error("DeleteShiftUser - Failed to check user in company", "error", err)
+		return &applicationError.Error{
+			ErrorSystem: err,
+			ErrorClient: "Failed to check user in company",
+		}
+	}
+	if !isUserInCompany && input.Role != domainModel.RoleAdmin {
+		s.logger.Error("DeleteShiftUser - User does not have permission to delete shift assignment", "user_id", input.UserId, "user_id_req", input.UserIdReq, "company_id", input.CompanyId)
+		return &applicationError.Error{
+			ErrorSystem: fmt.Errorf("user does not have permission to delete shift assignment"),
+			ErrorClient: "You do not have permission to delete this shift assignment",
+		}
+	}
+	s.logger.Info("DisableShiftUser - Start", "user_id", input.UserId, "shift_id", input.ShiftId)
 
 	// Call repository
-	err := s.shiftUserRepo.DisableEmployeeShift(ctx, input.ShiftUserId)
-	if err != nil {
+	if err := s.shiftUserRepo.DisableEmployeeShift(ctx, &domainModel.DisableEmployeeShiftInput{
+		ShiftID:    input.ShiftId,
+		EmployeeID: input.UserIdReq,
+	}); err != nil {
 		s.logger.Error("DisableShiftUser - Failed to disable shift assignment", "error", err)
 		return &applicationError.Error{
 			ErrorSystem: err,
 			ErrorClient: "Failed to disable shift assignment",
 		}
 	}
-
-	s.logger.Info("DisableShiftUser - Success", "shift_user_id", input.ShiftUserId)
-
+	s.logger.Info("DisableShiftUser - Success", "shift_id", input.ShiftId, "user_id_req", input.UserIdReq)
+	// Rm cache
+	key := utilsCache.GetKeyShiftEmployee(
+		utilsCrypto.GetHash(input.ShiftId.String()),
+		utilsCrypto.GetHash(input.UserIdReq.String()),
+	)
+	if err := s.distributedCache.Delete(ctx, key); err != nil {
+		s.logger.Warn("DisableShiftUser - Failed to delete from distributed cache", "error", err)
+	}
+	if err := s.localCache.Delete(ctx, key); err != nil {
+		s.logger.Warn("DisableShiftUser - Failed to delete from local cache", "error", err)
+	}
 	return nil
 }
 
@@ -244,27 +295,57 @@ func (s *ShiftEmployeeService) EditShiftForUserWithEffectiveDate(ctx context.Con
 			ErrorClient: "Invalid input data",
 		}
 	}
-
-	s.logger.Info("EditShiftForUserWithEffectiveDate - Start", "user_id", input.UserId, "shift_user_id", input.ShiftUserId)
-
+	// Get company user and check permission
+	isUserInCompany, err := s.userRepo.UserExistsInCompany(
+		ctx,
+		&domainModel.UserExistsInCompanyInput{
+			CompanyID: input.CompanyId,
+			UserID:    input.UserIdReq,
+		},
+	)
+	if err != nil {
+		s.logger.Error("DeleteShiftUser - Failed to check user in company", "error", err)
+		return &applicationError.Error{
+			ErrorSystem: err,
+			ErrorClient: "Failed to check user in company",
+		}
+	}
+	if !isUserInCompany && input.Role != domainModel.RoleAdmin {
+		s.logger.Error("DeleteShiftUser - User does not have permission to delete shift assignment", "user_id", input.UserId, "user_id_req", input.UserIdReq, "company_id", input.CompanyId)
+		return &applicationError.Error{
+			ErrorSystem: fmt.Errorf("user does not have permission to delete shift assignment"),
+			ErrorClient: "You do not have permission to delete this shift assignment",
+		}
+	}
 	// Create domain input
 	domainInput := &domainModel.EditEffectiveShiftForEmployeeInput{
-		EmployeeShiftID: input.ShiftUserId,
-		EffectiveFrom:   input.NewEffectiveFrom,
-		EffectiveTo:     input.NewEffectiveTo,
+		EmployeeID:    input.UserIdReq,
+		ShiftID:       input.ShiftId,
+		EffectiveFrom: input.NewEffectiveFrom,
+		EffectiveTo:   input.NewEffectiveTo,
 	}
 
 	// Call repository
-	err := s.shiftUserRepo.EditEffectiveShiftForEmployee(ctx, domainInput)
-	if err != nil {
+	if err := s.shiftUserRepo.EditEffectiveShiftForEmployee(ctx, domainInput); err != nil {
 		s.logger.Error("EditShiftForUserWithEffectiveDate - Failed to edit shift effective date", "error", err)
 		return &applicationError.Error{
 			ErrorSystem: err,
 			ErrorClient: "Failed to edit shift effective date",
 		}
 	}
+	// Rm cache
+	key := utilsCache.GetKeyShiftEmployee(
+		utilsCrypto.GetHash(input.ShiftId.String()),
+		utilsCrypto.GetHash(input.UserIdReq.String()),
+	)
+	if err := s.distributedCache.Delete(ctx, key); err != nil {
+		s.logger.Warn("EditShiftForUserWithEffectiveDate - Failed to delete from distributed cache", "error", err)
+	}
+	if err := s.localCache.Delete(ctx, key); err != nil {
+		s.logger.Warn("EditShiftForUserWithEffectiveDate - Failed to delete from local cache", "error", err)
+	}
 
-	s.logger.Info("EditShiftForUserWithEffectiveDate - Success", "shift_user_id", input.ShiftUserId)
+	s.logger.Info("EditShiftForUserWithEffectiveDate - Success", "shift_id", input.ShiftId, "user_id_req", input.UserIdReq)
 
 	return nil
 }
@@ -279,20 +360,53 @@ func (s *ShiftEmployeeService) EnableShiftUser(ctx context.Context, input *appli
 			ErrorClient: "Invalid input data",
 		}
 	}
-
-	s.logger.Info("EnableShiftUser - Start", "user_id", input.UserId, "shift_user_id", input.ShiftUserId)
-
-	// Call repository
-	err := s.shiftUserRepo.EnableEmployeeShift(ctx, input.ShiftUserId)
+	// Get company user and check permission
+	isUserInCompany, err := s.userRepo.UserExistsInCompany(
+		ctx,
+		&domainModel.UserExistsInCompanyInput{
+			CompanyID: input.CompanyId,
+			UserID:    input.UserIdReq,
+		},
+	)
 	if err != nil {
+		s.logger.Error("DeleteShiftUser - Failed to check user in company", "error", err)
+		return &applicationError.Error{
+			ErrorSystem: err,
+			ErrorClient: "Failed to check user in company",
+		}
+	}
+	if !isUserInCompany && input.Role != domainModel.RoleAdmin {
+		s.logger.Error("DeleteShiftUser - User does not have permission to delete shift assignment", "user_id", input.UserId, "user_id_req", input.UserIdReq, "company_id", input.CompanyId)
+		return &applicationError.Error{
+			ErrorSystem: fmt.Errorf("user does not have permission to delete shift assignment"),
+			ErrorClient: "You do not have permission to delete this shift assignment",
+		}
+	}
+	// Call repository
+	if err := s.shiftUserRepo.EnableEmployeeShift(ctx,
+		&domainModel.EnableEmployeeShiftIInput{
+			ShiftID:    input.ShiftId,
+			EmployeeID: input.UserIdReq,
+		}); err != nil {
 		s.logger.Error("EnableShiftUser - Failed to enable shift assignment", "error", err)
 		return &applicationError.Error{
 			ErrorSystem: err,
 			ErrorClient: "Failed to enable shift assignment",
 		}
 	}
+	// Rm cache
+	key := utilsCache.GetKeyShiftEmployee(
+		utilsCrypto.GetHash(input.ShiftId.String()),
+		utilsCrypto.GetHash(input.UserIdReq.String()),
+	)
+	if err := s.distributedCache.Delete(ctx, key); err != nil {
+		s.logger.Warn("EnableShiftUser - Failed to delete from distributed cache", "error", err)
+	}
+	if err := s.localCache.Delete(ctx, key); err != nil {
+		s.logger.Warn("EnableShiftUser - Failed to delete from local cache", "error", err)
+	}
 
-	s.logger.Info("EnableShiftUser - Success", "shift_user_id", input.ShiftUserId)
+	s.logger.Info("EnableShiftUser - Success", "shift_id", input.ShiftId, "user_id_req", input.UserIdReq)
 
 	return nil
 }
@@ -307,19 +421,17 @@ func (s *ShiftEmployeeService) GetShiftForUserWithEffectiveDate(ctx context.Cont
 			ErrorClient: "Invalid input data",
 		}
 	}
-
 	s.logger.Info("GetShiftForUserWithEffectiveDate - Start", "user_id", input.UserId, "page", input.Page, "size", input.Size)
 
 	// Create cache key based on user and date range
-	cacheKey := fmt.Sprintf("%s%s:%s:%s:%d:%d",
-		shiftEmployeeCachePrefix,
-		input.UserId.String(),
-		input.EffectiveFrom.Format("2006-01-02"),
-		input.EffectiveTo.Format("2006-01-02"),
+	cacheKey := utilsCache.GetKeyShiftEmployeeWithEffectiveDate(
+		utilsCrypto.GetHash(input.UserId.String()),
+		fmt.Sprintf("%d", input.EffectiveFrom),
+		fmt.Sprintf("%d", input.EffectiveTo),
 		input.Page,
 		input.Size,
 	)
-
+	shiftEmployeeCacheTTL := int64(constants.TTL_Shift_Employee_Cache)
 	// Try to get from local cache first
 	if cachedData, err := s.localCache.Get(ctx, cacheKey); err == nil && cachedData != "" {
 		s.logger.Info("GetShiftForUserWithEffectiveDate - Cache hit (local)", "user_id", input.UserId)
@@ -398,6 +510,11 @@ func NewShiftEmployeeService() service.IShiftEmployeeService {
 		panic(fmt.Sprintf("Failed to get shift user repository: %v", err))
 	}
 
+	userRepo, err := repository.GetUserRepository()
+	if err != nil {
+		panic(fmt.Sprintf("Failed to get user repository: %v", err))
+	}
+
 	log := logger.GetLogger()
 	if log == nil {
 		panic("Failed to get logger instance")
@@ -415,6 +532,7 @@ func NewShiftEmployeeService() service.IShiftEmployeeService {
 
 	return &ShiftEmployeeService{
 		shiftUserRepo:    shiftUserRepo,
+		userRepo:         userRepo,
 		logger:           log,
 		distributedCache: distributedCache,
 		localCache:       localCache,

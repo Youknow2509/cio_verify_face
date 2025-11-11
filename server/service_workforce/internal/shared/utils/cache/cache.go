@@ -8,6 +8,17 @@ import "fmt"
 //
 // =================================
 
+// Key GetKeyShiftEmployeeWithEffectiveDate
+func GetKeyShiftEmployeeWithEffectiveDate(
+	userIdHash string,
+	effectiveFrom string,
+	effectiveTo string,
+	page int,
+	size int,
+) string {
+	return fmt.Sprintf("shift:employee:effective:date:%s:%s:%s:%d:%d", userIdHash, effectiveFrom, effectiveTo, page, size)
+}
+
 // Key employee shift info
 func GetKeyShiftEmployee(shiftIdHash string, employeeIdHash string) string {
 	return fmt.Sprintf("shift:employee:%s:%s", shiftIdHash, employeeIdHash)

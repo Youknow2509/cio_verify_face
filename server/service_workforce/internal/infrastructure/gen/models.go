@@ -135,13 +135,12 @@ type Employee struct {
 }
 
 type EmployeeShift struct {
-	EmployeeShiftID pgtype.UUID
-	EmployeeID      pgtype.UUID
-	ShiftID         pgtype.UUID
-	EffectiveFrom   pgtype.Date
-	EffectiveTo     pgtype.Date
-	IsActive        pgtype.Bool
-	CreatedAt       pgtype.Timestamptz
+	EmployeeID    pgtype.UUID
+	ShiftID       pgtype.UUID
+	EffectiveFrom pgtype.Date
+	EffectiveTo   pgtype.Date
+	IsActive      pgtype.Bool
+	CreatedAt     pgtype.Timestamptz
 }
 
 type SystemSetting struct {

@@ -51,7 +51,6 @@ definitions:
     required:
     - company_id
     - shift_id
-    - status
     type: object
   dto.CreateShiftReq:
     properties:
@@ -85,12 +84,25 @@ definitions:
     - start_time
     - work_days
     type: object
-  dto.DisableShiftForUserReq:
+  dto.DeleteShiftUserReq:
     properties:
-      shift_user_id:
+      employee_id:
+        type: string
+      shift_id:
         type: string
     required:
-    - shift_user_id
+    - employee_id
+    - shift_id
+    type: object
+  dto.DisableShiftUserReq:
+    properties:
+      employee_id:
+        type: string
+      shift_id:
+        type: string
+    required:
+    - employee_id
+    - shift_id
     type: object
   dto.EditShiftReq:
     properties:
@@ -127,12 +139,15 @@ definitions:
     - start_time
     - work_days
     type: object
-  dto.EnableShiftForUserReq:
+  dto.EnableShiftUserReq:
     properties:
-      shift_user_id:
+      employee_id:
+        type: string
+      shift_id:
         type: string
     required:
-    - shift_user_id
+    - employee_id
+    - shift_id
     type: object
   dto.ErrResponseData:
     properties:
@@ -157,16 +172,19 @@ definitions:
     type: object
   dto.ShiftEmployeeEditEffectiveDateReq:
     properties:
+      employee_id:
+        type: string
       new_effective_from:
         type: integer
       new_effective_to:
         type: integer
-      shift_user_id:
+      shift_id:
         type: string
     required:
+    - employee_id
     - new_effective_from
     - new_effective_to
-    - shift_user_id
+    - shift_id
     type: object
   dto.ShiftEmployeeEffectiveDateReq:
     properties:
@@ -234,31 +252,6 @@ paths:
       summary: Get shift user effective date information
       tags:
       - Shift
-  /api/v1/employee/shift/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete shift employee information for company
-      parameters:
-      - description: Bearer <token>
-        in: header
-        name: authorization
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.ResponseData'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrResponseData'
-      summary: Delete shift employee
-      tags:
-      - Shift
   /api/v1/employee/shift/add:
     post:
       consumes:
@@ -321,6 +314,37 @@ paths:
       summary: Add shift employee list
       tags:
       - Shift
+  /api/v1/employee/shift/delete:
+    post:
+      consumes:
+      - application/json
+      description: Delete shift employee information for company
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Delete Shift User Request
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/dto.DeleteShiftUserReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Delete shift employee
+      tags:
+      - Shift
   /api/v1/employee/shift/disable:
     post:
       consumes:
@@ -337,7 +361,7 @@ paths:
         name: dto
         required: true
         schema:
-          $ref: '#/definitions/dto.DisableShiftForUserReq'
+          $ref: '#/definitions/dto.DisableShiftUserReq'
       produces:
       - application/json
       responses:
@@ -368,7 +392,7 @@ paths:
         name: dto
         required: true
         schema:
-          $ref: '#/definitions/dto.EnableShiftForUserReq'
+          $ref: '#/definitions/dto.EnableShiftUserReq'
       produces:
       - application/json
       responses:

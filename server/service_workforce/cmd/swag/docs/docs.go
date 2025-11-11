@@ -165,6 +165,53 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/employee/shift/delete": {
+            "post": {
+                "description": "Delete shift employee information for company",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shift"
+                ],
+                "summary": "Delete shift employee",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer \u003ctoken\u003e",
+                        "name": "authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Delete Shift User Request",
+                        "name": "req",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.DeleteShiftUserReq"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ResponseData"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrResponseData"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/employee/shift/disable": {
             "post": {
                 "description": "Disable shift for user information for company",
@@ -192,7 +239,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.DisableShiftForUserReq"
+                            "$ref": "#/definitions/dto.DisableShiftUserReq"
                         }
                     }
                 ],
@@ -239,46 +286,8 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.EnableShiftForUserReq"
+                            "$ref": "#/definitions/dto.EnableShiftUserReq"
                         }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ResponseData"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrResponseData"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/employee/shift/{id}": {
-            "delete": {
-                "description": "Delete shift employee information for company",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Shift"
-                ],
-                "summary": "Delete shift employee",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer \u003ctoken\u003e",
-                        "name": "authorization",
-                        "in": "header",
-                        "required": true
                     }
                 ],
                 "responses": {
@@ -667,8 +676,7 @@ const docTemplate = `{
             "type": "object",
             "required": [
                 "company_id",
-                "shift_id",
-                "status"
+                "shift_id"
             ],
             "properties": {
                 "company_id": {
@@ -731,13 +739,32 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.DisableShiftForUserReq": {
+        "dto.DeleteShiftUserReq": {
             "type": "object",
             "required": [
-                "shift_user_id"
+                "employee_id",
+                "shift_id"
             ],
             "properties": {
-                "shift_user_id": {
+                "employee_id": {
+                    "type": "string"
+                },
+                "shift_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.DisableShiftUserReq": {
+            "type": "object",
+            "required": [
+                "employee_id",
+                "shift_id"
+            ],
+            "properties": {
+                "employee_id": {
+                    "type": "string"
+                },
+                "shift_id": {
                     "type": "string"
                 }
             }
@@ -791,13 +818,17 @@ const docTemplate = `{
                 }
             }
         },
-        "dto.EnableShiftForUserReq": {
+        "dto.EnableShiftUserReq": {
             "type": "object",
             "required": [
-                "shift_user_id"
+                "employee_id",
+                "shift_id"
             ],
             "properties": {
-                "shift_user_id": {
+                "employee_id": {
+                    "type": "string"
+                },
+                "shift_id": {
                     "type": "string"
                 }
             }
@@ -836,18 +867,22 @@ const docTemplate = `{
         "dto.ShiftEmployeeEditEffectiveDateReq": {
             "type": "object",
             "required": [
+                "employee_id",
                 "new_effective_from",
                 "new_effective_to",
-                "shift_user_id"
+                "shift_id"
             ],
             "properties": {
+                "employee_id": {
+                    "type": "string"
+                },
                 "new_effective_from": {
                     "type": "integer"
                 },
                 "new_effective_to": {
                     "type": "integer"
                 },
-                "shift_user_id": {
+                "shift_id": {
                     "type": "string"
                 }
             }

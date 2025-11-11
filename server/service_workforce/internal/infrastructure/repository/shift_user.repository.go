@@ -22,6 +22,60 @@ type ShiftUserRepository struct {
 	pool *pgxpool.Pool
 }
 
+// DeleteEmployeeShift implements repository.IShiftUserRepository.
+func (s *ShiftUserRepository) DeleteEmployeeShift(ctx context.Context, input *model.DeleteEmployeeShiftInput) error {
+	if input == nil {
+		return errors.New("input cannot be nil")
+	}
+
+	if err := s.db.DeleteEmployeeShift(
+		ctx,
+		database.DeleteEmployeeShiftParams{
+			EmployeeID: pgtype.UUID{Valid: true, Bytes: input.EmployeeID},
+			ShiftID:    pgtype.UUID{Valid: true, Bytes: input.ShiftId},
+		},
+	); err != nil && err != pgx.ErrNoRows {
+		return err
+	}
+	return nil
+}
+
+// DisableEmployeeShift implements repository.IShiftUserRepository.
+func (s *ShiftUserRepository) DisableEmployeeShift(ctx context.Context, input *model.DisableEmployeeShiftInput) error {
+	if input == nil {
+		return errors.New("input cannot be nil")
+	}
+
+	if err := s.db.DisableEmployeeShift(
+		ctx,
+		database.DisableEmployeeShiftParams{
+			EmployeeID: pgtype.UUID{Valid: true, Bytes: input.EmployeeID},
+			ShiftID:    pgtype.UUID{Valid: true, Bytes: input.ShiftID},
+		},
+	); err != nil && err != pgx.ErrNoRows {
+		return err
+	}
+	return nil
+}
+
+// EnableEmployeeShift implements repository.IShiftUserRepository.
+func (s *ShiftUserRepository) EnableEmployeeShift(ctx context.Context, input *model.EnableEmployeeShiftIInput) error {
+	if input == nil {
+		return errors.New("input cannot be nil")
+	}
+
+	if err := s.db.EnableEmployeeShift(
+		ctx,
+		database.EnableEmployeeShiftParams{
+			EmployeeID: pgtype.UUID{Valid: true, Bytes: input.EmployeeID},
+			ShiftID:    pgtype.UUID{Valid: true, Bytes: input.ShiftID},
+		},
+	); err != nil && err != pgx.ErrNoRows {
+		return err
+	}
+	return nil
+}
+
 // AddListShiftForEmployees implements repository.IShiftUserRepository.
 func (s *ShiftUserRepository) AddListShiftForEmployees(ctx context.Context, input *model.AddListShiftForEmployeesInput) error {
 	if input == nil {
@@ -74,11 +128,11 @@ func (s *ShiftUserRepository) GetShiftEmployeeWithEffectiveDate(ctx context.Cont
 	out := make([]*model.EmployeeShiftRow, 0, len(rows))
 	for _, r := range rows {
 		out = append(out, &model.EmployeeShiftRow{
-			EmployeeShiftID: r.EmployeeShiftID.Bytes,
-			ShiftID:         r.ShiftID.Bytes,
-			EffectiveFrom:   fromPgDate(r.EffectiveFrom),
-			EffectiveTo:     fromPgDate(r.EffectiveTo),
-			IsActive:        fromPgBoolValue(r.IsActive),
+			EmployeeID:    input.EmployeeID,
+			ShiftID:       r.ShiftID.Bytes,
+			EffectiveFrom: fromPgDate(r.EffectiveFrom),
+			EffectiveTo:   fromPgDate(r.EffectiveTo),
+			IsActive:      fromPgBoolValue(r.IsActive),
 		})
 	}
 	return out, nil
@@ -91,34 +145,10 @@ func (s *ShiftUserRepository) EditEffectiveShiftForEmployee(ctx context.Context,
 	}
 
 	return s.db.EditEffectiveShiftForEmployee(ctx, database.EditEffectiveShiftForEmployeeParams{
-		EmployeeShiftID: pgtype.UUID{Valid: true, Bytes: input.EmployeeShiftID},
-		EffectiveFrom:   toPgDate(input.EffectiveFrom),
-		EffectiveTo:     toPgDate(input.EffectiveTo),
+		EmployeeID:    pgtype.UUID{Valid: true, Bytes: input.EmployeeID},
+		EffectiveFrom: toPgDate(input.EffectiveFrom),
+		EffectiveTo:   toPgDate(input.EffectiveTo),
 	})
-}
-
-// DeleteEmployeeShift implements repository.IShiftUserRepository.
-func (s *ShiftUserRepository) DeleteEmployeeShift(ctx context.Context, employeeShiftID uuid.UUID) error {
-	if employeeShiftID == uuid.Nil {
-		return errors.New("employeeShiftID cannot be empty")
-	}
-	return s.db.DeleteEmployeeShift(ctx, pgtype.UUID{Valid: true, Bytes: employeeShiftID})
-}
-
-// DisableEmployeeShift implements repository.IShiftUserRepository.
-func (s *ShiftUserRepository) DisableEmployeeShift(ctx context.Context, employeeShiftID uuid.UUID) error {
-	if employeeShiftID == uuid.Nil {
-		return errors.New("employeeShiftID cannot be empty")
-	}
-	return s.db.DisableEmployeeShift(ctx, pgtype.UUID{Valid: true, Bytes: employeeShiftID})
-}
-
-// EnableEmployeeShift implements repository.IShiftUserRepository.
-func (s *ShiftUserRepository) EnableEmployeeShift(ctx context.Context, employeeShiftID uuid.UUID) error {
-	if employeeShiftID == uuid.Nil {
-		return errors.New("employeeShiftID cannot be empty")
-	}
-	return s.db.EnableEmployeeShift(ctx, pgtype.UUID{Valid: true, Bytes: employeeShiftID})
 }
 
 // AddShiftForEmployee implements repository.IShiftUserRepository.

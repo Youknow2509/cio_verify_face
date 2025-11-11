@@ -1,5 +1,4 @@
 -- Table: employee_shifts
--- employee_shift_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 -- employee_id UUID NOT NULL REFERENCES employees(employee_id) ON DELETE CASCADE,
 -- shift_id UUID NOT NULL REFERENCES work_shifts(shift_id) ON DELETE CASCADE,
 -- effective_from DATE NOT NULL,
@@ -15,7 +14,6 @@ WHERE shift_id = $1;
 
 -- name: GetShiftEmployeeWithEffectiveDate :many
 SELECT 
-    employee_shift_id,
     shift_id,
     effective_from,
     effective_to,
@@ -31,21 +29,21 @@ LIMIT $3 OFFSET $4;
 UPDATE employee_shifts
 SET effective_from = $2,
     effective_to = $3
-WHERE employee_shift_id = $1;
+WHERE employee_id = $1 and shift_id = $2;
 
 -- name: DeleteEmployeeShift :exec
 DELETE FROM employee_shifts
-WHERE employee_shift_id = $1;
+WHERE employee_id = $1 and shift_id = $2;
 
 -- name: DisableEmployeeShift :exec
 UPDATE employee_shifts
 SET is_active = false
-WHERE employee_shift_id = $1;
+WHERE employee_id = $1 and shift_id = $2;
 
 -- name: EnableEmployeeShift :exec
 UPDATE employee_shifts
 SET is_active = true
-WHERE employee_shift_id = $1;
+WHERE employee_id = $1 and shift_id = $2;
 
 -- name: AddShiftForEmployee :exec
 INSERT INTO employee_shifts (
@@ -53,8 +51,7 @@ INSERT INTO employee_shifts (
     shift_id,
     effective_from,
     effective_to
-) VALUES ($1, $2, $3, $4)
-RETURNING employee_shift_id;
+) VALUES ($1, $2, $3, $4);
 
 -- name: CheckUserExistShift :one
 SELECT employee_id,

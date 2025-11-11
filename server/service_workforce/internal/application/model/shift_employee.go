@@ -20,10 +20,10 @@ type AddShiftEmployeeListInput struct {
 	ClientAgent string    `json:"client_agent"`
 	CompanyId   uuid.UUID `json:"company_id"`
 	//
-	CompanyRequestId uuid.UUID `json:"company_request_id"`
-	ShiftId          uuid.UUID `json:"shift_id"`
-	EffectiveFrom    time.Time `json:"effective_from"`
-	EffectiveTo      time.Time `json:"effective_to"`
+	CompanyRequestId uuid.UUID   `json:"company_request_id"`
+	ShiftId          uuid.UUID   `json:"shift_id"`
+	EffectiveFrom    time.Time   `json:"effective_from"`
+	EffectiveTo      time.Time   `json:"effective_to"`
 	EmployeeIDs      []uuid.UUID `json:"employee_ids"`
 }
 
@@ -56,7 +56,8 @@ type DeleteShiftUserInput struct {
 	ClientAgent string    `json:"client_agent"`
 	CompanyId   uuid.UUID `json:"company_id"`
 	//
-	ShiftUserId uuid.UUID `json:"shift_user_id"`
+	UserIdReq uuid.UUID `json:"user_id_req"`
+	ShiftId   uuid.UUID `json:"shift_id"`
 }
 
 // For DisableShiftUser
@@ -69,7 +70,8 @@ type DisableShiftUserInput struct {
 	ClientAgent string    `json:"client_agent"`
 	CompanyId   uuid.UUID `json:"company_id"`
 	//
-	ShiftUserId uuid.UUID `json:"shift_user_id"`
+	UserIdReq uuid.UUID `json:"user_id_req"`
+	ShiftId   uuid.UUID `json:"shift_id"`
 }
 
 // For EditShiftForUserWithEffectiveDate
@@ -82,7 +84,8 @@ type EditShiftForUserWithEffectiveDateInput struct {
 	ClientAgent string    `json:"client_agent"`
 	CompanyId   uuid.UUID `json:"company_id"`
 	//
-	ShiftUserId      uuid.UUID `json:"shift_user_id"`
+	UserIdReq        uuid.UUID `json:"user_id_req"`
+	ShiftId          uuid.UUID `json:"shift_id"`
 	NewEffectiveFrom time.Time `json:"new_effective_from"`
 	NewEffectiveTo   time.Time `json:"new_effective_to"`
 }
@@ -97,7 +100,8 @@ type EnableShiftUserInput struct {
 	ClientAgent string    `json:"client_agent"`
 	CompanyId   uuid.UUID `json:"company_id"`
 	//
-	ShiftUserId uuid.UUID `json:"shift_user_id"`
+	UserIdReq uuid.UUID `json:"user_id_req"`
+	ShiftId   uuid.UUID `json:"shift_id"`
 }
 
 // For GetShiftForUserWithEffectiveDate
