@@ -19,6 +19,25 @@ type RedisDistributedCache struct {
 	client *redis.Client
 }
 
+// DeleteByPrefix implements cache.IDistributedCache.
+func (r *RedisDistributedCache) DeleteByPrefix(ctx context.Context, keyPrefix string) error {
+	luaStr := `
+		-- Delete all keys matching "prefix:*"
+		local keys = redis.call('KEYS', KEYS[1])
+		for i, key in ipairs(keys) do
+			redis.call('DEL', key)
+		end
+		return #keys  -- return how many keys were deleted
+	`
+	keys := []string{keyPrefix + "*"}
+	args := []interface{}{}
+	_, err := r.client.Eval(ctx, luaStr, keys, args...).Result()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 // TTL implements cache.IDistributedCache.
 func (r *RedisDistributedCache) TTL(ctx context.Context, key string) (time.Duration, error) {
 	result, err := r.client.TTL(ctx, key).Result()

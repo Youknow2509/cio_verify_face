@@ -17,6 +17,11 @@ type RistrettoLocalCache struct {
 	cache *ristretto.Cache[string, string]
 }
 
+// DeleteByPrefix implements cache.ILocalCache.
+func (o *RistrettoLocalCache) DeleteByPrefix(ctx context.Context, keyPrefix string) error {
+	panic("unimplemented")
+}
+
 // All implements cache.ILocalCache.
 func (o *RistrettoLocalCache) All(ctx context.Context) (map[string]string, error) {
 	return nil, fmt.Errorf("ristretto does not support retrieving all items directly, use Keys and Get for individual items")

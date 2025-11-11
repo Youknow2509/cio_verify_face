@@ -10,18 +10,13 @@ import (
 	applicationError "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/application/error"
 	applicationModel "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/application/model"
 	service "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/application/service"
+	"github.com/youknow2509/cio_verify_face/server/service_workforce/internal/constants"
 	"github.com/youknow2509/cio_verify_face/server/service_workforce/internal/domain/cache"
 	"github.com/youknow2509/cio_verify_face/server/service_workforce/internal/domain/logger"
 	domainModel "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/domain/model"
 	"github.com/youknow2509/cio_verify_face/server/service_workforce/internal/domain/repository"
 	utilsCache "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/shared/utils/cache"
 	utilsCrypto "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/shared/utils/crypto"
-)
-
-const (
-	// Cache key prefixes
-	shiftCachePrefix = "shift:"
-	shiftCacheTTL    = 3600 // 1 hour in seconds
 )
 
 // =================================================
@@ -96,7 +91,28 @@ func (s *ShiftService) ChangeStatusShift(ctx context.Context, input *application
 		}
 	}
 	s.logger.Info("ChangeStatusShift - Success", "shift_id", input.ShiftId, "is_active", input.IsActive)
-
+	// Rm cache
+	keyCacheListShiftPrefix := utilsCache.GetKeyListShiftInCompanyPrefix(
+		utilsCrypto.GetHash(input.CompanyId.String()),
+	)
+	keyInfoShift := utilsCache.GetKeyShiftInfo(
+		utilsCrypto.GetHash(input.CompanyId.String()),
+		utilsCrypto.GetHash(input.ShiftId.String()),
+	)
+	// Delete shift list in company cache
+	if delErr := s.distributedCache.DeleteByPrefix(ctx, keyCacheListShiftPrefix); delErr != nil {
+		s.logger.Warn("ChangeStatusShift - Failed to delete list shift cache from distributed cache", "error", delErr)
+	}
+	if delErr := s.localCache.Delete(ctx, keyCacheListShiftPrefix); delErr != nil {
+		s.logger.Warn("ChangeStatusShift - Failed to delete list shift cache from local cache", "error", delErr)
+	}
+	// Delte shift info cache
+	if delErr := s.distributedCache.Delete(ctx, keyInfoShift); delErr != nil {
+		s.logger.Warn("ChangeStatusShift - Failed to delete shift info cache from distributed cache", "error", delErr)
+	}
+	if delErr := s.localCache.Delete(ctx, keyInfoShift); delErr != nil {
+		s.logger.Warn("ChangeStatusShift - Failed to delete shift info cache from local cache", "error", delErr)
+	}
 	return nil
 }
 
@@ -202,11 +218,11 @@ func (s *ShiftService) GetListShift(ctx context.Context, input *applicationModel
 	// Cache the result
 	if jsonData, jsonErr := json.Marshal(output); jsonErr == nil {
 		// Store in distributed cache
-		if setErr := s.distributedCache.SetTTL(ctx, key, string(jsonData), shiftCacheTTL); setErr != nil {
+		if setErr := s.distributedCache.SetTTL(ctx, key, string(jsonData), constants.TTL_Shift_Cache); setErr != nil {
 			s.logger.Warn("GetListShift - Failed to set distributed cache", "error", setErr)
 		}
 		// Store in local cache
-		if setErr := s.localCache.SetTTL(ctx, key, string(jsonData), shiftCacheTTL); setErr != nil {
+		if setErr := s.localCache.SetTTL(ctx, key, string(jsonData), constants.TTL_Shift_Cache); setErr != nil {
 			s.logger.Warn("GetListShift - Failed to set local cache", "error", setErr)
 		}
 	}
@@ -293,17 +309,27 @@ func (s *ShiftService) DeleteShift(ctx context.Context, input *applicationModel.
 		}
 	}
 
-	// Invalidate cache
-	cacheKey := fmt.Sprintf("%s%s", shiftCachePrefix, input.ShiftId.String())
-
-	// Delete from distributed cache
-	if delErr := s.distributedCache.Delete(ctx, cacheKey); delErr != nil {
-		s.logger.Warn("DeleteShift - Failed to delete from distributed cache", "error", delErr)
+	// Rm cache
+	cacheKeyListShiftPrefix := utilsCache.GetKeyListShiftInCompanyPrefix(
+		utilsCrypto.GetHash(input.CompanyId.String()),
+	)
+	cacheKeyInfoShift := utilsCache.GetKeyShiftInfo(
+		utilsCrypto.GetHash(input.CompanyId.String()),
+		utilsCrypto.GetHash(input.ShiftId.String()),
+	)
+	// Delete shift list in company cache
+	if delErr := s.distributedCache.DeleteByPrefix(ctx, cacheKeyListShiftPrefix); delErr != nil {
+		s.logger.Warn("DeleteShift - Failed to delete list shift cache from distributed cache", "error", delErr)
 	}
-
-	// Delete from local cache
-	if delErr := s.localCache.Delete(ctx, cacheKey); delErr != nil {
-		s.logger.Warn("DeleteShift - Failed to delete from local cache", "error", delErr)
+	if delErr := s.localCache.Delete(ctx, cacheKeyListShiftPrefix); delErr != nil {
+		s.logger.Warn("DeleteShift - Failed to delete list shift cache from local cache", "error", delErr)
+	}
+	// Delte shift info cache
+	if delErr := s.distributedCache.Delete(ctx, cacheKeyInfoShift); delErr != nil {
+		s.logger.Warn("DeleteShift - Failed to delete shift info cache from distributed cache", "error", delErr)
+	}
+	if delErr := s.localCache.Delete(ctx, cacheKeyInfoShift); delErr != nil {
+		s.logger.Warn("DeleteShift - Failed to delete shift info cache from local cache", "error", delErr)
 	}
 
 	s.logger.Info("DeleteShift - Success", "shift_id", input.ShiftId)
@@ -351,21 +377,30 @@ func (s *ShiftService) EditShift(ctx context.Context, input *applicationModel.Ed
 		}
 	}
 
-	// Invalidate cache after update
-	cacheKey := fmt.Sprintf("%s%s", shiftCachePrefix, input.ShiftId.String())
-
-	// Delete from distributed cache
-	if delErr := s.distributedCache.Delete(ctx, cacheKey); delErr != nil {
-		s.logger.Warn("EditShift - Failed to delete from distributed cache", "error", delErr)
+	// Rm cache
+	cacheKeyListShiftPrefix := utilsCache.GetKeyListShiftInCompanyPrefix(
+		utilsCrypto.GetHash(input.CompanyId.String()),
+	)
+	cacheKeyInfoShift := utilsCache.GetKeyShiftInfo(
+		utilsCrypto.GetHash(input.CompanyId.String()),
+		utilsCrypto.GetHash(input.ShiftId.String()),
+	)
+	// Delete shift list in company cache
+	if delErr := s.distributedCache.DeleteByPrefix(ctx, cacheKeyListShiftPrefix); delErr != nil {
+		s.logger.Warn("EditShift - Failed to delete list shift cache from distributed cache", "error", delErr)
 	}
-
-	// Delete from local cache
-	if delErr := s.localCache.Delete(ctx, cacheKey); delErr != nil {
-		s.logger.Warn("EditShift - Failed to delete from local cache", "error", delErr)
+	if delErr := s.localCache.Delete(ctx, cacheKeyListShiftPrefix); delErr != nil {
+		s.logger.Warn("EditShift - Failed to delete list shift cache from local cache", "error", delErr)
+	}
+	// Delte shift info cache
+	if delErr := s.distributedCache.Delete(ctx, cacheKeyInfoShift); delErr != nil {
+		s.logger.Warn("EditShift - Failed to delete shift info cache from distributed cache", "error", delErr)
+	}
+	if delErr := s.localCache.Delete(ctx, cacheKeyInfoShift); delErr != nil {
+		s.logger.Warn("EditShift - Failed to delete shift info cache from local cache", "error", delErr)
 	}
 
 	s.logger.Info("EditShift - Success", "shift_id", input.ShiftId)
-
 	return nil
 }
 
@@ -381,7 +416,10 @@ func (s *ShiftService) GetDetailShift(ctx context.Context, input *applicationMod
 	}
 	s.logger.Info("GetDetailShift - Start", "user_id", input.UserId, "shift_id", input.ShiftId)
 
-	cacheKey := fmt.Sprintf("%s%s", shiftCachePrefix, input.ShiftId.String())
+	cacheKey := utilsCache.GetKeyShiftInfo(
+		utilsCrypto.GetHash(input.CompanyId.String()),
+		utilsCrypto.GetHash(input.ShiftId.String()),
+	)
 
 	// Try to get from local cache first
 	if cachedData, err := s.localCache.Get(ctx, cacheKey); err == nil && cachedData != "" {
@@ -401,7 +439,7 @@ func (s *ShiftService) GetDetailShift(ctx context.Context, input *applicationMod
 		if unmarshalErr := json.Unmarshal([]byte(cachedData), &output); unmarshalErr == nil {
 			// Store in local cache for faster access next time
 			if jsonData, _ := json.Marshal(output); len(jsonData) > 0 {
-				_ = s.localCache.SetTTL(ctx, cacheKey, string(jsonData), shiftCacheTTL)
+				_ = s.localCache.SetTTL(ctx, cacheKey, string(jsonData), constants.TTL_Shift_Cache)
 			}
 			return &output, nil
 		} else {
@@ -444,11 +482,11 @@ func (s *ShiftService) GetDetailShift(ctx context.Context, input *applicationMod
 	// Cache the result
 	if jsonData, jsonErr := json.Marshal(output); jsonErr == nil {
 		// Store in distributed cache
-		if setErr := s.distributedCache.SetTTL(ctx, cacheKey, string(jsonData), shiftCacheTTL); setErr != nil {
+		if setErr := s.distributedCache.SetTTL(ctx, cacheKey, string(jsonData), constants.TTL_Shift_Cache); setErr != nil {
 			s.logger.Warn("GetDetailShift - Failed to set distributed cache", "error", setErr)
 		}
 		// Store in local cache
-		if setErr := s.localCache.SetTTL(ctx, cacheKey, string(jsonData), shiftCacheTTL); setErr != nil {
+		if setErr := s.localCache.SetTTL(ctx, cacheKey, string(jsonData), constants.TTL_Shift_Cache); setErr != nil {
 			s.logger.Warn("GetDetailShift - Failed to set local cache", "error", setErr)
 		}
 	}
