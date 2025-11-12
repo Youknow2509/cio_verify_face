@@ -358,6 +358,18 @@ func (s *ShiftEmployeeService) RemoveListShiftEmployee(ctx context.Context, inpu
 	if err := s.distributedCache.DeleteByPrefix(ctx, keyListShiftCompanyPrefix); err != nil {
 		s.logger.Warn("RemoveListShiftEmployee - Failed to delete list shift cache in company", "error", err)
 	}
+	keyListEmployeesInShiftPrefix := utilsCache.GetKeyListEmployeeInShiftPrefix(
+		utilsCrypto.GetHash(input.ShiftId.String()),
+	)
+	if err := s.distributedCache.DeleteByPrefix(ctx, keyListEmployeesInShiftPrefix); err != nil {
+		s.logger.Warn("RemoveListShiftEmployee - Failed to delete list employee cache in shift", "error", err)
+	}
+	keyListEmployeesDonotInShiftPrefix := utilsCache.GetKeyListEmployeeDonotInShiftPrefix(
+		utilsCrypto.GetHash(input.ShiftId.String()),
+	)
+	if err := s.distributedCache.DeleteByPrefix(ctx, keyListEmployeesDonotInShiftPrefix); err != nil {
+		s.logger.Warn("RemoveListShiftEmployee - Failed to delete list employee donot in shift cache", "error", err)
+	}
 	return nil
 }
 
@@ -433,11 +445,23 @@ func (s *ShiftEmployeeService) AddListShiftEmployee(ctx context.Context, input *
 		}
 	}
 	// rm cache list workforce company
-	key := utilsCache.GetKeyListShiftInCompanyPrefix(
-		utilsCrypto.GetHash(input.CompanyId.String()),
+	keyListShiftCompanyPrefix := utilsCache.GetKeyListShiftInCompanyPrefix(
+		utilsCrypto.GetHash(companyId.String()),
 	)
-	if err := s.distributedCache.DeleteByPrefix(ctx, key); err != nil {
-		s.logger.Warn("AddListShiftEmployee - Failed to delete list shift cache in company", "error", err)
+	if err := s.distributedCache.DeleteByPrefix(ctx, keyListShiftCompanyPrefix); err != nil {
+		s.logger.Warn("RemoveListShiftEmployee - Failed to delete list shift cache in company", "error", err)
+	}
+	keyListEmployeesInShiftPrefix := utilsCache.GetKeyListEmployeeInShiftPrefix(
+		utilsCrypto.GetHash(input.ShiftId.String()),
+	)
+	if err := s.distributedCache.DeleteByPrefix(ctx, keyListEmployeesInShiftPrefix); err != nil {
+		s.logger.Warn("RemoveListShiftEmployee - Failed to delete list employee cache in shift", "error", err)
+	}
+	keyListEmployeesDonotInShiftPrefix := utilsCache.GetKeyListEmployeeDonotInShiftPrefix(
+		utilsCrypto.GetHash(input.ShiftId.String()),
+	)
+	if err := s.distributedCache.DeleteByPrefix(ctx, keyListEmployeesDonotInShiftPrefix); err != nil {
+		s.logger.Warn("RemoveListShiftEmployee - Failed to delete list employee donot in shift cache", "error", err)
 	}
 
 	return nil
@@ -500,19 +524,25 @@ func (s *ShiftEmployeeService) AddShiftEmployee(ctx context.Context, input *appl
 		}
 	}
 
-	// Invalidate cache for this employee
-	cacheKey := utilsCache.GetKeyShiftEmployee(
-		utilsCrypto.GetHash(input.ShiftId.String()),
-		utilsCrypto.GetHash(input.EmployeeId.String()),
+	// rm cache list workforce company
+	keyListShiftCompanyPrefix := utilsCache.GetKeyListShiftInCompanyPrefix(
+		utilsCrypto.GetHash(input.CompanyId.String()),
 	)
-	if delErr := s.distributedCache.Delete(ctx, cacheKey); delErr != nil {
-		s.logger.Warn("AddShiftEmployee - Failed to delete from distributed cache", "error", delErr)
+	if err := s.distributedCache.DeleteByPrefix(ctx, keyListShiftCompanyPrefix); err != nil {
+		s.logger.Warn("RemoveListShiftEmployee - Failed to delete list shift cache in company", "error", err)
 	}
-	if delErr := s.localCache.Delete(ctx, cacheKey); delErr != nil {
-		s.logger.Warn("AddShiftEmployee - Failed to delete from local cache", "error", delErr)
+	keyListEmployeesInShiftPrefix := utilsCache.GetKeyListEmployeeInShiftPrefix(
+		utilsCrypto.GetHash(input.ShiftId.String()),
+	)
+	if err := s.distributedCache.DeleteByPrefix(ctx, keyListEmployeesInShiftPrefix); err != nil {
+		s.logger.Warn("RemoveListShiftEmployee - Failed to delete list employee cache in shift", "error", err)
 	}
-
-	s.logger.Info("AddShiftEmployee - Success", "employee_id", input.EmployeeId)
+	keyListEmployeesDonotInShiftPrefix := utilsCache.GetKeyListEmployeeDonotInShiftPrefix(
+		utilsCrypto.GetHash(input.ShiftId.String()),
+	)
+	if err := s.distributedCache.DeleteByPrefix(ctx, keyListEmployeesDonotInShiftPrefix); err != nil {
+		s.logger.Warn("RemoveListShiftEmployee - Failed to delete list employee donot in shift cache", "error", err)
+	}
 
 	return nil
 }
@@ -553,19 +583,6 @@ func (s *ShiftEmployeeService) DeleteListShiftUser(ctx context.Context, input *a
 	}
 	s.logger.Info("DeleteShiftUser - Start", "user_id", input.UserId, "shift_user_id", input.ShiftId)
 	// Call repository
-	// if err := s.shiftUserRepo.DeleteEmployeeShift(
-	// 	ctx,
-	// 	&domainModel.DeleteEmployeeShiftInput{
-	// 		ShiftId:    input.ShiftId,
-	// 		EmployeeID: input.UserIdReq,
-	// 	},
-	// ); err != nil {
-	// 	s.logger.Error("DeleteShiftUser - Failed to delete shift assignment", "error", err)
-	// 	return &applicationError.Error{
-	// 		ErrorSystem: err,
-	// 		ErrorClient: "Failed to delete shift assignment",
-	// 	}
-	// }
 	if errStr, err := s.shiftUserRepo.DeleteListEmployeeShift(
 		ctx,
 		&domainModel.DeleteListEmployeeShiftInput{
