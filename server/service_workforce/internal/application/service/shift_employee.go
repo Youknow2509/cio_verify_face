@@ -15,7 +15,7 @@ type IShiftEmployeeService interface {
 	GetListEmployeeDonotInShift(ctx context.Context, input *model.GetListEmployeeShiftInput) (*model.GetListEmployeeShiftOutput, *applicationError.Error)
 	GetListEmployeeInShift(ctx context.Context, input *model.GetListEmployeeShiftInput) (*model.GetListEmployeeShiftOutput, *applicationError.Error)
 	AddShiftEmployee(ctx context.Context, input *model.AddShiftEmployeeInput) *applicationError.Error
-	DeleteShiftUser(ctx context.Context, input *model.DeleteShiftUserInput) *applicationError.Error
+	DeleteListShiftUser(ctx context.Context, input *model.DeleteShiftUserInput) *applicationError.Error
 	DisableShiftUser(ctx context.Context, input *model.DisableShiftUserInput) *applicationError.Error
 	EditShiftForUserWithEffectiveDate(ctx context.Context, input *model.EditShiftForUserWithEffectiveDateInput) *applicationError.Error
 	EnableShiftUser(ctx context.Context, input *model.EnableShiftUserInput) *applicationError.Error

@@ -114,8 +114,8 @@ type DeleteShiftUserInput struct {
 	ClientAgent string    `json:"client_agent"`
 	CompanyId   uuid.UUID `json:"company_id"`
 	//
-	UserIdReq uuid.UUID `json:"user_id_req"`
-	ShiftId   uuid.UUID `json:"shift_id"`
+	EmployeeIds []uuid.UUID `json:"employee_ids"`
+	ShiftId     uuid.UUID   `json:"shift_id"`
 }
 
 // For DisableShiftUser

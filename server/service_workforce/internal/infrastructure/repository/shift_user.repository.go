@@ -22,6 +22,24 @@ type ShiftUserRepository struct {
 	pool *pgxpool.Pool
 }
 
+// DeleteListEmployeeShift implements repository.IShiftUserRepository.
+func (s *ShiftUserRepository) DeleteListEmployeeShift(ctx context.Context, input *model.DeleteListEmployeeShiftInput) (string, error) {
+	if input == nil {
+		return "", errors.New("input cannot be nil")
+	}
+	errStr := "Failed to delete shift for employee ID s:\n"
+	for _, employeeId := range input.EmployeeIDs {
+		err := s.db.DeleteEmployeeShift(ctx, database.DeleteEmployeeShiftParams{
+			EmployeeID: pgtype.UUID{Valid: true, Bytes: employeeId},
+			ShiftID:    pgtype.UUID{Valid: true, Bytes: input.ShiftId},
+		})
+		if err != nil {
+			errStr += "- " + employeeId.String() + "\n"
+		}
+	}
+	return errStr, nil
+}
+
 // GetListEmployeeDonotInShift implements repository.IShiftUserRepository using sqlc.
 func (s *ShiftUserRepository) GetListEmployeeDonotInShift(ctx context.Context, input *model.GetListEmployyeShiftInput) (*model.GetListEmployyeShiftOutput, error) {
 	if input == nil {

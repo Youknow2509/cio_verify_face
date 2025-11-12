@@ -58,6 +58,12 @@ type DisableEmployeeShiftInput struct {
 	ShiftID    uuid.UUID
 }
 
+// For delete list of employee shift assignments
+type DeleteListEmployeeShiftInput struct {
+	EmployeeIDs []uuid.UUID
+	ShiftId     uuid.UUID
+}
+
 // For delete employee shift assignment
 type DeleteEmployeeShiftInput struct {
 	EmployeeID uuid.UUID

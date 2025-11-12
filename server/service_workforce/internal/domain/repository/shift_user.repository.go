@@ -18,6 +18,7 @@ type IShiftUserRepository interface {
 	GetShiftEmployeeWithEffectiveDate(ctx context.Context, input *model.GetShiftEmployeeWithEffectiveDateInput) ([]*model.EmployeeShiftRow, error)
 	EditEffectiveShiftForEmployee(ctx context.Context, input *model.EditEffectiveShiftForEmployeeInput) error
 	DeleteEmployeeShift(ctx context.Context, input *model.DeleteEmployeeShiftInput) error
+	DeleteListEmployeeShift(ctx context.Context, input *model.DeleteListEmployeeShiftInput) (string, error)
 	DisableEmployeeShift(ctx context.Context, input *model.DisableEmployeeShiftInput) error
 	EnableEmployeeShift(ctx context.Context, input *model.EnableEmployeeShiftIInput) error
 	AddShiftForEmployee(ctx context.Context, input *model.AddShiftForEmployeeInput) error

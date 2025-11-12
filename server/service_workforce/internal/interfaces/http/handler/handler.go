@@ -661,8 +661,8 @@ func (h *Handler) DeleteShift(c *gin.Context) {
 }
 
 // DeleteShiftUser implements iHandler.
-// @Summary      Delete shift employee
-// @Description  Delete shift employee information for company
+// @Summary      Delete list shift employee
+// @Description  Delete list shift employee information for company
 // @Tags         Shift
 // @Accept       json
 // @Produce      json
@@ -707,18 +707,22 @@ func (h *Handler) DeleteShiftUser(c *gin.Context) {
 	}
 	userUuid, _ := uuidShared.ParseUUID(userId)
 	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
-	userIdReq, err := uuidShared.ParseUUID(req.EmployeeId)
-	if err != nil {
-		response.ErrorResponse(c, 400, "Invalid employee ID")
-		return
-	}
 	shiftId, err := uuidShared.ParseUUID(req.ShiftId)
 	if err != nil {
 		response.ErrorResponse(c, 400, "Invalid shift ID")
 		return
 	}
+	employeeIds := make([]uuid.UUID, 0)
+	for _, idStr := range req.EmployeeIds {
+		employeeId, err := uuidShared.ParseUUID(idStr)
+		if err != nil {
+			response.ErrorResponse(c, 400, "Invalid employee ID: "+idStr)
+			return
+		}
+		employeeIds = append(employeeIds, employeeId)
+	}
 	// Call service delete shift for user
-	errReq := applicationService.GetShiftEmployeeService().DeleteShiftUser(
+	errReq := applicationService.GetShiftEmployeeService().DeleteListShiftUser(
 		c,
 		&applicationModel.DeleteShiftUserInput{
 			// User info
@@ -729,8 +733,8 @@ func (h *Handler) DeleteShiftUser(c *gin.Context) {
 			ClientAgent: c.Request.UserAgent(),
 			CompanyId:   companyUuid,
 			//
-			UserIdReq: userIdReq,
-			ShiftId:   shiftId,
+			EmployeeIds: employeeIds,
+			ShiftId:     shiftId,
 		},
 	)
 	if errReq != nil {

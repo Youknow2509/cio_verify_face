@@ -86,12 +86,14 @@ definitions:
     type: object
   dto.DeleteShiftUserReq:
     properties:
-      employee_id:
-        type: string
+      employee_ids:
+        items:
+          type: string
+        type: array
       shift_id:
         type: string
     required:
-    - employee_id
+    - employee_ids
     - shift_id
     type: object
   dto.DisableShiftUserReq:
@@ -338,7 +340,7 @@ paths:
     post:
       consumes:
       - application/json
-      description: Delete shift employee information for company
+      description: Delete list shift employee information for company
       parameters:
       - description: Bearer <token>
         in: header
@@ -362,7 +364,7 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/dto.ErrResponseData'
-      summary: Delete shift employee
+      summary: Delete list shift employee
       tags:
       - Shift
   /v1/employee/shift/disable:

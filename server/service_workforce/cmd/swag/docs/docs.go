@@ -167,7 +167,7 @@ const docTemplate = `{
         },
         "/v1/employee/shift/delete": {
             "post": {
-                "description": "Delete shift employee information for company",
+                "description": "Delete list shift employee information for company",
                 "consumes": [
                     "application/json"
                 ],
@@ -177,7 +177,7 @@ const docTemplate = `{
                 "tags": [
                     "Shift"
                 ],
-                "summary": "Delete shift employee",
+                "summary": "Delete list shift employee",
                 "parameters": [
                     {
                         "type": "string",
@@ -836,12 +836,15 @@ const docTemplate = `{
         "dto.DeleteShiftUserReq": {
             "type": "object",
             "required": [
-                "employee_id",
+                "employee_ids",
                 "shift_id"
             ],
             "properties": {
-                "employee_id": {
-                    "type": "string"
+                "employee_ids": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
                 },
                 "shift_id": {
                     "type": "string"
