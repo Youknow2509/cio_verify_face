@@ -100,6 +100,10 @@ func (s *ShiftEmployeeService) GetListEmployeeDonotInShift(ctx context.Context, 
 	if cachedData, err := s.distributedCache.Get(ctx, key); err == nil && cachedData != "" {
 		s.logger.Info("GetListEmployeeDonotInShift - Cache hit (distributed) for employee list", "shift_id", input.ShiftId)
 		if unmarshalErr := json.Unmarshal([]byte(cachedData), &output); unmarshalErr == nil {
+			// Save in local cache
+			if err := s.localCache.SetTTL(ctx, key, cachedData, 2); err != nil {
+				s.logger.Warn("GetListEmployeeDonotInShift - Failed to set local cache for employee list", "error", err)
+			}
 			return &output, nil
 		}
 	}
@@ -218,6 +222,10 @@ func (s *ShiftEmployeeService) GetListEmployeeInShift(ctx context.Context, input
 	if cachedData, err := s.distributedCache.Get(ctx, key); err == nil && cachedData != "" {
 		s.logger.Info("GetListEmployeeInShift - Cache hit (distributed) for employee list", "shift_id", input.ShiftId)
 		if unmarshalErr := json.Unmarshal([]byte(cachedData), &output); unmarshalErr == nil {
+			// Save in local cache
+			if err := s.localCache.SetTTL(ctx, key, cachedData, 2); err != nil {
+				s.logger.Warn("GetListEmployeeInShift - Failed to set local cache for employee list", "error", err)
+			}
 			return &output, nil
 		}
 	}
