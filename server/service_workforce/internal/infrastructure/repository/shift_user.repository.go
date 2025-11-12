@@ -95,6 +95,8 @@ func (s *ShiftUserRepository) GetListEmployeeInShift(ctx context.Context, input 
 			EmployeeCode:        r.EmployeeCode,
 			EmployeeShiftName:   r.ShiftName,
 			EmployeeShiftActive: r.CurrentShift,
+			ShiftEffectiveFrom:  r.ShiftEffectiveFrom.Time,
+			ShiftEffectiveTo:    r.ShiftEffectiveTo.Time,
 		})
 	}
 	return out, nil

@@ -51,6 +51,8 @@ type EmployeeInfoInShiftBase struct {
 	EmployeeCode        string    `json:"employee_code"`
 	EmployeeShiftName   string    `json:"employee_shift_name"`
 	EmployeeShiftActive bool      `json:"employee_shift_active"`
+	ShiftEffectiveFrom  time.Time `json:"shift_effective_from,omitempty"`
+	ShiftEffectiveTo    time.Time `json:"shift_effective_to,omitempty"`
 }
 
 // For GetInfoEmployeeInShift

@@ -30,6 +30,8 @@ type EmployeeShiftInfoBase struct {
 	EmployeeCode        string
 	EmployeeShiftName   string
 	EmployeeShiftActive bool
+	ShiftEffectiveFrom  time.Time
+	ShiftEffectiveTo    time.Time
 }
 
 // For rm list shift assignments from multiple employees

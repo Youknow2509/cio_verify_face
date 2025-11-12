@@ -297,7 +297,9 @@ SELECT
         u.full_name,
         e.employee_code,
         ws.name AS shift_name,
-        TRUE AS current_shift
+        TRUE AS current_shift,
+        es.effective_from AS shift_effective_from,
+        es.effective_to AS shift_effective_to
 FROM employee_shifts es
 INNER JOIN employees e ON e.employee_id = es.employee_id
 INNER JOIN users u ON u.user_id = e.employee_id
@@ -319,11 +321,13 @@ type GetListEmployeeInShiftParams struct {
 }
 
 type GetListEmployeeInShiftRow struct {
-	EmployeeID   pgtype.UUID
-	FullName     string
-	EmployeeCode string
-	ShiftName    string
-	CurrentShift bool
+	EmployeeID         pgtype.UUID
+	FullName           string
+	EmployeeCode       string
+	ShiftName          string
+	CurrentShift       bool
+	ShiftEffectiveFrom pgtype.Date
+	ShiftEffectiveTo   pgtype.Date
 }
 
 // CREATE TABLE IF NOT EXISTS work_shifts (
@@ -364,6 +368,8 @@ func (q *Queries) GetListEmployeeInShift(ctx context.Context, arg GetListEmploye
 			&i.EmployeeCode,
 			&i.ShiftName,
 			&i.CurrentShift,
+			&i.ShiftEffectiveFrom,
+			&i.ShiftEffectiveTo,
 		); err != nil {
 			return nil, err
 		}

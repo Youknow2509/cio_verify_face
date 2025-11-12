@@ -257,6 +257,8 @@ func (s *ShiftEmployeeService) GetListEmployeeInShift(ctx context.Context, input
 			EmployeeCode:        emp.EmployeeCode,
 			EmployeeShiftName:   emp.EmployeeShiftName,
 			EmployeeShiftActive: emp.EmployeeShiftActive,
+			ShiftEffectiveFrom:  emp.ShiftEffectiveFrom,
+			ShiftEffectiveTo:    emp.ShiftEffectiveTo,
 		}
 		output.Employees = append(output.Employees, empInfo)
 	}
