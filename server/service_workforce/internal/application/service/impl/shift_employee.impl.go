@@ -138,7 +138,7 @@ func (s *ShiftEmployeeService) GetListEmployeeDonotInShift(ctx context.Context, 
 		output.Employees = append(output.Employees, empInfo)
 	}
 	// Cache the result
-	if data, err := json.Marshal(resp); err == nil {
+	if data, err := json.Marshal(output); err == nil {
 		if err := s.distributedCache.SetTTL(ctx, key, string(data), int64(constants.TTL_Shift_Cache)); err != nil {
 			s.logger.Warn("GetListEmployeeDonotInShift - Failed to set distributed cache for employee list", "error", err)
 		}
