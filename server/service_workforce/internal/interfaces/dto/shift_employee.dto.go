@@ -4,9 +4,33 @@ package dto
 // Shift employee DTO
 // =======================================
 
+// GetInfoEmployeeInShiftReq request
+type GetInfoEmployeeInShiftReq struct {
+	ShiftId string `json:"shift_id" validate:"required"`
+	Page    int    `json:"page" validate:"gte=1"`
+}
+
+// GetInfoEmployeeDonotInShiftReq request
+type GetInfoEmployeeDonotInShiftReq struct {
+	ShiftId string `json:"shift_id" validate:"required"`
+	Page    int    `json:"page" validate:"gte=1"`
+}
+
+// DisableShiftUserReq request
+type DisableShiftUserReq struct {
+	ShiftId    string `json:"shift_id" validate:"required"`
+	EmployeeId string `json:"employee_id" validate:"required"`
+}
+
+// DeleteShiftUserReq request
+type DeleteShiftUserReq struct {
+	ShiftId     string   `json:"shift_id" validate:"required"`
+	EmployeeIds []string `json:"employee_ids" validate:"required,min=1,dive,required,min=3"`
+}
+
 // Add shift employee list request
 type AddShiftEmployeeListReq struct {
-	EmployeeIDs   []string `json:"employee_ids" validate:"required,dive,required"`
+	EmployeeIDs   []string `json:"employee_ids" validate:"required,min=1,dive,required,min=3"`
 	EffectiveFrom int64    `json:"effective_from" validate:"required"`
 	EffectiveTo   int64    `json:"effective_to" validate:"required"`
 	CompanyId     string   `json:"company_id" validate:"required"`
@@ -19,13 +43,9 @@ type ListEmployeeIDReq struct {
 }
 
 // Enable shift for user request
-type EnableShiftForUserReq struct {
-	ShiftUserId string `json:"shift_user_id" validate:"required"`
-}
-
-// Disable shift for user request
-type DisableShiftForUserReq struct {
-	ShiftUserId string `json:"shift_user_id" validate:"required"`
+type EnableShiftUserReq struct {
+	ShiftId    string `json:"shift_id" validate:"required"`
+	EmployeeId string `json:"employee_id" validate:"required"`
 }
 
 // Add shift employee request
@@ -38,7 +58,8 @@ type AddShiftEmployeeReq struct {
 
 // Edit shift employee effective date request
 type ShiftEmployeeEditEffectiveDateReq struct {
-	ShiftUserId      string `json:"shift_user_id" validate:"required"`
+	ShiftId          string `json:"shift_id" validate:"required"`
+	EmployeeID       string `json:"employee_id" validate:"required"`
 	NewEffectiveFrom int64  `json:"new_effective_from" validate:"required"`
 	NewEffectiveTo   int64  `json:"new_effective_to" validate:"required"`
 }

@@ -10,6 +10,21 @@ import (
 	"github.com/google/uuid"
 )
 
+
+// For GetInfoEmployeeInShift
+type GetInfoEmployeeInShiftInput struct {
+	CompanyId uuid.UUID
+	CurShidId uuid.UUID
+}
+
+type EmployeeInShiftRow struct {
+	UserId         uuid.UUID
+	NumberEmployee string   
+	Name           string   
+	CurrentShift   bool     
+	ShiftActive    string   
+}
+
 // For CountEmployeesInShift
 type CountEmployeesInShiftInput struct {
 	ShiftId   uuid.UUID `json:"shift_id"`

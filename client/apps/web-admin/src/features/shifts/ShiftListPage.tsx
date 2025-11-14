@@ -105,15 +105,26 @@ export const ShiftListPage: React.FC = () => {
         fetchShifts();
     }, [page]);
 
+    // Format time 2025-11-14T09:00:00+07:00 to hh:mm (ex: 09:00)
+    const formatTime = (timeStr: string): string => {
+        const date = new Date(timeStr);
+        const hours = date.getHours().toString().padStart(2, '0');
+        const minutes = date.getMinutes().toString().padStart(2, '0');
+        return `${hours}:${minutes}`;
+    };
+
     const calculateWorkHours = (shift: Shift): number => {
-        const [startHour, startMin] = shift.start_time.split(':').map(Number);
-        const [endHour, endMin] = shift.end_time.split(':').map(Number);
-        const totalMinutes =
-            endHour * 60 +
-            endMin -
-            (startHour * 60 + startMin) -
-            shift.break_duration_minutes;
-        return Math.max(0, totalMinutes / 60);
+        if (!shift.start_time || !shift.end_time) {
+            console.error('Invalid time input:', shift);
+            return 0;
+        }
+        const startTime = new Date(shift.start_time);
+        const endTime = new Date(shift.end_time);
+        let diffInMs = Math.abs(endTime.getTime() - startTime.getTime());
+        const minutes = diffInMs / (1000 * 60);
+        const hours = minutes / 60 - shift.break_duration_minutes / 60;
+
+        return hours;
     };
 
     const handleDeleteClick = (shift: Shift) => {
@@ -151,6 +162,19 @@ export const ShiftListPage: React.FC = () => {
         }
     };
 
+    const handleUpdateStateShiftStatus = (
+        shiftId: string,
+        isActive: boolean
+    ) => {
+        setShifts((prevShifts) =>
+            prevShifts.map((shift) =>
+                shift.shift_id === shiftId
+                    ? { ...shift, is_active: isActive }
+                    : shift
+            )
+        );
+    };
+
     const handleToggleStatus = async (shift: Shift) => {
         try {
             const newStatus = shift.is_active ? 0 : 1;
@@ -168,7 +192,10 @@ export const ShiftListPage: React.FC = () => {
                     } ca làm việc thành công`,
                     severity: 'success',
                 });
-                fetchShifts(); // Refresh list
+                handleUpdateStateShiftStatus(
+                    shift.shift_id,
+                    Boolean(newStatus)
+                );
             } else {
                 throw new Error(
                     response.message || 'Thay đổi trạng thái thất bại'
@@ -313,8 +340,13 @@ export const ShiftListPage: React.FC = () => {
                                                             color="action"
                                                         />
                                                         <Typography variant="body2">
-                                                            {shift.start_time} -{' '}
-                                                            {shift.end_time}
+                                                            {formatTime(
+                                                                shift.start_time
+                                                            )}{' '}
+                                                            -{' '}
+                                                            {formatTime(
+                                                                shift.end_time
+                                                            )}
                                                         </Typography>
                                                     </Box>
                                                     <Typography

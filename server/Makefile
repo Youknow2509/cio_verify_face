@@ -1,6 +1,6 @@
 .PHONY: help
 .PHONY: goose_create goose_up goose_down goose_status goose_fix goose_redo goose_reset goose_clean goose_up_by_one
-.PHONY: docker_compose_up docker_compose_down docker_builds docker_build_service docker_run_resource
+.PHONY: docker_compose_up docker_compose_down docker_builds docker_build_service docker_run_resource docker_nginx_dev
 
 .ALL: help
 
@@ -59,8 +59,14 @@ help:
 	@echo "\t docker_builds \t Docker build all services and push to registry"
 	@echo "\t docker_build_service \t Docker build a specific service and push to registry"
 	@echo "\t docker_run_resource \t Docker run resource containers"
+	@echo "\t docker_nginx_dev \t Docker run nginx in dev mode"
 
 	@echo "  help - Show this help message"
+
+# Docker Run Nginx in Dev Mode
+docker_nginx_dev:
+	@echo "Running Nginx in development mode"
+	docker compose -p $(PROJECT_NAME) -f docker-compose-nginx-dev.yml up -d
 
 # Docker Run Resource Containers
 docker_run_resource:

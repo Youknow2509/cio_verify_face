@@ -17,6 +17,7 @@ type (
 		TTL(ctx context.Context, key string) (time.Duration, error)
 		// For delete
 		Delete(ctx context.Context, key string) error
+		DeleteByPrefix(ctx context.Context, keyPrefix string) error
 		// For checking existence
 		Exists(ctx context.Context, key string) (bool, error)
 		// For hash
@@ -55,6 +56,7 @@ type (
 		Set(ctx context.Context, key string, value string) error
 		SetTTL(ctx context.Context, key string, value string, ttl int64) error
 		Delete(ctx context.Context, key string) error
+		DeleteByPrefix(ctx context.Context, keyPrefix string) error
 		Exists(ctx context.Context, key string) (bool, error)
 		//
 		DecreHaveTTL(ctx context.Context, key string, val int) error

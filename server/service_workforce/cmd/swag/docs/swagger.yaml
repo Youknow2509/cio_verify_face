@@ -11,6 +11,7 @@ definitions:
       employee_ids:
         items:
           type: string
+        minItems: 1
         type: array
       shift_id:
         type: string
@@ -51,7 +52,6 @@ definitions:
     required:
     - company_id
     - shift_id
-    - status
     type: object
   dto.CreateShiftReq:
     properties:
@@ -85,12 +85,28 @@ definitions:
     - start_time
     - work_days
     type: object
-  dto.DisableShiftForUserReq:
+  dto.DeleteShiftUserReq:
     properties:
-      shift_user_id:
+      employee_ids:
+        items:
+          type: string
+        minItems: 1
+        type: array
+      shift_id:
         type: string
     required:
-    - shift_user_id
+    - employee_ids
+    - shift_id
+    type: object
+  dto.DisableShiftUserReq:
+    properties:
+      employee_id:
+        type: string
+      shift_id:
+        type: string
+    required:
+    - employee_id
+    - shift_id
     type: object
   dto.EditShiftReq:
     properties:
@@ -127,12 +143,15 @@ definitions:
     - start_time
     - work_days
     type: object
-  dto.EnableShiftForUserReq:
+  dto.EnableShiftUserReq:
     properties:
-      shift_user_id:
+      employee_id:
+        type: string
+      shift_id:
         type: string
     required:
-    - shift_user_id
+    - employee_id
+    - shift_id
     type: object
   dto.ErrResponseData:
     properties:
@@ -143,6 +162,26 @@ definitions:
         description: Thong bao loi
       error:
         type: string
+    type: object
+  dto.GetInfoEmployeeDonotInShiftReq:
+    properties:
+      page:
+        minimum: 1
+        type: integer
+      shift_id:
+        type: string
+    required:
+    - shift_id
+    type: object
+  dto.GetInfoEmployeeInShiftReq:
+    properties:
+      page:
+        minimum: 1
+        type: integer
+      shift_id:
+        type: string
+    required:
+    - shift_id
     type: object
   dto.ResponseData:
     properties:
@@ -157,16 +196,19 @@ definitions:
     type: object
   dto.ShiftEmployeeEditEffectiveDateReq:
     properties:
+      employee_id:
+        type: string
       new_effective_from:
         type: integer
       new_effective_to:
         type: integer
-      shift_user_id:
+      shift_id:
         type: string
     required:
+    - employee_id
     - new_effective_from
     - new_effective_to
-    - shift_user_id
+    - shift_id
     type: object
   dto.ShiftEmployeeEffectiveDateReq:
     properties:
@@ -203,7 +245,7 @@ info:
   title: Swagger Chat Service Auth REST API
   version: "1.0"
 paths:
-  /api/v1/employee/shift:
+  /v1/employee/shift:
     post:
       consumes:
       - application/json
@@ -234,32 +276,7 @@ paths:
       summary: Get shift user effective date information
       tags:
       - Shift
-  /api/v1/employee/shift/{id}:
-    delete:
-      consumes:
-      - application/json
-      description: Delete shift employee information for company
-      parameters:
-      - description: Bearer <token>
-        in: header
-        name: authorization
-        required: true
-        type: string
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.ResponseData'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrResponseData'
-      summary: Delete shift employee
-      tags:
-      - Shift
-  /api/v1/employee/shift/add:
+  /v1/employee/shift/add:
     post:
       consumes:
       - application/json
@@ -290,7 +307,7 @@ paths:
       summary: Create shift information
       tags:
       - Shift
-  /api/v1/employee/shift/add/list:
+  /v1/employee/shift/add/list:
     post:
       consumes:
       - application/json
@@ -321,7 +338,38 @@ paths:
       summary: Add shift employee list
       tags:
       - Shift
-  /api/v1/employee/shift/disable:
+  /v1/employee/shift/delete:
+    post:
+      consumes:
+      - application/json
+      description: Delete list shift employee information for company
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Delete Shift User Request
+        in: body
+        name: req
+        required: true
+        schema:
+          $ref: '#/definitions/dto.DeleteShiftUserReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Delete list shift employee
+      tags:
+      - Shift
+  /v1/employee/shift/disable:
     post:
       consumes:
       - application/json
@@ -337,7 +385,7 @@ paths:
         name: dto
         required: true
         schema:
-          $ref: '#/definitions/dto.DisableShiftForUserReq'
+          $ref: '#/definitions/dto.DisableShiftUserReq'
       produces:
       - application/json
       responses:
@@ -352,7 +400,7 @@ paths:
       summary: Disable shift for user
       tags:
       - Shift
-  /api/v1/employee/shift/enable:
+  /v1/employee/shift/enable:
     post:
       consumes:
       - application/json
@@ -368,7 +416,7 @@ paths:
         name: dto
         required: true
         schema:
-          $ref: '#/definitions/dto.EnableShiftForUserReq'
+          $ref: '#/definitions/dto.EnableShiftUserReq'
       produces:
       - application/json
       responses:
@@ -383,7 +431,69 @@ paths:
       summary: Enable shift for user
       tags:
       - Shift
-  /api/v1/shift:
+  /v1/employee/shift/in:
+    post:
+      consumes:
+      - application/json
+      description: Get info employee in shift for company
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Get Info Employee In Shift Request
+        in: body
+        name: dto
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GetInfoEmployeeInShiftReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Get info employee in shift
+      tags:
+      - Shift
+  /v1/employee/shift/not_in:
+    post:
+      consumes:
+      - application/json
+      description: Get info employee donot in shift for company
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Get Info Employee Donot In Shift Request
+        in: body
+        name: dto
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GetInfoEmployeeDonotInShiftReq'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Get info employee donot in shift
+      tags:
+      - Shift
+  /v1/shift:
     get:
       consumes:
       - application/json
@@ -442,7 +552,7 @@ paths:
       summary: Create shift information
       tags:
       - Shift
-  /api/v1/shift/{id}:
+  /v1/shift/{id}:
     delete:
       consumes:
       - application/json
@@ -496,7 +606,7 @@ paths:
       summary: Get shift detail information
       tags:
       - Shift
-  /api/v1/shift/edit:
+  /v1/shift/edit:
     post:
       consumes:
       - application/json
@@ -527,7 +637,7 @@ paths:
       summary: Edit shift information
       tags:
       - Shift
-  /api/v1/shift/status:
+  /v1/shift/status:
     post:
       consumes:
       - application/json
@@ -558,7 +668,7 @@ paths:
       summary: Change status shift
       tags:
       - Shift
-  /api/v1/user/edit/effective:
+  /v1/user/edit/effective:
     post:
       consumes:
       - application/json

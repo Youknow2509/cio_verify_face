@@ -5,6 +5,15 @@ package constants
 //	For ttl cache
 //
 // ========================
+
+const (
+	// Shift
+	TTL_Shift_Cache                 = 60 * 30 // 30 minutes
+	TTL_Shift_Employee_Cache        = 60 * 30 // 30 minutes
+	TTL_Info_Base_Employee_In_Shift = 60 * 5  // 5 minutes
+	TTL_List_Employee_Shift_Cache   = 60 * 10 // 10 minutes
+)
+
 const (
 	// Save second
 	TTL_OTP_REGISTER                = 60 * 8            // 8 minutes

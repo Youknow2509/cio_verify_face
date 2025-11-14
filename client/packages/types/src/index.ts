@@ -150,14 +150,12 @@ export interface Shift {
 }
 
 export interface EmployeeShift {
-    employee_shift_id: string;
     employee_id: string;
     shift_id: string;
     effective_from: string; // Date format
     effective_to?: string; // Date format
     is_active: boolean;
     created_at: string;
-
     // Optional fields for UI
     employee_name?: string;
     shift_name?: string;

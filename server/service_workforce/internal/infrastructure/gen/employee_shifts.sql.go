@@ -18,7 +18,6 @@ INSERT INTO employee_shifts (
     effective_from,
     effective_to
 ) VALUES ($1, $2, $3, $4)
-RETURNING employee_shift_id
 `
 
 type AddShiftForEmployeeParams struct {
@@ -85,7 +84,6 @@ WHERE shift_id = $1
 `
 
 // Table: employee_shifts
-// employee_shift_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 // employee_id UUID NOT NULL REFERENCES employees(employee_id) ON DELETE CASCADE,
 // shift_id UUID NOT NULL REFERENCES work_shifts(shift_id) ON DELETE CASCADE,
 // effective_from DATE NOT NULL,
@@ -102,22 +100,32 @@ func (q *Queries) CountEmployeesInShift(ctx context.Context, shiftID pgtype.UUID
 
 const deleteEmployeeShift = `-- name: DeleteEmployeeShift :exec
 DELETE FROM employee_shifts
-WHERE employee_shift_id = $1
+WHERE employee_id = $1 and shift_id = $2
 `
 
-func (q *Queries) DeleteEmployeeShift(ctx context.Context, employeeShiftID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, deleteEmployeeShift, employeeShiftID)
+type DeleteEmployeeShiftParams struct {
+	EmployeeID pgtype.UUID
+	ShiftID    pgtype.UUID
+}
+
+func (q *Queries) DeleteEmployeeShift(ctx context.Context, arg DeleteEmployeeShiftParams) error {
+	_, err := q.db.Exec(ctx, deleteEmployeeShift, arg.EmployeeID, arg.ShiftID)
 	return err
 }
 
 const disableEmployeeShift = `-- name: DisableEmployeeShift :exec
 UPDATE employee_shifts
 SET is_active = false
-WHERE employee_shift_id = $1
+WHERE employee_id = $1 and shift_id = $2
 `
 
-func (q *Queries) DisableEmployeeShift(ctx context.Context, employeeShiftID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, disableEmployeeShift, employeeShiftID)
+type DisableEmployeeShiftParams struct {
+	EmployeeID pgtype.UUID
+	ShiftID    pgtype.UUID
+}
+
+func (q *Queries) DisableEmployeeShift(ctx context.Context, arg DisableEmployeeShiftParams) error {
+	_, err := q.db.Exec(ctx, disableEmployeeShift, arg.EmployeeID, arg.ShiftID)
 	return err
 }
 
@@ -125,34 +133,38 @@ const editEffectiveShiftForEmployee = `-- name: EditEffectiveShiftForEmployee :e
 UPDATE employee_shifts
 SET effective_from = $2,
     effective_to = $3
-WHERE employee_shift_id = $1
+WHERE employee_id = $1 and shift_id = $2
 `
 
 type EditEffectiveShiftForEmployeeParams struct {
-	EmployeeShiftID pgtype.UUID
-	EffectiveFrom   pgtype.Date
-	EffectiveTo     pgtype.Date
+	EmployeeID    pgtype.UUID
+	EffectiveFrom pgtype.Date
+	EffectiveTo   pgtype.Date
 }
 
 func (q *Queries) EditEffectiveShiftForEmployee(ctx context.Context, arg EditEffectiveShiftForEmployeeParams) error {
-	_, err := q.db.Exec(ctx, editEffectiveShiftForEmployee, arg.EmployeeShiftID, arg.EffectiveFrom, arg.EffectiveTo)
+	_, err := q.db.Exec(ctx, editEffectiveShiftForEmployee, arg.EmployeeID, arg.EffectiveFrom, arg.EffectiveTo)
 	return err
 }
 
 const enableEmployeeShift = `-- name: EnableEmployeeShift :exec
 UPDATE employee_shifts
 SET is_active = true
-WHERE employee_shift_id = $1
+WHERE employee_id = $1 and shift_id = $2
 `
 
-func (q *Queries) EnableEmployeeShift(ctx context.Context, employeeShiftID pgtype.UUID) error {
-	_, err := q.db.Exec(ctx, enableEmployeeShift, employeeShiftID)
+type EnableEmployeeShiftParams struct {
+	EmployeeID pgtype.UUID
+	ShiftID    pgtype.UUID
+}
+
+func (q *Queries) EnableEmployeeShift(ctx context.Context, arg EnableEmployeeShiftParams) error {
+	_, err := q.db.Exec(ctx, enableEmployeeShift, arg.EmployeeID, arg.ShiftID)
 	return err
 }
 
 const getShiftEmployeeWithEffectiveDate = `-- name: GetShiftEmployeeWithEffectiveDate :many
 SELECT 
-    employee_shift_id,
     shift_id,
     effective_from,
     effective_to,
@@ -173,11 +185,10 @@ type GetShiftEmployeeWithEffectiveDateParams struct {
 }
 
 type GetShiftEmployeeWithEffectiveDateRow struct {
-	EmployeeShiftID pgtype.UUID
-	ShiftID         pgtype.UUID
-	EffectiveFrom   pgtype.Date
-	EffectiveTo     pgtype.Date
-	IsActive        pgtype.Bool
+	ShiftID       pgtype.UUID
+	EffectiveFrom pgtype.Date
+	EffectiveTo   pgtype.Date
+	IsActive      pgtype.Bool
 }
 
 func (q *Queries) GetShiftEmployeeWithEffectiveDate(ctx context.Context, arg GetShiftEmployeeWithEffectiveDateParams) ([]GetShiftEmployeeWithEffectiveDateRow, error) {
@@ -195,7 +206,6 @@ func (q *Queries) GetShiftEmployeeWithEffectiveDate(ctx context.Context, arg Get
 	for rows.Next() {
 		var i GetShiftEmployeeWithEffectiveDateRow
 		if err := rows.Scan(
-			&i.EmployeeShiftID,
 			&i.ShiftID,
 			&i.EffectiveFrom,
 			&i.EffectiveTo,

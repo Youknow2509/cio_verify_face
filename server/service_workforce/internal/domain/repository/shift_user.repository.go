@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 
-	"github.com/google/uuid"
 	model "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/domain/model"
 )
 
@@ -12,11 +11,16 @@ import (
  * Interface for ShiftUser repository
  */
 type IShiftUserRepository interface {
+	GetListEmployeeDonotInShift(ctx context.Context, input *model.GetListEmployyeShiftInput) (*model.GetListEmployyeShiftOutput, error)
+	GetListEmployeeInShift(ctx context.Context, input *model.GetListEmployyeShiftInput) (*model.GetListEmployyeShiftOutput, error)
+	RemoveListShiftForEmployees(ctx context.Context, input *model.RemoveListShiftForEmployeesInput) error
+	IsUserManagetShift(ctx context.Context, input *model.IsUserManagetShiftInput) (bool, error)
 	GetShiftEmployeeWithEffectiveDate(ctx context.Context, input *model.GetShiftEmployeeWithEffectiveDateInput) ([]*model.EmployeeShiftRow, error)
 	EditEffectiveShiftForEmployee(ctx context.Context, input *model.EditEffectiveShiftForEmployeeInput) error
-	DeleteEmployeeShift(ctx context.Context, employeeShiftID uuid.UUID) error
-	DisableEmployeeShift(ctx context.Context, employeeShiftID uuid.UUID) error
-	EnableEmployeeShift(ctx context.Context, employeeShiftID uuid.UUID) error
+	DeleteEmployeeShift(ctx context.Context, input *model.DeleteEmployeeShiftInput) error
+	DeleteListEmployeeShift(ctx context.Context, input *model.DeleteListEmployeeShiftInput) (string, error)
+	DisableEmployeeShift(ctx context.Context, input *model.DisableEmployeeShiftInput) error
+	EnableEmployeeShift(ctx context.Context, input *model.EnableEmployeeShiftIInput) error
 	AddShiftForEmployee(ctx context.Context, input *model.AddShiftForEmployeeInput) error
 	CheckUserExistShift(ctx context.Context, input *model.CheckUserExistShiftInput) (bool, error)
 	AddListShiftForEmployees(ctx context.Context, input *model.AddListShiftForEmployeesInput) error

@@ -8,7 +8,7 @@ package dto
 type ChangeStatusShiftReq struct {
 	ShiftId   string `json:"shift_id" validate:"required"`
 	CompanyId string `json:"company_id" validate:"required"`
-	Status    int    `json:"status" validate:"required,oneof=0 1"`
+	Status    int    `json:"status" validate:"oneof=0 1"`
 }
 
 // Edit shift

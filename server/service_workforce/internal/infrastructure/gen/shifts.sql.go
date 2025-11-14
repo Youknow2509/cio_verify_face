@@ -11,8 +11,59 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createShift = `-- name: CreateShift :one
+const countEmployeesDonotInShiftCurrent = `-- name: CountEmployeesDonotInShiftCurrent :one
+SELECT COUNT(1) FROM employees e
+WHERE e.company_id = $1
+    AND NOT EXISTS (
+        SELECT 1 FROM employee_shifts es
+        WHERE es.employee_id = e.employee_id
+            AND es.shift_id = $2
+            AND es.is_active = TRUE
+            AND es.effective_from <= CURRENT_DATE
+            AND (es.effective_to IS NULL OR es.effective_to >= CURRENT_DATE)
+    )
+`
 
+type CountEmployeesDonotInShiftCurrentParams struct {
+	CompanyID pgtype.UUID
+	ShiftID   pgtype.UUID
+}
+
+// Count employees of a company who are NOT currently active in the given shift (as of CURRENT_DATE)
+func (q *Queries) CountEmployeesDonotInShiftCurrent(ctx context.Context, arg CountEmployeesDonotInShiftCurrentParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countEmployeesDonotInShiftCurrent, arg.CompanyID, arg.ShiftID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const countEmployeesInShiftCurrent = `-- name: CountEmployeesInShiftCurrent :one
+SELECT COUNT(1) FROM (
+        SELECT DISTINCT e.employee_id
+        FROM employee_shifts es
+        INNER JOIN employees e ON e.employee_id = es.employee_id
+        WHERE e.company_id = $1
+            AND es.shift_id = $2
+            AND es.is_active = TRUE
+            AND es.effective_from <= CURRENT_DATE
+            AND (es.effective_to IS NULL OR es.effective_to >= CURRENT_DATE)
+) t
+`
+
+type CountEmployeesInShiftCurrentParams struct {
+	CompanyID pgtype.UUID
+	ShiftID   pgtype.UUID
+}
+
+// Count employees currently active in a specific shift (as of CURRENT_DATE)
+func (q *Queries) CountEmployeesInShiftCurrent(ctx context.Context, arg CountEmployeesInShiftCurrentParams) (int64, error) {
+	row := q.db.QueryRow(ctx, countEmployeesInShiftCurrent, arg.CompanyID, arg.ShiftID)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
+const createShift = `-- name: CreateShift :one
 INSERT INTO work_shifts (
   company_id, name, description, start_time, end_time,
   break_duration_minutes, grace_period_minutes, early_departure_minutes,
@@ -37,23 +88,6 @@ type CreateShiftParams struct {
 	WorkDays              []int32
 }
 
-// CREATE TABLE IF NOT EXISTS work_shifts (
-// shift_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-// company_id UUID NOT NULL REFERENCES companies(company_id) ON DELETE CASCADE,
-// name VARCHAR(255) NOT NULL,
-// description TEXT,
-// start_time TIME NOT NULL,
-// end_time TIME NOT NULL,
-// break_duration_minutes INTEGER DEFAULT 0,
-// grace_period_minutes INTEGER DEFAULT 15, -- Late arrival tolerance
-// early_departure_minutes INTEGER DEFAULT 15, -- Early leave tolerance
-// work_days INTEGER[] DEFAULT ARRAY[1,2,3,4,5], -- 1=Monday, 7=Sunday
-// is_flexible BOOLEAN DEFAULT FALSE,
-// overtime_after_minutes INTEGER DEFAULT 480, -- 8 hours = 480 minutes
-// is_active BOOLEAN DEFAULT TRUE,
-// created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-// updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-// )
 func (q *Queries) CreateShift(ctx context.Context, arg CreateShiftParams) (pgtype.UUID, error) {
 	row := q.db.QueryRow(ctx, createShift,
 		arg.CompanyID,
@@ -113,6 +147,238 @@ type EnableShiftWithIdParams struct {
 func (q *Queries) EnableShiftWithId(ctx context.Context, arg EnableShiftWithIdParams) error {
 	_, err := q.db.Exec(ctx, enableShiftWithId, arg.ShiftID, arg.CompanyID)
 	return err
+}
+
+const getInfoEmployeeInShift = `-- name: GetInfoEmployeeInShift :many
+SELECT 
+    e.employee_id,
+    e.employee_code,
+    u.full_name,
+    CASE 
+        WHEN es.shift_id = $2 THEN TRUE 
+        ELSE FALSE 
+    END AS current_shift,
+    ws.name AS shift_active
+FROM employees e
+INNER JOIN users u ON e.employee_id = u.user_id
+LEFT JOIN employee_shifts es ON e.employee_id = es.employee_id 
+    AND es.is_active = TRUE
+    AND es.effective_from <= CURRENT_DATE 
+    AND (es.effective_to IS NULL OR es.effective_to >= CURRENT_DATE)
+LEFT JOIN work_shifts ws ON es.shift_id = ws.shift_id
+WHERE e.company_id = $1
+ORDER BY e.employee_code
+`
+
+type GetInfoEmployeeInShiftParams struct {
+	CompanyID pgtype.UUID
+	ShiftID   pgtype.UUID
+}
+
+type GetInfoEmployeeInShiftRow struct {
+	EmployeeID   pgtype.UUID
+	EmployeeCode string
+	FullName     string
+	CurrentShift bool
+	ShiftActive  pgtype.Text
+}
+
+func (q *Queries) GetInfoEmployeeInShift(ctx context.Context, arg GetInfoEmployeeInShiftParams) ([]GetInfoEmployeeInShiftRow, error) {
+	rows, err := q.db.Query(ctx, getInfoEmployeeInShift, arg.CompanyID, arg.ShiftID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetInfoEmployeeInShiftRow
+	for rows.Next() {
+		var i GetInfoEmployeeInShiftRow
+		if err := rows.Scan(
+			&i.EmployeeID,
+			&i.EmployeeCode,
+			&i.FullName,
+			&i.CurrentShift,
+			&i.ShiftActive,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getListEmployeeDonotInShift = `-- name: GetListEmployeeDonotInShift :many
+SELECT 
+        e.employee_id,
+        u.full_name,
+        e.employee_code,
+        COALESCE(ws.name, '') AS shift_name,
+        FALSE AS current_shift
+FROM employees e
+INNER JOIN users u ON u.user_id = e.employee_id
+LEFT JOIN LATERAL (
+        SELECT es.shift_id
+        FROM employee_shifts es
+        WHERE es.employee_id = e.employee_id
+            AND es.is_active = TRUE
+            AND es.effective_from <= CURRENT_DATE
+            AND (es.effective_to IS NULL OR es.effective_to >= CURRENT_DATE)
+        ORDER BY es.effective_from DESC
+        LIMIT 1
+) ca ON TRUE
+LEFT JOIN work_shifts ws ON ws.shift_id = ca.shift_id
+WHERE e.company_id = $1
+    AND NOT EXISTS (
+        SELECT 1 FROM employee_shifts es2
+        WHERE es2.employee_id = e.employee_id
+            AND es2.shift_id = $2
+            AND es2.is_active = TRUE
+            AND es2.effective_from <= CURRENT_DATE
+            AND (es2.effective_to IS NULL OR es2.effective_to >= CURRENT_DATE)
+    )
+ORDER BY e.employee_code
+LIMIT $3 OFFSET $4
+`
+
+type GetListEmployeeDonotInShiftParams struct {
+	CompanyID pgtype.UUID
+	ShiftID   pgtype.UUID
+	Limit     int32
+	Offset    int32
+}
+
+type GetListEmployeeDonotInShiftRow struct {
+	EmployeeID   pgtype.UUID
+	FullName     string
+	EmployeeCode string
+	ShiftName    string
+	CurrentShift bool
+}
+
+// List employees of a company who are NOT currently active in the given shift (as of CURRENT_DATE)
+func (q *Queries) GetListEmployeeDonotInShift(ctx context.Context, arg GetListEmployeeDonotInShiftParams) ([]GetListEmployeeDonotInShiftRow, error) {
+	rows, err := q.db.Query(ctx, getListEmployeeDonotInShift,
+		arg.CompanyID,
+		arg.ShiftID,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetListEmployeeDonotInShiftRow
+	for rows.Next() {
+		var i GetListEmployeeDonotInShiftRow
+		if err := rows.Scan(
+			&i.EmployeeID,
+			&i.FullName,
+			&i.EmployeeCode,
+			&i.ShiftName,
+			&i.CurrentShift,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getListEmployeeInShift = `-- name: GetListEmployeeInShift :many
+
+
+SELECT 
+        e.employee_id,
+        u.full_name,
+        e.employee_code,
+        ws.name AS shift_name,
+        TRUE AS current_shift,
+        es.effective_from AS shift_effective_from,
+        es.effective_to AS shift_effective_to
+FROM employee_shifts es
+INNER JOIN employees e ON e.employee_id = es.employee_id
+INNER JOIN users u ON u.user_id = e.employee_id
+INNER JOIN work_shifts ws ON ws.shift_id = es.shift_id
+WHERE e.company_id = $1
+    AND es.shift_id = $2
+    AND es.is_active = TRUE
+    AND es.effective_from <= CURRENT_DATE 
+    AND (es.effective_to IS NULL OR es.effective_to >= CURRENT_DATE)
+ORDER BY e.employee_code
+LIMIT $3 OFFSET $4
+`
+
+type GetListEmployeeInShiftParams struct {
+	CompanyID pgtype.UUID
+	ShiftID   pgtype.UUID
+	Limit     int32
+	Offset    int32
+}
+
+type GetListEmployeeInShiftRow struct {
+	EmployeeID         pgtype.UUID
+	FullName           string
+	EmployeeCode       string
+	ShiftName          string
+	CurrentShift       bool
+	ShiftEffectiveFrom pgtype.Date
+	ShiftEffectiveTo   pgtype.Date
+}
+
+// CREATE TABLE IF NOT EXISTS work_shifts (
+// shift_id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+// company_id UUID NOT NULL REFERENCES companies(company_id) ON DELETE CASCADE,
+// name VARCHAR(255) NOT NULL,
+// description TEXT,
+// start_time TIME NOT NULL,
+// end_time TIME NOT NULL,
+// break_duration_minutes INTEGER DEFAULT 0,
+// grace_period_minutes INTEGER DEFAULT 15, -- Late arrival tolerance
+// early_departure_minutes INTEGER DEFAULT 15, -- Early leave tolerance
+// work_days INTEGER[] DEFAULT ARRAY[1,2,3,4,5], -- 1=Monday, 7=Sunday
+// is_flexible BOOLEAN DEFAULT FALSE,
+// overtime_after_minutes INTEGER DEFAULT 480, -- 8 hours = 480 minutes
+// is_active BOOLEAN DEFAULT TRUE,
+// created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+// updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+// )
+// List employees currently active in a specific shift (as of CURRENT_DATE)
+func (q *Queries) GetListEmployeeInShift(ctx context.Context, arg GetListEmployeeInShiftParams) ([]GetListEmployeeInShiftRow, error) {
+	rows, err := q.db.Query(ctx, getListEmployeeInShift,
+		arg.CompanyID,
+		arg.ShiftID,
+		arg.Limit,
+		arg.Offset,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetListEmployeeInShiftRow
+	for rows.Next() {
+		var i GetListEmployeeInShiftRow
+		if err := rows.Scan(
+			&i.EmployeeID,
+			&i.FullName,
+			&i.EmployeeCode,
+			&i.ShiftName,
+			&i.CurrentShift,
+			&i.ShiftEffectiveFrom,
+			&i.ShiftEffectiveTo,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getShiftByID = `-- name: GetShiftByID :one
@@ -175,6 +441,25 @@ func (q *Queries) GetShiftsIdForCompany(ctx context.Context, arg GetShiftsIdForC
 		return nil, err
 	}
 	return items, nil
+}
+
+const isUserManagetShift = `-- name: IsUserManagetShift :one
+SELECT shift_id 
+FROM work_shifts
+WHERE shift_id = $1 AND company_id = $2
+LIMIT 1
+`
+
+type IsUserManagetShiftParams struct {
+	ShiftID   pgtype.UUID
+	CompanyID pgtype.UUID
+}
+
+func (q *Queries) IsUserManagetShift(ctx context.Context, arg IsUserManagetShiftParams) (pgtype.UUID, error) {
+	row := q.db.QueryRow(ctx, isUserManagetShift, arg.ShiftID, arg.CompanyID)
+	var shift_id pgtype.UUID
+	err := row.Scan(&shift_id)
+	return shift_id, err
 }
 
 const listShifts = `-- name: ListShifts :many

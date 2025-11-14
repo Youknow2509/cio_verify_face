@@ -8,6 +8,57 @@ import "fmt"
 //
 // =================================
 
+// Key get list employee donot in shift prefix
+func GetKeyListEmployeeDonotInShiftPrefix(shiftIdHash string) string {
+	return fmt.Sprintf("shift:employee:donot:list:%s:", shiftIdHash)
+}
+
+// Get key list employee in shift prefix
+func GetKeyListEmployeeInShiftPrefix(shiftIdHash string) string {
+	return fmt.Sprintf("shift:employee:list:%s:", shiftIdHash)
+}
+
+// Key get list employee donot in shift
+func GetKeyListEmployeeDonotInShift(shiftIdHash string, limmit int, offset int) string {
+	return fmt.Sprintf("shift:employee:donot:list:%s:%d:%d", shiftIdHash, limmit, offset)
+}
+
+// Get key list employee in shift
+func GetKeyListEmployeeInShift(shiftIdHash string, limmit int, offset int) string {
+	return fmt.Sprintf("shift:employee:list:%s:%d:%d", shiftIdHash, limmit, offset)
+}
+
+// Key get company for shift
+func GetKeyCompanyForShift(shiftIdHash string) string {
+	return fmt.Sprintf("shift:company:%s", shiftIdHash)
+}
+
+// Key get info base employee in shift
+func GetKeyInfoEmployeeInShift(shiftIdHash string) string {
+	return fmt.Sprintf("shift:employee:info:base:%s", shiftIdHash)
+}
+
+// Key GetKeyShiftEmployeeWithEffectiveDate
+func GetKeyShiftEmployeeWithEffectiveDate(
+	userIdHash string,
+	effectiveFrom string,
+	effectiveTo string,
+	page int,
+	size int,
+) string {
+	return fmt.Sprintf("shift:employee:effective:date:%s:%s:%s:%d:%d", userIdHash, effectiveFrom, effectiveTo, page, size)
+}
+
+// Key employee shift info
+func GetKeyShiftEmployee(shiftIdHash string, employeeIdHash string) string {
+	return fmt.Sprintf("shift:employee:%s:%s", shiftIdHash, employeeIdHash)
+}
+
+// Key get shift info
+func GetKeyShiftInfo(companyIdHash string, shiftIdHash string) string {
+	return fmt.Sprintf("company:shift:%s:%s", companyIdHash, shiftIdHash)
+}
+
 // Key get list shift in company prefix
 func GetKeyListShiftInCompanyPrefix(companyHashId string) string {
 	return fmt.Sprintf("company:shift:list:%s:", companyHashId)

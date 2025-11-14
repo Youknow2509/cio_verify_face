@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
     Box,
@@ -8,7 +8,6 @@ import {
     Button,
     Grid,
     Typography,
-    Autocomplete,
     FormControl,
     InputLabel,
     Select,
@@ -19,94 +18,104 @@ import {
     TableContainer,
     TableHead,
     TableRow,
-    IconButton,
     Chip,
     Alert,
     CircularProgress,
     Snackbar,
+    Tab,
+    Tabs,
+    Checkbox,
+    Paper,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    InputAdornment,
 } from '@mui/material';
-import { Save, ArrowBack, Delete, Add } from '@mui/icons-material';
-import type { Shift, EmployeeShift } from '@face-attendance/types';
+import {
+    ArrowBack,
+    Delete,
+    Add,
+    PersonAdd,
+    PersonRemove,
+    Search,
+} from '@mui/icons-material';
+import type { DeleteShiftEmployeeReq, Shift } from '@face-attendance/types';
 import {
     addEmployeeListToShift,
     deleteEmployeeShift,
     dateStringToTimestamp,
+    getShifts,
+    getShiftDetail,
+    getEmployeesInShift,
+    getEmployeesNotInShift,
 } from '@face-attendance/utils';
+import { Pagination } from '@mui/material';
 
 interface Employee {
     id: string;
     name: string;
     employee_code: string;
     current_shift?: string;
+    is_current_shift_active?: boolean;
+}
+
+interface AssignedEmployee extends Employee {
+    shift_id: string;
+    effective_from: string;
+    effective_to?: string;
+    is_active: boolean;
 }
 
 export const ShiftAssignmentPage: React.FC = () => {
     const navigate = useNavigate();
-    const { id } = useParams(); // shift_id nếu đến từ /shifts/:id/assign
+    const { id } = useParams();
+    const [shifts, setShifts] = useState<Shift[]>([]);
+    const [error, setError] = useState<string | null>(null);
+    const [allEmployees, setAllEmployees] = useState<Employee[]>([]); // Chua phan cong
+    const [assignedEmployees, setAssignedEmployees] = useState<
+        AssignedEmployee[]
+    >([]); // Da phan cong
 
-    // Mock data - should be fetched from API
-    const [shifts] = useState<Shift[]>([
-        {
-            shift_id: '1',
-            company_id: '1',
-            name: 'Ca hành chính',
-            description: 'Ca làm việc hành chính tiêu chuẩn',
-            start_time: '08:00',
-            end_time: '17:00',
-            break_duration_minutes: 60,
-            grace_period_minutes: 15,
-            early_departure_minutes: 15,
-            work_days: [1, 2, 3, 4, 5],
-            is_flexible: false,
-            overtime_after_minutes: 480,
-            is_active: true,
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
-        },
-        {
-            shift_id: '2',
-            company_id: '1',
-            name: 'Ca sáng',
-            description: 'Ca làm việc sáng',
-            start_time: '06:00',
-            end_time: '14:00',
-            break_duration_minutes: 30,
-            grace_period_minutes: 10,
-            early_departure_minutes: 10,
-            work_days: [1, 2, 3, 4, 5, 6],
-            is_flexible: true,
-            overtime_after_minutes: 480,
-            is_active: true,
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-01-01T00:00:00Z',
-        },
-    ]);
+    // Tab management
+    const [currentTab, setCurrentTab] = useState(0); // 0: Chưa phân công, 1: Đã phân công
 
-    const [employees] = useState<Employee[]>([
-        {
-            id: '1',
-            name: 'Nguyễn Văn A',
-            employee_code: 'NV001',
-            current_shift: 'Ca hành chính',
-        },
-        { id: '2', name: 'Trần Thị B', employee_code: 'NV002' },
-        { id: '3', name: 'Lê Văn C', employee_code: 'NV003' },
-        { id: '4', name: 'Phạm Thị D', employee_code: 'NV004' },
-        {
-            id: '5',
-            name: 'Hoàng Văn E',
-            employee_code: 'NV005',
-            current_shift: 'Ca sáng',
-        },
-        { id: '6', name: 'Đặng Thị F', employee_code: 'NV006' },
-    ]);
+    // Selection management
+    const [selectedUnassigned, setSelectedUnassigned] = useState<string[]>([]);
+    const [selectedAssigned, setSelectedAssigned] = useState<string[]>([]);
 
-    const [assignments, setAssignments] = useState<EmployeeShift[]>([]);
+    // Search
+    const [searchUnassigned, setSearchUnassigned] = useState('');
+    const [searchAssigned, setSearchAssigned] = useState('');
+    // Pagination state for both tabs
+    const [pageAssigned, setPageAssigned] = useState(1);
+    const [pageUnassigned, setPageUnassigned] = useState(1);
+    // Fixed backend page size = 20 (or fewer on last page)
+    const sizeAssigned = 20;
+    const sizeUnassigned = 20;
+    const [totalAssigned, setTotalAssigned] = useState(0);
+    const [totalUnassigned, setTotalUnassigned] = useState(0);
+
+    // Form data for adding assignments
     const [formData, setFormData] = useState({
-        employee_ids: [] as string[], // ✅ Thay đổi: array để chọn nhiều
-        shift_id: id || '', // Pre-fill nếu có shift_id trong URL
+        shift_id: id || '',
         effective_from: new Date().toISOString().split('T')[0],
-        effective_to: '',
+        effective_to: (() => {
+            const d = new Date();
+            d.setMonth(d.getMonth() + 3);
+            return d.toISOString().split('T')[0];
+        })(),
+    });
+
+    // Dialog
+    const [deleteDialog, setDeleteDialog] = useState<{
+        open: boolean;
+        employeeIds: string[];
+        employeeNames: string[];
+    }>({
+        open: false,
+        employeeIds: [],
+        employeeNames: [],
     });
 
     const [loading, setLoading] = useState(false);
@@ -120,12 +129,262 @@ export const ShiftAssignmentPage: React.FC = () => {
         severity: 'success',
     });
 
-    // Tìm shift được chọn (nếu có)
-    const selectedShift = id ? shifts.find((s) => s.shift_id === id) : null;
+    // Computed: Unassigned employees
+    const unassignedEmployees = allEmployees.filter(
+        (emp) => !assignedEmployees.some((assigned) => assigned.id === emp.id)
+    );
 
-    const handleAddAssignment = () => {
-        // ✅ Validate: phải chọn ít nhất 1 nhân viên
-        if (formData.employee_ids.length === 0 || !formData.shift_id) {
+    // Filter employees based on search
+    const filteredUnassigned = unassignedEmployees.filter(
+        (emp) =>
+            emp.name.toLowerCase().includes(searchUnassigned.toLowerCase()) ||
+            emp.employee_code
+                .toLowerCase()
+                .includes(searchUnassigned.toLowerCase())
+    );
+
+    const filteredAssigned = assignedEmployees.filter(
+        (emp) =>
+            emp.name.toLowerCase().includes(searchAssigned.toLowerCase()) ||
+            emp.employee_code
+                .toLowerCase()
+                .includes(searchAssigned.toLowerCase())
+    );
+
+    // Normalize various paginated response shapes from backend
+    const extractPaginated = (payload: any) => {
+        if (Array.isArray(payload)) {
+            return {
+                items: payload,
+                total: payload.length,
+                page: 1,
+                size: payload.length,
+                total_pages: 1,
+            };
+        }
+        const d = payload ?? {};
+        const items =
+            d.employees || d.items || d.data || d.records || d.list || [];
+        const total =
+            d.total ??
+            d.total_items ??
+            d.totalCount ??
+            d.total_records ??
+            items.length;
+        const page = d.page ?? d.current_page ?? d.page_index ?? 1;
+        const size = d.size ?? d.per_page ?? d.page_size ?? items.length;
+        const total_pages =
+            d.total_pages ??
+            d.totalPages ??
+            (size ? Math.ceil(total / size) : 1);
+        return { items, total, page, size, total_pages };
+    };
+
+    // Format date 2025-11-14T00:00:00Z -> dd/mm/yyyy
+    const formatDate = (dateStr: string) => {
+        if (!dateStr || dateStr === '' || '0001-01-01T00:00:00Z' === dateStr) {
+            return '';
+        }
+        const date = new Date(dateStr);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
+
+    // Fetch employees assigned to shift (in + not in) using new endpoints
+    const fetchEmployeesForShift = async (shiftId: string) => {
+        setLoading(true);
+        try {
+            const [inRes, notInRes] = await Promise.all([
+                getEmployeesInShift({
+                    shift_id: shiftId,
+                    page: pageAssigned,
+                    size: sizeAssigned,
+                }),
+                getEmployeesNotInShift({
+                    shift_id: shiftId,
+                    page: pageUnassigned,
+                    size: sizeUnassigned,
+                }),
+            ]);
+            // Assigned (in)
+            if (inRes.code === 200 && inRes.data) {
+                const p = extractPaginated(inRes.data);
+                const assigned: AssignedEmployee[] = (p.items || []).map(
+                    (emp: any) => ({
+                        id: emp.employee_id ?? '',
+                        name: emp.employee_name ?? '',
+                        employee_code: emp.employee_code ?? '',
+                        shift_id: shiftId,
+                        effective_from: formatDate(
+                            emp.shift_effective_from ?? undefined
+                        ),
+                        effective_to: formatDate(emp.shift_effective_to ?? undefined),
+                        is_active: emp.employee_shift_active ?? true,
+                    })
+                );
+                setAssignedEmployees(assigned);
+                setTotalAssigned(p.total ?? assigned.length);
+            } else {
+                setAssignedEmployees([]);
+                setTotalAssigned(0);
+            }
+
+            // Unassigned (not_in)
+            if (notInRes.code === 200 && notInRes.data) {
+                const p = extractPaginated(notInRes.data);
+                const unassigned: Employee[] = (p.items || []).map(
+                    (emp: any) => ({
+                        id: emp.employee_id ?? emp.user_id ?? emp.id,
+                        name: emp.employee_name ?? emp.user_name ?? emp.name,
+                        employee_code:
+                            emp.employee_code ??
+                            emp.number_employee ??
+                            emp.code,
+                        current_shift:
+                            emp.employee_shift_name ??
+                            emp.shift_active ??
+                            emp.current_shift ??
+                            undefined,
+                        is_current_shift_active:
+                            emp.employee_shift_active ?? false,
+                    })
+                );
+                setAllEmployees(unassigned);
+                setTotalUnassigned(p.total ?? unassigned.length);
+            } else {
+                setAllEmployees([]);
+                setTotalUnassigned(0);
+            }
+        } catch (err) {
+            console.error('Error fetching employees:', err);
+            setError('Không thể tải danh sách nhân viên');
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    // Fetch list of shifts (when no shiftId param is provided)
+    const fetchShifts = async () => {
+        try {
+            setLoading(true);
+            setError(null);
+            const response = await getShifts();
+            if (response.code === 200 && response.data) {
+                setShifts(response.data);
+            } else {
+                setError(
+                    response.message || 'Không thể tải danh sách ca làm việc'
+                );
+            }
+        } catch (err: any) {
+            console.error('Error fetching shifts:', err);
+            setError(
+                err.response?.data?.error || 'Đã xảy ra lỗi khi tải dữ liệu'
+            );
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const fetchShiftInfo = async (shiftId: string) => {
+        try {
+            setLoading(true);
+            setError(null);
+            const response = await getShiftDetail(shiftId);
+            if (response.code === 200 && response.data) {
+                const shiftDetail: Shift = response.data;
+                setShifts([shiftDetail]);
+            } else {
+                setError(
+                    response.message || 'Không thể tải thông tin ca làm việc'
+                );
+            }
+        } catch (err: any) {
+            console.error('Error fetching shift detail:', err);
+            setError(
+                err.response?.data?.error || 'Đã xảy ra lỗi khi tải dữ liệu'
+            );
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        if (!id) {
+            fetchShifts();
+        } else {
+            fetchEmployeesForShift(id);
+            fetchShiftInfo(id);
+        }
+    }, [id]);
+
+    // When user selects a shift from dropdown (route without id), fetch data
+    useEffect(() => {
+        if (!id && formData.shift_id) {
+            // Reset pages when shift changes
+            setPageAssigned(1);
+            setPageUnassigned(1);
+            fetchEmployeesForShift(formData.shift_id);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [formData.shift_id]);
+
+    // Refetch when pagination changes
+    useEffect(() => {
+        const targetShiftId = id || formData.shift_id;
+        if (targetShiftId) {
+            fetchEmployeesForShift(targetShiftId);
+        }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [pageAssigned, pageUnassigned, sizeAssigned, sizeUnassigned]);
+
+    // Clear selections when page changes
+    useEffect(() => {
+        setSelectedAssigned([]);
+    }, [pageAssigned, sizeAssigned]);
+    useEffect(() => {
+        setSelectedUnassigned([]);
+    }, [pageUnassigned, sizeUnassigned]);
+
+    // Handle select/deselect unassigned employees
+    const handleSelectUnassigned = (employeeId: string) => {
+        setSelectedUnassigned((prev) =>
+            prev.includes(employeeId)
+                ? prev.filter((id) => id !== employeeId)
+                : [...prev, employeeId]
+        );
+    };
+
+    const handleSelectAllUnassigned = () => {
+        if (selectedUnassigned.length === filteredUnassigned.length) {
+            setSelectedUnassigned([]);
+        } else {
+            setSelectedUnassigned(filteredUnassigned.map((emp) => emp.id));
+        }
+    };
+
+    // Handle select/deselect assigned employees
+    const handleSelectAssigned = (employeeId: string) => {
+        setSelectedAssigned((prev) =>
+            prev.includes(employeeId)
+                ? prev.filter((id) => id !== employeeId)
+                : [...prev, employeeId]
+        );
+    };
+
+    const handleSelectAllAssigned = () => {
+        if (selectedAssigned.length === filteredAssigned.length) {
+            setSelectedAssigned([]);
+        } else {
+            setSelectedAssigned(filteredAssigned.map((emp) => emp.id));
+        }
+    };
+
+    // Add selected employees to shift
+    const handleAddEmployeesToShift = async () => {
+        if (selectedUnassigned.length === 0 || !formData.shift_id) {
             setSnackbar({
                 open: true,
                 message: 'Vui lòng chọn ít nhất một nhân viên và ca làm việc',
@@ -134,115 +393,51 @@ export const ShiftAssignmentPage: React.FC = () => {
             return;
         }
 
-        const shift = shifts.find((s) => s.shift_id === formData.shift_id);
-        if (!shift) return;
-
-        // ✅ Tạo assignment cho TẤT CẢ nhân viên được chọn
-        const newAssignments: EmployeeShift[] = formData.employee_ids.map(
-            (employeeId) => {
-                const employee = employees.find((e) => e.id === employeeId);
-
-                return {
-                    employee_shift_id: `temp-${Date.now()}-${employeeId}`,
-                    employee_id: employeeId,
-                    shift_id: formData.shift_id,
-                    effective_from: formData.effective_from,
-                    effective_to: formData.effective_to || undefined,
-                    is_active: true,
-                    created_at: new Date().toISOString(),
-                    employee_name: employee?.name || '',
-                    shift_name: shift.name,
-                };
-            }
-        );
-
-        // ✅ Thêm tất cả assignments vào danh sách
-        setAssignments([...assignments, ...newAssignments]);
-
-        // Reset form
-        setFormData({
-            ...formData,
-            employee_ids: [], // ✅ Reset về array rỗng
-            effective_to: '',
-        });
-    };
-
-    const handleRemoveAssignment = (assignmentId: string) => {
-        setAssignments(
-            assignments.filter((a) => a.employee_shift_id !== assignmentId)
-        );
-    };
-
-    const handleSubmit = async () => {
-        if (assignments.length === 0) {
-            setSnackbar({
-                open: true,
-                message: 'Vui lòng thêm ít nhất một phân công',
-                severity: 'error',
-            });
-            return;
-        }
-
         try {
             setLoading(true);
 
-            // Get company_id from localStorage or auth store
-            const companyId = localStorage.getItem('company_id') || '1';
-
-            // Group assignments by shift_id to call API efficiently
-            const groupedByShift = assignments.reduce((acc, assignment) => {
-                if (!acc[assignment.shift_id]) {
-                    acc[assignment.shift_id] = [];
-                }
-                acc[assignment.shift_id].push(assignment);
-                return acc;
-            }, {} as Record<string, EmployeeShift[]>);
-
-            // Call API for each shift
-            for (const [shiftId, shiftAssignments] of Object.entries(
-                groupedByShift
-            )) {
-                const requestData = {
-                    company_id: companyId,
-                    shift_id: shiftId,
-                    employee_ids: shiftAssignments.map((a) => a.employee_id),
-                    effective_from: dateStringToTimestamp(
-                        shiftAssignments[0].effective_from
-                    ),
-                    effective_to: shiftAssignments[0].effective_to
-                        ? dateStringToTimestamp(
-                              shiftAssignments[0].effective_to
-                          )
-                        : dateStringToTimestamp(
-                              new Date(
-                                  new Date().setFullYear(
-                                      new Date().getFullYear() + 10
-                                  )
+            // Get company id from cur shift
+            const companyId = id
+                ? shifts.find((shift) => shift.shift_id === id)?.company_id
+                : '';
+            const requestData = {
+                company_id: companyId,
+                shift_id: formData.shift_id,
+                employee_ids: selectedUnassigned,
+                effective_from: dateStringToTimestamp(formData.effective_from),
+                effective_to: formData.effective_to
+                    ? dateStringToTimestamp(formData.effective_to)
+                    : dateStringToTimestamp(
+                          new Date(
+                              new Date().setFullYear(
+                                  new Date().getFullYear() + 10
                               )
-                                  .toISOString()
-                                  .split('T')[0]
-                          ), // Default 10 years if no end date
-                };
+                          )
+                              .toISOString()
+                              .split('T')[0]
+                      ),
+            };
+            const response = await addEmployeeListToShift(requestData);
 
-                const response = await addEmployeeListToShift(requestData);
-
-                if (response.code !== 200) {
-                    throw new Error(response.message || 'Phân công thất bại');
-                }
+            if (response.code !== 200) {
+                throw new Error(response.message || 'Phân công thất bại');
             }
 
             setSnackbar({
                 open: true,
-                message: `Phân công thành công ${assignments.length} nhân viên`,
+                message: `Đã thêm ${selectedUnassigned.length} nhân viên vào ca làm việc`,
                 severity: 'success',
             });
 
-            // Navigate back after short delay
-            setTimeout(() => {
-                navigate('/shifts');
-            }, 1500);
+            // Refresh data
+            setSelectedUnassigned([]);
+            if (id) {
+                await fetchEmployeesForShift(id);
+            } else if (formData.shift_id) {
+                await fetchEmployeesForShift(formData.shift_id);
+            }
         } catch (err: any) {
-            console.error('Error saving assignments:', err);
+            console.error('Error adding employees:', err);
             setSnackbar({
                 open: true,
                 message:
@@ -255,30 +450,90 @@ export const ShiftAssignmentPage: React.FC = () => {
         }
     };
 
-    const handleDeleteAssignment = async (assignmentId: string) => {
-        // If it's a temporary assignment (not saved yet), just remove from list
-        if (assignmentId.startsWith('temp-')) {
-            handleRemoveAssignment(assignmentId);
+    // Remove employees from shift
+    const handleRemoveEmployeesFromShift = () => {
+        const employeesToRemove = assignedEmployees.filter((emp) =>
+            selectedAssigned.includes(emp.id)
+        );
+        setDeleteDialog({
+            open: true,
+            employeeIds: employeesToRemove.map((emp) => emp.id),
+            employeeNames: employeesToRemove.map((emp) => emp.name),
+        });
+    };
+
+    const confirmDelete = async () => {
+        // Validate ids before sending
+        const rawIds = deleteDialog.employeeIds || [];
+        const ids = rawIds.filter(Boolean);
+        if (ids.length === 0) {
+            setSnackbar({
+                open: true,
+                message: 'Không có phân công hợp lệ để xóa',
+                severity: 'error',
+            });
+            setDeleteDialog({
+                open: false,
+                employeeIds: [],
+                employeeNames: [],
+            });
+            return;
+        }
+        const shiftId = id || formData.shift_id;
+        if (!shiftId) {
+            setSnackbar({
+                open: true,
+                message: 'Không tìm thấy ca làm việc để xóa phân công',
+                severity: 'error',
+            });
+            setDeleteDialog({
+                open: false,
+                employeeIds: [],
+                employeeNames: [],
+            });
             return;
         }
 
         try {
-            const response = await deleteEmployeeShift(assignmentId);
-            if (response.code === 200) {
-                setSnackbar({
-                    open: true,
-                    message: 'Xóa phân công thành công',
-                    severity: 'success',
-                });
-                handleRemoveAssignment(assignmentId);
-            } else {
-                throw new Error(response.message || 'Xóa thất bại');
+            setLoading(true);
+            const req: DeleteShiftEmployeeReq = {
+                employee_ids: ids,
+                shift_id: shiftId,
+            };
+            console.log('Delete request:', req);
+            const response = await deleteEmployeeShift(req);
+            if (response.code !== 200) {
+                throw new Error(response.message || 'Xóa phân công thất bại');
             }
-        } catch (err: any) {
+
             setSnackbar({
                 open: true,
-                message: err.response?.data?.error || 'Không thể xóa phân công',
+                message: `Đã xóa ${ids.length} phân công`,
+                severity: 'success',
+            });
+
+            // Refresh data
+            setSelectedAssigned([]);
+            if (id) {
+                await fetchEmployeesForShift(id);
+            } else if (formData.shift_id) {
+                await fetchEmployeesForShift(formData.shift_id);
+            }
+        } catch (err: any) {
+            console.error('Error deleting assignments:', err);
+            setSnackbar({
+                open: true,
+                message:
+                    err.response?.data?.error ||
+                    'Đã xảy ra lỗi khi xóa phân công',
                 severity: 'error',
+            });
+        } finally {
+            setLoading(false);
+            setDeleteDialog({
+                open: false,
+                employeeIds: [],
+                employeeNames: [],
             });
         }
     };
@@ -287,164 +542,41 @@ export const ShiftAssignmentPage: React.FC = () => {
         setSnackbar({ ...snackbar, open: false });
     };
 
+    const selectedShift = id ? shifts.find((s) => s.shift_id === id) : null;
+
     return (
         <Box>
-            <Button
-                startIcon={<ArrowBack />}
-                onClick={() => navigate('/shifts')}
-                sx={{ mb: 2 }}
+            <Box
+                display="flex"
+                justifyContent="space-between"
+                alignItems="center"
+                mb={3}
             >
-                Quay lại
-            </Button>
+                <Button
+                    startIcon={<ArrowBack />}
+                    onClick={() => navigate('/shifts')}
+                >
+                    Quay lại
+                </Button>
+                <Typography variant="h5" fontWeight="bold">
+                    Phân công ca làm việc
+                    {selectedShift && ` - ${selectedShift.name}`}
+                </Typography>
+            </Box>
+
+            {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                    {error}
+                </Alert>
+            )}
 
             <Grid container spacing={3}>
-                {/* Assignment Form */}
-                <Grid item xs={12} md={6}>
+                {/* Shift Selection and Date Range */}
+                <Grid item xs={12}>
                     <Card>
                         <CardContent>
-                            <Typography variant="h6" fontWeight="bold" mb={2}>
-                                Phân công ca làm việc
-                            </Typography>
-
                             <Grid container spacing={2}>
-                                <Grid item xs={12}>
-                                    <Box
-                                        display="flex"
-                                        justifyContent="space-between"
-                                        alignItems="center"
-                                        mb={1}
-                                    >
-                                        <Typography
-                                            variant="body2"
-                                            color="text.secondary"
-                                        >
-                                            Chọn nhân viên để phân công
-                                        </Typography>
-                                        <Box display="flex" gap={1}>
-                                            <Button
-                                                size="small"
-                                                onClick={() =>
-                                                    setFormData({
-                                                        ...formData,
-                                                        employee_ids:
-                                                            employees.map(
-                                                                (e) => e.id
-                                                            ),
-                                                    })
-                                                }
-                                            >
-                                                Chọn tất cả
-                                            </Button>
-                                            <Button
-                                                size="small"
-                                                onClick={() =>
-                                                    setFormData({
-                                                        ...formData,
-                                                        employee_ids: [],
-                                                    })
-                                                }
-                                                disabled={
-                                                    formData.employee_ids
-                                                        .length === 0
-                                                }
-                                            >
-                                                Bỏ chọn
-                                            </Button>
-                                        </Box>
-                                    </Box>
-                                    <Autocomplete
-                                        multiple // ✅ Enable multi-select
-                                        options={employees}
-                                        disableCloseOnSelect // ✅ Không đóng khi chọn
-                                        getOptionLabel={(option) =>
-                                            `${option.employee_code} - ${option.name}`
-                                        }
-                                        value={employees.filter((e) =>
-                                            formData.employee_ids.includes(e.id)
-                                        )} // ✅ Lấy tất cả nhân viên được chọn
-                                        onChange={(_, newValue) => {
-                                            setFormData({
-                                                ...formData,
-                                                employee_ids: newValue.map(
-                                                    (emp) => emp.id
-                                                ), // ✅ Lưu array ids
-                                            });
-                                        }}
-                                        renderInput={(params) => (
-                                            <TextField
-                                                {...params}
-                                                label="Chọn nhân viên (có thể chọn nhiều)"
-                                                required
-                                                placeholder={
-                                                    formData.employee_ids
-                                                        .length === 0
-                                                        ? 'Tìm và chọn nhân viên...'
-                                                        : ''
-                                                }
-                                            />
-                                        )}
-                                        renderOption={(props, option) => (
-                                            <li {...props}>
-                                                <Box>
-                                                    <Typography variant="body2">
-                                                        {option.employee_code} -{' '}
-                                                        {option.name}
-                                                    </Typography>
-                                                    {option.current_shift && (
-                                                        <Typography
-                                                            variant="caption"
-                                                            color="text.secondary"
-                                                        >
-                                                            Ca hiện tại:{' '}
-                                                            {
-                                                                option.current_shift
-                                                            }
-                                                        </Typography>
-                                                    )}
-                                                </Box>
-                                            </li>
-                                        )}
-                                    />
-                                </Grid>
-
-                                {/* ✅ Hiển thị số lượng nhân viên đã chọn */}
-                                {formData.employee_ids.length > 0 && (
-                                    <Grid item xs={12}>
-                                        <Alert severity="success" icon={false}>
-                                            <Typography variant="body2">
-                                                <strong>
-                                                    Đã chọn{' '}
-                                                    {
-                                                        formData.employee_ids
-                                                            .length
-                                                    }{' '}
-                                                    nhân viên:
-                                                </strong>{' '}
-                                                {employees
-                                                    .filter((e) =>
-                                                        formData.employee_ids.includes(
-                                                            e.id
-                                                        )
-                                                    )
-                                                    .map((e) => e.name)
-                                                    .join(', ')}
-                                            </Typography>
-                                        </Alert>
-                                    </Grid>
-                                )}
-
-                                <Grid item xs={12}>
-                                    {selectedShift && (
-                                        <Alert severity="info" sx={{ mb: 2 }}>
-                                            <strong>Phân công cho ca:</strong>{' '}
-                                            {selectedShift.name}
-                                            <br />
-                                            <Typography variant="caption">
-                                                {selectedShift.start_time} -{' '}
-                                                {selectedShift.end_time}
-                                            </Typography>
-                                        </Alert>
-                                    )}
+                                <Grid item xs={12} md={4}>
                                     <FormControl fullWidth required>
                                         <InputLabel>Ca làm việc</InputLabel>
                                         <Select
@@ -456,7 +588,7 @@ export const ShiftAssignmentPage: React.FC = () => {
                                                 })
                                             }
                                             label="Ca làm việc"
-                                            disabled={!!id} // Disable nếu đã chọn shift từ URL
+                                            disabled={!!id || loading}
                                         >
                                             {shifts.map((shift) => (
                                                 <MenuItem
@@ -481,7 +613,7 @@ export const ShiftAssignmentPage: React.FC = () => {
                                     </FormControl>
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item xs={12} md={4}>
                                     <TextField
                                         fullWidth
                                         label="Có hiệu lực từ"
@@ -495,10 +627,11 @@ export const ShiftAssignmentPage: React.FC = () => {
                                                 effective_from: e.target.value,
                                             })
                                         }
+                                        disabled={loading}
                                     />
                                 </Grid>
 
-                                <Grid item xs={12} md={6}>
+                                <Grid item xs={12} md={4}>
                                     <TextField
                                         fullWidth
                                         label="Có hiệu lực đến"
@@ -511,151 +644,476 @@ export const ShiftAssignmentPage: React.FC = () => {
                                                 effective_to: e.target.value,
                                             })
                                         }
-                                        helperText="Để trống nếu không có ngày kết thúc"
+                                        disabled={loading}
                                     />
-                                </Grid>
-
-                                <Grid item xs={12}>
-                                    <Button
-                                        fullWidth
-                                        variant="contained"
-                                        startIcon={<Add />}
-                                        onClick={handleAddAssignment}
-                                        disabled={
-                                            formData.employee_ids.length ===
-                                                0 || !formData.shift_id
-                                        }
-                                    >
-                                        {formData.employee_ids.length > 0
-                                            ? `Thêm phân công cho ${formData.employee_ids.length} nhân viên`
-                                            : 'Thêm phân công'}
-                                    </Button>
                                 </Grid>
                             </Grid>
                         </CardContent>
                     </Card>
                 </Grid>
 
-                {/* Assignments List */}
-                <Grid item xs={12} md={6}>
+                {/* Employee Management Tabs */}
+                <Grid item xs={12}>
                     <Card>
-                        <CardContent>
-                            <Typography variant="h6" fontWeight="bold" mb={3}>
-                                Danh sách phân công ({assignments.length})
-                            </Typography>
+                        <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+                            <Tabs
+                                value={currentTab}
+                                onChange={(_, newValue) =>
+                                    setCurrentTab(newValue)
+                                }
+                            >
+                                <Tab
+                                    label={`Chưa phân công (${totalUnassigned})`}
+                                    icon={<PersonAdd />}
+                                    iconPosition="start"
+                                />
+                                <Tab
+                                    label={`Đã phân công (${totalAssigned})`}
+                                    icon={<PersonRemove />}
+                                    iconPosition="start"
+                                />
+                            </Tabs>
+                        </Box>
 
-                            {assignments.length === 0 ? (
-                                <Alert severity="info">
-                                    Chưa có phân công nào. Vui lòng thêm phân
-                                    công ở bên trái.
-                                </Alert>
-                            ) : (
-                                <TableContainer>
-                                    <Table size="small">
-                                        <TableHead>
-                                            <TableRow>
-                                                <TableCell>Nhân viên</TableCell>
-                                                <TableCell>Ca</TableCell>
-                                                <TableCell>Thời gian</TableCell>
-                                                <TableCell align="center">
-                                                    Thao tác
-                                                </TableCell>
-                                            </TableRow>
-                                        </TableHead>
-                                        <TableBody>
-                                            {assignments.map((assignment) => (
-                                                <TableRow
-                                                    key={
-                                                        assignment.employee_shift_id
-                                                    }
-                                                >
-                                                    <TableCell>
-                                                        <Typography
-                                                            variant="body2"
-                                                            fontWeight="medium"
-                                                        >
-                                                            {
-                                                                assignment.employee_name
+                        {/* Tab 0: Unassigned Employees */}
+                        {currentTab === 0 && (
+                            <CardContent>
+                                <Box
+                                    display="flex"
+                                    justifyContent="space-between"
+                                    alignItems="center"
+                                    mb={2}
+                                >
+                                    <TextField
+                                        size="small"
+                                        placeholder="Tìm kiếm nhân viên..."
+                                        value={searchUnassigned}
+                                        onChange={(e) =>
+                                            setSearchUnassigned(e.target.value)
+                                        }
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <Search />
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                        sx={{ width: 300 }}
+                                    />
+                                    <Box display="flex" gap={1}>
+                                        <Chip
+                                            label={`Mỗi trang: ${sizeUnassigned}`}
+                                            color="default"
+                                        />
+                                        <Chip
+                                            label={`Đã chọn: ${selectedUnassigned.length}`}
+                                            color={
+                                                selectedUnassigned.length > 0
+                                                    ? 'primary'
+                                                    : 'default'
+                                            }
+                                        />
+                                        <Button
+                                            variant="contained"
+                                            startIcon={
+                                                loading ? (
+                                                    <CircularProgress
+                                                        size={20}
+                                                    />
+                                                ) : (
+                                                    <Add />
+                                                )
+                                            }
+                                            onClick={handleAddEmployeesToShift}
+                                            disabled={
+                                                selectedUnassigned.length ===
+                                                    0 ||
+                                                !formData.shift_id ||
+                                                loading
+                                            }
+                                        >
+                                            Thêm vào ca
+                                        </Button>
+                                    </Box>
+                                </Box>
+
+                                {filteredUnassigned.length === 0 ? (
+                                    <Alert severity="info">
+                                        Không có nhân viên nào chưa được phân
+                                        công
+                                    </Alert>
+                                ) : (
+                                    <TableContainer component={Paper}>
+                                        <Table>
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell padding="checkbox">
+                                                        <Checkbox
+                                                            checked={
+                                                                selectedUnassigned.length ===
+                                                                    filteredUnassigned.length &&
+                                                                filteredUnassigned.length >
+                                                                    0
                                                             }
-                                                        </Typography>
-                                                    </TableCell>
-                                                    <TableCell>
-                                                        <Chip
-                                                            label={
-                                                                assignment.shift_name
+                                                            indeterminate={
+                                                                selectedUnassigned.length >
+                                                                    0 &&
+                                                                selectedUnassigned.length <
+                                                                    filteredUnassigned.length
                                                             }
-                                                            size="small"
+                                                            onChange={
+                                                                handleSelectAllUnassigned
+                                                            }
                                                         />
                                                     </TableCell>
                                                     <TableCell>
-                                                        <Typography
-                                                            variant="caption"
-                                                            display="block"
-                                                        >
-                                                            Từ:{' '}
-                                                            {
-                                                                assignment.effective_from
-                                                            }
-                                                        </Typography>
-                                                        {assignment.effective_to && (
-                                                            <Typography
-                                                                variant="caption"
-                                                                display="block"
-                                                            >
-                                                                Đến:{' '}
-                                                                {
-                                                                    assignment.effective_to
-                                                                }
-                                                            </Typography>
-                                                        )}
+                                                        Mã nhân viên
                                                     </TableCell>
-                                                    <TableCell align="center">
-                                                        <IconButton
-                                                            size="small"
-                                                            color="error"
-                                                            onClick={() =>
-                                                                handleDeleteAssignment(
-                                                                    assignment.employee_shift_id
-                                                                )
-                                                            }
-                                                            disabled={loading}
-                                                        >
-                                                            <Delete />
-                                                        </IconButton>
+                                                    <TableCell>
+                                                        Tên nhân viên
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        Ca hiện tại
                                                     </TableCell>
                                                 </TableRow>
-                                            ))}
-                                        </TableBody>
-                                    </Table>
-                                </TableContainer>
-                            )}
-
-                            {assignments.length > 0 && (
-                                <Box mt={3} display="flex" gap={2}>
-                                    <Button
-                                        fullWidth
-                                        variant="contained"
-                                        color="primary"
-                                        startIcon={
-                                            loading ? (
-                                                <CircularProgress size={20} />
-                                            ) : (
-                                                <Save />
-                                            )
-                                        }
-                                        onClick={handleSubmit}
-                                        disabled={loading}
+                                            </TableHead>
+                                            <TableBody>
+                                                {filteredUnassigned.map(
+                                                    (employee) => (
+                                                        <TableRow
+                                                            key={employee.id}
+                                                            hover
+                                                            onClick={() =>
+                                                                handleSelectUnassigned(
+                                                                    employee.id
+                                                                )
+                                                            }
+                                                            sx={{
+                                                                cursor: 'pointer',
+                                                            }}
+                                                        >
+                                                            <TableCell padding="checkbox">
+                                                                <Checkbox
+                                                                    checked={selectedUnassigned.includes(
+                                                                        employee.id
+                                                                    )}
+                                                                />
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {
+                                                                    employee.employee_code
+                                                                }
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {employee.name}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {employee.current_shift ? (
+                                                                    <Chip
+                                                                        label={
+                                                                            employee.current_shift
+                                                                        }
+                                                                        size="small"
+                                                                        color="default"
+                                                                    />
+                                                                ) : (
+                                                                    <Typography
+                                                                        variant="caption"
+                                                                        color="text.secondary"
+                                                                    >
+                                                                        Chưa có
+                                                                        ca
+                                                                    </Typography>
+                                                                )}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                )}
+                                {/* Pagination for Unassigned */}
+                                {totalUnassigned > sizeUnassigned && (
+                                    <Box
+                                        display="flex"
+                                        justifyContent="flex-end"
+                                        mt={2}
                                     >
-                                        {loading
-                                            ? 'Đang lưu...'
-                                            : `Lưu ${assignments.length} phân công`}
-                                    </Button>
+                                        <Pagination
+                                            count={Math.max(
+                                                1,
+                                                Math.ceil(
+                                                    totalUnassigned /
+                                                        sizeUnassigned
+                                                )
+                                            )}
+                                            page={pageUnassigned}
+                                            onChange={(_, value) =>
+                                                setPageUnassigned(value)
+                                            }
+                                            color="primary"
+                                        />
+                                    </Box>
+                                )}
+                            </CardContent>
+                        )}
+
+                        {/* Tab 1: Assigned Employees */}
+                        {currentTab === 1 && (
+                            <CardContent>
+                                <Box
+                                    display="flex"
+                                    justifyContent="space-between"
+                                    alignItems="center"
+                                    mb={2}
+                                >
+                                    <TextField
+                                        size="small"
+                                        placeholder="Tìm kiếm nhân viên..."
+                                        value={searchAssigned}
+                                        onChange={(e) =>
+                                            setSearchAssigned(e.target.value)
+                                        }
+                                        InputProps={{
+                                            startAdornment: (
+                                                <InputAdornment position="start">
+                                                    <Search />
+                                                </InputAdornment>
+                                            ),
+                                        }}
+                                        sx={{ width: 300 }}
+                                    />
+                                    <Box display="flex" gap={1}>
+                                        <Chip
+                                            label={`Mỗi trang: ${sizeAssigned}`}
+                                            color="default"
+                                        />
+                                        <Chip
+                                            label={`Đã chọn: ${selectedAssigned.length}`}
+                                            color={
+                                                selectedAssigned.length > 0
+                                                    ? 'error'
+                                                    : 'default'
+                                            }
+                                        />
+                                        <Button
+                                            variant="contained"
+                                            color="error"
+                                            startIcon={
+                                                loading ? (
+                                                    <CircularProgress
+                                                        size={20}
+                                                    />
+                                                ) : (
+                                                    <Delete />
+                                                )
+                                            }
+                                            onClick={
+                                                handleRemoveEmployeesFromShift
+                                            }
+                                            disabled={
+                                                selectedAssigned.length === 0 ||
+                                                loading
+                                            }
+                                        >
+                                            Xóa khỏi ca
+                                        </Button>
+                                    </Box>
                                 </Box>
-                            )}
-                        </CardContent>
+
+                                {filteredAssigned.length === 0 ? (
+                                    <Alert severity="info">
+                                        Chưa có nhân viên nào được phân công vào
+                                        ca này
+                                    </Alert>
+                                ) : (
+                                    <TableContainer component={Paper}>
+                                        <Table>
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell padding="checkbox">
+                                                        <Checkbox
+                                                            checked={
+                                                                selectedAssigned.length ===
+                                                                    filteredAssigned.length &&
+                                                                filteredAssigned.length >
+                                                                    0
+                                                            }
+                                                            indeterminate={
+                                                                selectedAssigned.length >
+                                                                    0 &&
+                                                                selectedAssigned.length <
+                                                                    filteredAssigned.length
+                                                            }
+                                                            onChange={
+                                                                handleSelectAllAssigned
+                                                            }
+                                                        />
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        Mã nhân viên
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        Tên nhân viên
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        Có hiệu lực từ
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        Có hiệu lực đến
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        Trạng thái
+                                                    </TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {filteredAssigned.map(
+                                                    (employee) => (
+                                                        <TableRow
+                                                            key={employee.id}
+                                                            hover
+                                                            onClick={() =>
+                                                                handleSelectAssigned(
+                                                                    employee.id
+                                                                )
+                                                            }
+                                                            sx={{
+                                                                cursor: 'pointer',
+                                                            }}
+                                                        >
+                                                            <TableCell padding="checkbox">
+                                                                <Checkbox
+                                                                    checked={selectedAssigned.includes(
+                                                                        employee.id
+                                                                    )}
+                                                                />
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {
+                                                                    employee.employee_code
+                                                                }
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {employee.name}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {
+                                                                    employee.effective_from
+                                                                }
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {employee.effective_to ||
+                                                                    'Không giới hạn'}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Chip
+                                                                    label={
+                                                                        employee.is_active
+                                                                            ? 'Đang hoạt động'
+                                                                            : 'Không hoạt động'
+                                                                    }
+                                                                    size="small"
+                                                                    color={
+                                                                        employee.is_active
+                                                                            ? 'success'
+                                                                            : 'default'
+                                                                    }
+                                                                />
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                )}
+                                {/* Pagination for Assigned */}
+                                {totalAssigned > sizeAssigned && (
+                                    <Box
+                                        display="flex"
+                                        justifyContent="flex-end"
+                                        mt={2}
+                                    >
+                                        <Pagination
+                                            count={Math.max(
+                                                1,
+                                                Math.ceil(
+                                                    totalAssigned / sizeAssigned
+                                                )
+                                            )}
+                                            page={pageAssigned}
+                                            onChange={(_, value) =>
+                                                setPageAssigned(value)
+                                            }
+                                            color="primary"
+                                        />
+                                    </Box>
+                                )}
+                            </CardContent>
+                        )}
                     </Card>
                 </Grid>
             </Grid>
+
+            {/* Delete Confirmation Dialog */}
+            <Dialog
+                open={deleteDialog.open}
+                onClose={() =>
+                    setDeleteDialog({
+                        open: false,
+                        employeeIds: [],
+                        employeeNames: [],
+                    })
+                }
+            >
+                <DialogTitle>Xác nhận xóa phân công</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        Bạn có chắc chắn muốn xóa phân công của{' '}
+                        {deleteDialog.employeeNames.length} nhân viên sau không?
+                    </Typography>
+                    <Box mt={2}>
+                        {deleteDialog.employeeNames.map((name, index) => (
+                            <Chip
+                                key={index}
+                                label={name}
+                                sx={{ mr: 1, mb: 1 }}
+                            />
+                        ))}
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button
+                        onClick={() =>
+                            setDeleteDialog({
+                                open: false,
+                                employeeIds: [],
+                                employeeNames: [],
+                            })
+                        }
+                        disabled={loading}
+                    >
+                        Hủy
+                    </Button>
+                    <Button
+                        onClick={confirmDelete}
+                        color="error"
+                        variant="contained"
+                        disabled={loading}
+                        startIcon={
+                            loading ? (
+                                <CircularProgress size={20} />
+                            ) : (
+                                <Delete />
+                            )
+                        }
+                    >
+                        {loading ? 'Đang xóa...' : 'Xác nhận xóa'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             {/* Snackbar for notifications */}
             <Snackbar

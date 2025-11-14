@@ -10,6 +10,66 @@ import (
 	"github.com/google/uuid"
 )
 
+// For get list employees in a shift
+type GetListEmployyeShiftInput struct {
+	ShiftID   uuid.UUID
+	CompanyID uuid.UUID
+	Limit     int32
+	Offset    int32
+}
+
+type GetListEmployyeShiftOutput struct {
+	EmployeeIDs []*EmployeeShiftInfoBase
+	Total       int32
+	PageSize    int32
+}
+
+type EmployeeShiftInfoBase struct {
+	EmployeeId          uuid.UUID
+	EmployeeName        string
+	EmployeeCode        string
+	EmployeeShiftName   string
+	EmployeeShiftActive bool
+	ShiftEffectiveFrom  time.Time
+	ShiftEffectiveTo    time.Time
+}
+
+// For rm list shift assignments from multiple employees
+type RemoveListShiftForEmployeesInput struct {
+	ShiftID     uuid.UUID
+	EmployeeIDs []uuid.UUID
+}
+
+// For IsUserManagetShift
+type IsUserManagetShiftInput struct {
+	CompanyUserID uuid.UUID
+	ShiftID       uuid.UUID
+}
+
+// For enable employee shift assignment
+type EnableEmployeeShiftIInput struct {
+	EmployeeID uuid.UUID
+	ShiftID    uuid.UUID
+}
+
+// For disable employee shift assignment
+type DisableEmployeeShiftInput struct {
+	EmployeeID uuid.UUID
+	ShiftID    uuid.UUID
+}
+
+// For delete list of employee shift assignments
+type DeleteListEmployeeShiftInput struct {
+	EmployeeIDs []uuid.UUID
+	ShiftId     uuid.UUID
+}
+
+// For delete employee shift assignment
+type DeleteEmployeeShiftInput struct {
+	EmployeeID uuid.UUID
+	ShiftId    uuid.UUID
+}
+
 // For add list shift assignments to multiple employees
 type AddListShiftForEmployeesInput struct {
 	ShiftID       uuid.UUID
@@ -21,11 +81,11 @@ type AddListShiftForEmployeesInput struct {
 
 // Row returned from GetShiftEmployeeWithEffectiveDate
 type EmployeeShiftRow struct {
-	EmployeeShiftID uuid.UUID
-	ShiftID         uuid.UUID
-	EffectiveFrom   time.Time
-	EffectiveTo     time.Time
-	IsActive        bool
+	EmployeeID    uuid.UUID
+	ShiftID       uuid.UUID
+	EffectiveFrom time.Time
+	EffectiveTo   time.Time
+	IsActive      bool
 }
 
 // Input for querying shifts of an employee effective on a date
@@ -38,9 +98,10 @@ type GetShiftEmployeeWithEffectiveDateInput struct {
 
 // Update effective window for an employee shift
 type EditEffectiveShiftForEmployeeInput struct {
-	EmployeeShiftID uuid.UUID
-	EffectiveFrom   time.Time
-	EffectiveTo     time.Time
+	EmployeeID    uuid.UUID
+	ShiftID       uuid.UUID
+	EffectiveFrom time.Time
+	EffectiveTo   time.Time
 }
 
 // Add a shift assignment to an employee

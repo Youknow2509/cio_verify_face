@@ -30,12 +30,14 @@ func (r *HttpRouterManager) InitRoutes(group *gin.RouterGroup) {
 	shiftEmployeeRouterV1 := group.Group("/v1/employee/shift")
 	shiftEmployeeRouterV1.Use(infraMiddleware.GetAuthAdminAccessTokenJwtMiddleware().Apply())
 	{
-		shiftEmployeeRouterV1.POST("", handler.NewHandler().GetShiftForUserWithEffectiveDate)                 // Get shift for user with effective date
-		shiftEmployeeRouterV1.POST("/edit/effective", handler.NewHandler().EditShiftForUserWithEffectiveDate) // Edit shift for user with effective date
-		shiftEmployeeRouterV1.POST("/enable", handler.NewHandler().EnableShiftForUser)                        // Enable shift for user
-		shiftEmployeeRouterV1.POST("/disable", handler.NewHandler().DisableShiftForUser)                      // Disable shift for user
-		shiftEmployeeRouterV1.DELETE("/:id", handler.NewHandler().DeleteShiftForUser)                         // Delete shift for user
-		shiftEmployeeRouterV1.POST("/add", handler.NewHandler().AddShiftEmployee)                             // Add shift employee
-		shiftEmployeeRouterV1.POST("/add/list", handler.NewHandler().AddShiftEmployeeList)                    // Add shift employee list
+		shiftEmployeeRouterV1.POST("", handler.NewHandler().GetShiftUserWithEffectiveDate)                 // Get shift for user with effective date
+		shiftEmployeeRouterV1.POST("/edit/effective", handler.NewHandler().EditShiftUserWithEffectiveDate) // Edit shift for user with effective date
+		shiftEmployeeRouterV1.POST("/enable", handler.NewHandler().EnableShiftUser)                        // Enable shift for user
+		shiftEmployeeRouterV1.POST("/disable", handler.NewHandler().DisableShiftUser)                      // Disable shift for user
+		shiftEmployeeRouterV1.POST("/delete", handler.NewHandler().DeleteShiftUser)                        // Delete shift for user
+		shiftEmployeeRouterV1.POST("/add", handler.NewHandler().AddShiftEmployee)                          // Add shift employee
+		shiftEmployeeRouterV1.POST("/add/list", handler.NewHandler().AddShiftEmployeeList)                 // Add shift employee list
+		shiftEmployeeRouterV1.POST("/not_in", handler.NewHandler().GetInfoEmployeeDonotInShift)            // Get info employee donot in shift
+		shiftEmployeeRouterV1.POST("/in", handler.NewHandler().GetInfoEmployeeInShift)                     // Get info employee in shift
 	}
 }
