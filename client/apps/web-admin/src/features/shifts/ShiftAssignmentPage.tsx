@@ -61,7 +61,7 @@ interface Employee {
 }
 
 interface AssignedEmployee extends Employee {
-    employee_shift_id: string;
+    shift_id: string;
     effective_from: string;
     effective_to?: string;
     is_active: boolean;
@@ -100,7 +100,11 @@ export const ShiftAssignmentPage: React.FC = () => {
     const [formData, setFormData] = useState({
         shift_id: id || '',
         effective_from: new Date().toISOString().split('T')[0],
-        effective_to: '',
+        effective_to: (() => {
+            const d = new Date();
+            d.setMonth(d.getMonth() + 3);
+            return d.toISOString().split('T')[0];
+        })(),
     });
 
     // Dialog
@@ -176,6 +180,18 @@ export const ShiftAssignmentPage: React.FC = () => {
         return { items, total, page, size, total_pages };
     };
 
+    // Format date 2025-11-14T00:00:00Z -> dd/mm/yyyy
+    const formatDate = (dateStr: string) => {
+        if (!dateStr || dateStr === '' || '0001-01-01T00:00:00Z' === dateStr) {
+            return '';
+        }
+        const date = new Date(dateStr);
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
+
     // Fetch employees assigned to shift (in + not in) using new endpoints
     const fetchEmployeesForShift = async (shiftId: string) => {
         setLoading(true);
@@ -192,26 +208,20 @@ export const ShiftAssignmentPage: React.FC = () => {
                     size: sizeUnassigned,
                 }),
             ]);
-
             // Assigned (in)
             if (inRes.code === 200 && inRes.data) {
                 const p = extractPaginated(inRes.data);
                 const assigned: AssignedEmployee[] = (p.items || []).map(
                     (emp: any) => ({
-                        id: emp.employee_id ?? emp.user_id ?? emp.id,
-                        name: emp.employee_name ?? emp.user_name ?? emp.name,
-                        employee_code:
-                            emp.employee_code ??
-                            emp.number_employee ??
-                            emp.code,
-                        employee_shift_id:
-                            emp.employee_shift_id ?? emp.shift_user_id ?? '',
-                        effective_from:
-                            emp.effective_from ?? emp.start_date ?? '',
-                        effective_to:
-                            emp.effective_to ?? emp.end_date ?? undefined,
-                        is_active:
-                            emp.employee_shift_active ?? emp.is_active ?? true,
+                        id: emp.employee_id ?? '',
+                        name: emp.employee_name ?? '',
+                        employee_code: emp.employee_code ?? '',
+                        shift_id: shiftId,
+                        effective_from: formatDate(
+                            emp.shift_effective_from ?? undefined
+                        ),
+                        effective_to: formatDate(emp.shift_effective_to ?? undefined),
+                        is_active: emp.employee_shift_active ?? true,
                     })
                 );
                 setAssignedEmployees(assigned);
@@ -407,7 +417,6 @@ export const ShiftAssignmentPage: React.FC = () => {
                               .split('T')[0]
                       ),
             };
-
             const response = await addEmployeeListToShift(requestData);
 
             if (response.code !== 200) {
@@ -448,9 +457,7 @@ export const ShiftAssignmentPage: React.FC = () => {
         );
         setDeleteDialog({
             open: true,
-            employeeIds: employeesToRemove.map(
-                (emp) => emp.id
-            ),
+            employeeIds: employeesToRemove.map((emp) => emp.id),
             employeeNames: employeesToRemove.map((emp) => emp.name),
         });
     };
@@ -637,7 +644,6 @@ export const ShiftAssignmentPage: React.FC = () => {
                                                 effective_to: e.target.value,
                                             })
                                         }
-                                        helperText="Để trống nếu không có ngày kết thúc"
                                         disabled={loading}
                                     />
                                 </Grid>
