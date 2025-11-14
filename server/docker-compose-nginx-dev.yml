@@ -1,0 +1,16 @@
+# Docker compose service
+
+networks:
+    nw-dev-0:
+        driver: bridge
+
+services:
+    # NGINX Gateway
+    gateway:
+        image: nginx:alpine-slim
+        ports:
+            - '80:80'
+        networks:
+            - nw-dev-0
+        volumes:
+            - ./config/nginx/default.dev.conf:/etc/nginx/conf.d/default.conf:ro

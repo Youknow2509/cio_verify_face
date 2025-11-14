@@ -626,6 +626,19 @@ func (s *ShiftEmployeeService) DeleteListShiftUser(ctx context.Context, input *a
 			s.logger.Warn("DeleteShiftUser - Failed to delete from local cache", "error", err)
 		}
 	}
+	keyListEmployeeDonotInShiftPrefix := utilsCache.GetKeyListEmployeeDonotInShiftPrefix(
+		utilsCrypto.GetHash(input.ShiftId.String()),
+	)
+	if err := s.distributedCache.DeleteByPrefix(ctx, keyListEmployeeDonotInShiftPrefix); err != nil {
+		s.logger.Warn("DeleteShiftUser - Failed to delete list employee donot in shift cache", "error", err)
+	}
+	keyListEmployeeInShiftPrefix := utilsCache.GetKeyListEmployeeInShiftPrefix(
+		utilsCrypto.GetHash(input.ShiftId.String()),
+	)
+	if err := s.distributedCache.DeleteByPrefix(ctx, keyListEmployeeInShiftPrefix); err != nil {
+		s.logger.Warn("DeleteShiftUser - Failed to delete list employee in shift cache", "error", err)
+	}
+
 	return nil
 }
 

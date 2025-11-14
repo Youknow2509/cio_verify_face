@@ -25,12 +25,12 @@ type DisableShiftUserReq struct {
 // DeleteShiftUserReq request
 type DeleteShiftUserReq struct {
 	ShiftId     string   `json:"shift_id" validate:"required"`
-	EmployeeIds []string `json:"employee_ids" validate:"required,dive,required"`
+	EmployeeIds []string `json:"employee_ids" validate:"required,min=1,dive,required,min=3"`
 }
 
 // Add shift employee list request
 type AddShiftEmployeeListReq struct {
-	EmployeeIDs   []string `json:"employee_ids" validate:"required,dive,required"`
+	EmployeeIDs   []string `json:"employee_ids" validate:"required,min=1,dive,required,min=3"`
 	EffectiveFrom int64    `json:"effective_from" validate:"required"`
 	EffectiveTo   int64    `json:"effective_to" validate:"required"`
 	CompanyId     string   `json:"company_id" validate:"required"`

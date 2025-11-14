@@ -151,6 +151,19 @@ export const ShiftListPage: React.FC = () => {
         }
     };
 
+    const handleUpdateStateShiftStatus = (
+        shiftId: string,
+        isActive: boolean
+    ) => {
+        setShifts((prevShifts) =>
+            prevShifts.map((shift) =>
+                shift.shift_id === shiftId
+                    ? { ...shift, is_active: isActive }
+                    : shift
+            )
+        );
+    };
+
     const handleToggleStatus = async (shift: Shift) => {
         try {
             const newStatus = shift.is_active ? 0 : 1;
@@ -168,7 +181,10 @@ export const ShiftListPage: React.FC = () => {
                     } ca làm việc thành công`,
                     severity: 'success',
                 });
-                fetchShifts(); // Refresh list
+                handleUpdateStateShiftStatus(
+                    shift.shift_id,
+                    Boolean(newStatus)
+                );
             } else {
                 throw new Error(
                     response.message || 'Thay đổi trạng thái thất bại'

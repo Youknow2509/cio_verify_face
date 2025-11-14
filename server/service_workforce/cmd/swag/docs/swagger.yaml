@@ -11,6 +11,7 @@ definitions:
       employee_ids:
         items:
           type: string
+        minItems: 1
         type: array
       shift_id:
         type: string
@@ -89,6 +90,7 @@ definitions:
       employee_ids:
         items:
           type: string
+        minItems: 1
         type: array
       shift_id:
         type: string

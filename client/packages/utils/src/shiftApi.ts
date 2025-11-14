@@ -12,9 +12,27 @@ import type {
     DisableShiftForUserReq,
     ResponseData,
     EmployeeShift,
+    GetInfoEmployeeInShiftReq,
+    GetInfoEmployeeNotInShiftReq,
+    PaginatedResponse,
+    DeleteShiftEmployeeReq,
 } from '@face-attendance/types';
 
 // ==================== SHIFT MANAGEMENT APIs ====================
+
+/**
+ * Get info employees set shift
+ * @param shiftId - Shift ID
+ * @returns List of info employees set shift
+ */
+export const getInfoEmployeesSetShift = async (
+    shiftId: string
+): Promise<ResponseData<EmployeeShift[]>> => {
+    const response = await apiClient.get(
+        `/api/v1/employee/shift/employee/${shiftId}`
+    );
+    return response.data;
+};
 
 /**
  * Get list of shifts with pagination
@@ -130,14 +148,15 @@ export const addEmployeeListToShift = async (
 
 /**
  * Delete an employee shift assignment
- * @param employeeShiftId - Employee shift ID to delete
+ * @param data - DeleteShiftEmployeeReq
  * @returns Success response
  */
 export const deleteEmployeeShift = async (
-    employeeShiftId: string
+    data: DeleteShiftEmployeeReq
 ): Promise<ResponseData> => {
-    const response = await apiClient.delete(
-        `/api/v1/employee/shift/${employeeShiftId}`
+    const response = await apiClient.post(
+        `/api/v1/employee/shift/delete`,
+        data
     );
     return response.data;
 };
@@ -181,6 +200,34 @@ export const editEmployeeShiftEffectiveDate = async (
     data: ShiftEmployeeEditEffectiveDateReq
 ): Promise<ResponseData<EmployeeShift>> => {
     const response = await apiClient.post('/api/v1/user/edit/effective', data);
+    return response.data;
+};
+
+// ==================== NEW: Employees In / Not In Shift ====================
+/**
+ * Get employees currently in a shift
+ * @param data - Query params (company_id, shift_id, pagination optional)
+ * @returns List of employees with assignment info
+ */
+export const getEmployeesInShift = async (
+    data: GetInfoEmployeeInShiftReq
+): Promise<ResponseData<PaginatedResponse<any>>> => {
+    const response = await apiClient.post('/api/v1/employee/shift/in', data);
+    return response.data;
+};
+
+/**
+ * Get employees NOT assigned to a shift
+ * @param data - Query params (company_id, shift_id, pagination optional)
+ * @returns List of employees
+ */
+export const getEmployeesNotInShift = async (
+    data: GetInfoEmployeeNotInShiftReq
+): Promise<ResponseData<PaginatedResponse<any>>> => {
+    const response = await apiClient.post(
+        '/api/v1/employee/shift/not_in',
+        data
+    );
     return response.data;
 };
 

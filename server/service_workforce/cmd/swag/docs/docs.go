@@ -734,6 +734,7 @@ const docTemplate = `{
                 },
                 "employee_ids": {
                     "type": "array",
+                    "minItems": 1,
                     "items": {
                         "type": "string"
                     }
@@ -842,6 +843,7 @@ const docTemplate = `{
             "properties": {
                 "employee_ids": {
                     "type": "array",
+                    "minItems": 1,
                     "items": {
                         "type": "string"
                     }

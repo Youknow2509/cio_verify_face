@@ -728,6 +728,7 @@
                 },
                 "employee_ids": {
                     "type": "array",
+                    "minItems": 1,
                     "items": {
                         "type": "string"
                     }
@@ -836,6 +837,7 @@
             "properties": {
                 "employee_ids": {
                     "type": "array",
+                    "minItems": 1,
                     "items": {
                         "type": "string"
                     }

@@ -121,3 +121,24 @@ export interface EnableShiftForUserReq {
 export interface DisableShiftForUserReq {
     shift_user_id: string;
 }
+
+// ==================== New Shift Employee Query DTOs ====================
+// Assumptions based on backend swagger for /v1/employee/shift/in & /v1/employee/shift/not_in
+// If backend adds more filters (e.g. department), extend these interfaces accordingly.
+export interface GetInfoEmployeeInShiftReq {
+    shift_id: string;
+    page: number;
+    size: number;
+}
+
+export interface GetInfoEmployeeNotInShiftReq {
+    shift_id: string;
+    page: number;
+    size: number;
+}
+
+
+export interface DeleteShiftEmployeeReq {
+    employee_ids: string[];
+    shift_id: string;
+}
