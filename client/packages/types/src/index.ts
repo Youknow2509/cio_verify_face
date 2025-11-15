@@ -56,8 +56,8 @@ export interface Company {
 
 // Employee Types
 export interface Employee extends User {
-    department?: string;
     position?: string;
+    department?: string;
     hire_date?: string;
     contract_type?: string;
     default_shift_id?: string;

@@ -1,7 +1,9 @@
 import { Router } from 'express';
 import { userController } from '../controllers/userController';
 import { faceDataController } from '../controllers/faceDataController';
+import multer from 'multer';
 
+const upload = multer({ dest: 'uploads/' });
 /**
  * @swagger
  * /api/v1/users:
@@ -262,6 +264,22 @@ import { faceDataController } from '../controllers/faceDataController';
  *         description: Face data not found
  */
 
+/**
+ * @route /api/v1/users/update-base
+ * @summary Update user's base information
+ * @method POST
+ * @tags Users
+ * @param {string} user_id.body.required - User ID
+ * @param {string} user_fullname.body - Full name
+ * @param {string} user_phone.body - Phone number
+ * @param {string} user_email.body - Email address
+ * @param {string} user_department.body - Department
+ * @param {string} user_data_join_company.body - Date joined company
+ * @param {string} user_position.body - Position
+ * @return {object} 200 - Success response - application/json
+ * @return {object} 400 - Validation error - application/json
+ */
+
 const router = Router();
 
 // Users endpoints
@@ -270,10 +288,25 @@ router.post('/', (req, res) => userController.createUser(req, res));
 router.get('/:user_id', (req, res) => userController.getUserById(req, res));
 router.put('/:user_id', (req, res) => userController.updateUser(req, res));
 router.delete('/:user_id', (req, res) => userController.deleteUser(req, res));
+router.post('/update-base', (req, res) =>
+    userController.updateBaseInfo(req, res)
+);
+router.delete('/delete-multiple', (req, res) =>
+    userController.deleteListEmployee(req, res)
+);
+router.post('/import-from-file', upload.single('file'), (req, res) =>
+    userController.importUsersFromFile(req, res)
+);
 
 // Face data endpoints
-router.post('/:user_id/face-data', (req, res) => faceDataController.createFaceData(req, res));
-router.get('/:user_id/face-data', (req, res) => faceDataController.getFaceDataByUserId(req, res));
-router.delete('/:user_id/face-data/:fid', (req, res) => faceDataController.deleteFaceData(req, res));
+router.post('/:user_id/face-data', (req, res) =>
+    faceDataController.createFaceData(req, res)
+);
+router.get('/:user_id/face-data', (req, res) =>
+    faceDataController.getFaceDataByUserId(req, res)
+);
+router.delete('/:user_id/face-data/:fid', (req, res) =>
+    faceDataController.deleteFaceData(req, res)
+);
 
 export default router;
