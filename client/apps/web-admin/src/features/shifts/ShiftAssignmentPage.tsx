@@ -36,6 +36,7 @@ import {
     ArrowBack,
     Delete,
     Add,
+    UploadFile,
     PersonAdd,
     PersonRemove,
     Search,
@@ -65,6 +66,11 @@ interface AssignedEmployee extends Employee {
     effective_from: string;
     effective_to?: string;
     is_active: boolean;
+}
+
+interface ParsedRow {
+    [key: string]: string;
+    _matchedEmployeeId?: string | null;
 }
 
 export const ShiftAssignmentPage: React.FC = () => {
@@ -128,6 +134,13 @@ export const ShiftAssignmentPage: React.FC = () => {
         message: '',
         severity: 'success',
     });
+
+    // CSV import dialog state
+    const [importDialogOpen, setImportDialogOpen] = useState(false);
+    const [csvPreview, setCsvPreview] = useState<ParsedRow[]>([]);
+    const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+    const [csvFileName, setCsvFileName] = useState<string>('');
+    const [importProcessing, setImportProcessing] = useState(false);
 
     // Computed: Unassigned employees
     const unassignedEmployees = allEmployees.filter(
@@ -220,7 +233,9 @@ export const ShiftAssignmentPage: React.FC = () => {
                         effective_from: formatDate(
                             emp.shift_effective_from ?? undefined
                         ),
-                        effective_to: formatDate(emp.shift_effective_to ?? undefined),
+                        effective_to: formatDate(
+                            emp.shift_effective_to ?? undefined
+                        ),
                         is_active: emp.employee_shift_active ?? true,
                     })
                 );
@@ -355,6 +370,210 @@ export const ShiftAssignmentPage: React.FC = () => {
                 ? prev.filter((id) => id !== employeeId)
                 : [...prev, employeeId]
         );
+    };
+
+    // Simple CSV parser (handles basic quoted values)
+    const parseCSV = (
+        text: string
+    ): { headers: string[]; rows: string[][] } => {
+        const lines: string[] = [];
+        let cur = '';
+        let inQuotes = false;
+        for (let i = 0; i < text.length; i++) {
+            const ch = text[i];
+            if (ch === '"') {
+                inQuotes = !inQuotes;
+                cur += ch;
+            } else if (ch === '\n' || ch === '\r') {
+                if (!inQuotes) {
+                    if (cur.trim() !== '') {
+                        lines.push(cur);
+                    }
+                    cur = '';
+                    // skip if next is \n in CRLF
+                    if (ch === '\r' && text[i + 1] === '\n') i++;
+                } else {
+                    cur += ch;
+                }
+            } else {
+                cur += ch;
+            }
+        }
+        if (cur.trim() !== '') lines.push(cur);
+
+        const rows = lines.map((line) => {
+            const cells: string[] = [];
+            let cell = '';
+            let quoted = false;
+            for (let i = 0; i < line.length; i++) {
+                const ch = line[i];
+                if (ch === '"') {
+                    if (quoted && line[i + 1] === '"') {
+                        cell += '"';
+                        i++;
+                    } else {
+                        quoted = !quoted;
+                    }
+                } else if (ch === ',' && !quoted) {
+                    cells.push(cell.trim());
+                    cell = '';
+                } else {
+                    cell += ch;
+                }
+            }
+            cells.push(cell.trim());
+            return cells;
+        });
+
+        const headers =
+            rows.length > 0
+                ? rows[0].map((h) => h.replace(/^"|"$/g, '').trim())
+                : [];
+        const dataRows = rows
+            .slice(1)
+            .map((r) => r.map((c) => c.replace(/^"|"$/g, '').trim()));
+        return { headers, rows: dataRows };
+    };
+
+    const openImportDialog = () => {
+        setCsvPreview([]);
+        setCsvHeaders([]);
+        setCsvFileName('');
+        setImportDialogOpen(true);
+    };
+
+    const downloadSampleCsv = () => {
+        const sample =
+            `email,phone,password,full_name,avatar_url,company_id,employee_code,department,position,hire_date,salary,role\n` +
+            `nva@gmail.com,0123124325,Passw0rd!,Nguyen Van A,https://example.com/avatars/alice.jpg,1267b1ef-52f2-425d-81db-8004c8a06316,EMP-001,HR,HR Manager,2020-06-15,1500.50,2\n` +
+            `nvb@gmail.com,0937125623,Secret123,Nguyen Van Tran,,1267b1ef-52f2-425d-81db-8004c8a06316,EMP-002,Engineering,Software Engineer,2021-03-01,2000,2`;
+        const blob = new Blob([sample], { type: 'text/csv' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'sample_employees.csv';
+        a.click();
+        URL.revokeObjectURL(url);
+    };
+
+    const handleFileChange = (file: File | null) => {
+        if (!file) return;
+        setCsvFileName(file.name);
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            const text = String(e.target?.result || '');
+            const parsed = parseCSV(text);
+            setCsvHeaders(parsed.headers);
+            const rows: ParsedRow[] = parsed.rows.map((r) => {
+                const obj: ParsedRow = {} as ParsedRow;
+                parsed.headers.forEach((h, idx) => {
+                    obj[h] = r[idx] ?? '';
+                });
+                return obj;
+            });
+
+            // Try to match rows to existing employees by employee_code or email
+            const enriched = rows.map((row) => {
+                const code = (row['employee_code'] || row['employee'] || '')
+                    .toString()
+                    .trim();
+                const email = (row['email'] || '').toString().trim();
+                let matched: Employee | undefined = undefined;
+                if (code)
+                    matched = allEmployees.find(
+                        (e) =>
+                            (e.employee_code || '').toLowerCase() ===
+                            code.toLowerCase()
+                    );
+                if (!matched && email)
+                    matched = allEmployees.find(
+                        (e) =>
+                            (e.name || '').toLowerCase() === email.toLowerCase()
+                    );
+                return {
+                    ...row,
+                    _matchedEmployeeId: matched ? matched.id : null,
+                } as ParsedRow;
+            });
+
+            setCsvPreview(enriched);
+        };
+        reader.readAsText(file, 'utf-8');
+    };
+
+    const handleConfirmImport = async () => {
+        if (!formData.shift_id) {
+            setSnackbar({
+                open: true,
+                message: 'Vui lòng chọn ca làm việc trước khi import',
+                severity: 'error',
+            });
+            return;
+        }
+        const matchedIds = csvPreview
+            .map((r) => r._matchedEmployeeId)
+            .filter(Boolean) as string[];
+        if (matchedIds.length === 0) {
+            setSnackbar({
+                open: true,
+                message:
+                    'Không có nhân viên hợp lệ để thêm. Hãy đảm bảo file chứa `employee_code` khớp.',
+                severity: 'error',
+            });
+            return;
+        }
+
+        try {
+            setImportProcessing(true);
+            const companyId = id
+                ? shifts.find((shift) => shift.shift_id === id)?.company_id
+                : '';
+            const requestData = {
+                company_id: companyId,
+                shift_id: formData.shift_id,
+                employee_ids: matchedIds,
+                effective_from: dateStringToTimestamp(formData.effective_from),
+                effective_to: formData.effective_to
+                    ? dateStringToTimestamp(formData.effective_to)
+                    : dateStringToTimestamp(
+                          new Date(
+                              new Date().setFullYear(
+                                  new Date().getFullYear() + 10
+                              )
+                          )
+                              .toISOString()
+                              .split('T')[0]
+                      ),
+            };
+            const response = await addEmployeeListToShift(requestData as any);
+            if (response.code !== 200) {
+                throw new Error(response.message || 'Import thất bại');
+            }
+
+            setSnackbar({
+                open: true,
+                message: `Đã thêm ${matchedIds.length} nhân viên từ file`,
+                severity: 'success',
+            });
+            setImportDialogOpen(false);
+            setCsvPreview([]);
+            setCsvHeaders([]);
+            // Refresh data
+            if (id) {
+                await fetchEmployeesForShift(id);
+            } else if (formData.shift_id) {
+                await fetchEmployeesForShift(formData.shift_id);
+            }
+        } catch (err: any) {
+            console.error('Import error:', err);
+            setSnackbar({
+                open: true,
+                message: err.message || 'Lỗi khi import',
+                severity: 'error',
+            });
+        } finally {
+            setImportProcessing(false);
+        }
     };
 
     const handleSelectAllUnassigned = () => {
@@ -734,6 +953,16 @@ export const ShiftAssignmentPage: React.FC = () => {
                                         >
                                             Thêm vào ca
                                         </Button>
+                                        <Button
+                                            variant="outlined"
+                                            startIcon={<UploadFile />}
+                                            onClick={openImportDialog}
+                                            disabled={
+                                                !formData.shift_id || loading
+                                            }
+                                        >
+                                            Thêm từ file
+                                        </Button>
                                     </Box>
                                 </Box>
 
@@ -1056,6 +1285,116 @@ export const ShiftAssignmentPage: React.FC = () => {
                     </Card>
                 </Grid>
             </Grid>
+
+            {/* Import from CSV Dialog */}
+            <Dialog
+                open={importDialogOpen}
+                onClose={() => setImportDialogOpen(false)}
+                maxWidth="lg"
+                fullWidth
+            >
+                <DialogTitle>Nhập nhân viên từ file CSV</DialogTitle>
+                <DialogContent>
+                    <Box mb={2}>
+                        <Typography variant="body2" color="text.secondary">
+                            File mẫu: các cột (order không bắt buộc):
+                            <Box component="span" ml={1} fontFamily="monospace">
+                                email,phone,password,full_name,avatar_url,company_id,employee_code,department,position,hire_date,salary,role
+                            </Box>
+                        </Typography>
+                        <Box mt={1} display="flex" gap={1}>
+                            <Button size="small" onClick={downloadSampleCsv}>
+                                Tải file mẫu
+                            </Button>
+                            <Button size="small" component="label">
+                                Chọn file
+                                <input
+                                    type="file"
+                                    accept=".csv,text/csv"
+                                    hidden
+                                    onChange={(e) =>
+                                        handleFileChange(
+                                            e.target.files
+                                                ? e.target.files[0]
+                                                : null
+                                        )
+                                    }
+                                />
+                            </Button>
+                            <Typography
+                                variant="caption"
+                                color="text.secondary"
+                                sx={{ alignSelf: 'center' }}
+                            >
+                                {csvFileName || 'Chưa chọn file'}
+                            </Typography>
+                        </Box>
+                    </Box>
+
+                    {csvPreview.length === 0 ? (
+                        <Alert severity="info">
+                            Chưa có dữ liệu để xem trước
+                        </Alert>
+                    ) : (
+                        <TableContainer
+                            component={Paper}
+                            sx={{ maxHeight: 360 }}
+                        >
+                            <Table stickyHeader size="small">
+                                <TableHead>
+                                    <TableRow>
+                                        {csvHeaders.map((h) => (
+                                            <TableCell key={h}>{h}</TableCell>
+                                        ))}
+                                        <TableCell>Trạng thái</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {csvPreview.map((row, idx) => (
+                                        <TableRow key={idx} hover>
+                                            {csvHeaders.map((h) => (
+                                                <TableCell key={h}>
+                                                    {row[h]}
+                                                </TableCell>
+                                            ))}
+                                            <TableCell>
+                                                {row._matchedEmployeeId ? (
+                                                    <Chip
+                                                        label="Tìm thấy"
+                                                        size="small"
+                                                        color="success"
+                                                    />
+                                                ) : (
+                                                    <Chip
+                                                        label="Không tìm thấy"
+                                                        size="small"
+                                                        color="default"
+                                                    />
+                                                )}
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button
+                        onClick={() => setImportDialogOpen(false)}
+                        disabled={importProcessing}
+                    >
+                        Hủy
+                    </Button>
+                    <Button
+                        onClick={handleConfirmImport}
+                        variant="contained"
+                        disabled={importProcessing || csvPreview.length === 0}
+                    >
+                        {importProcessing ? 'Đang xử lý...' : 'Nhập từ file'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             {/* Delete Confirmation Dialog */}
             <Dialog
