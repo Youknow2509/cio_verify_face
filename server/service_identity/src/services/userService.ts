@@ -85,14 +85,11 @@ export class UserService {
                 now,
             ]
         );
-
         const user = result.rows[0];
-        console.log('Created user:', user); // TODO: Remove this line in production
-
-        // If company_id is provided and role is EMPLOYEE, create employee record
-        if (data.company_id && data.role === 2) {
-            const employeeId = userId;
-            await query(
+        console.log('Company id', data.company_id);
+        console.log('Role', data.role);
+        if (data.company_id) {
+            const result = await query(
                 `INSERT INTO employees 
          (employee_id, company_id, employee_code, department, position, hire_date, salary, status, created_at, updated_at)
          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
@@ -110,7 +107,6 @@ export class UserService {
                 ]
             );
         }
-
         return user;
     }
 
@@ -201,6 +197,10 @@ export class UserService {
     }
 
     async deleteUser(userId: string): Promise<boolean> {
+        const deleteEmployeeResult = await query(
+            'DELETE FROM employees WHERE employee_id = $1',
+            [userId]
+        );
         const result = await query('DELETE FROM users WHERE user_id = $1', [
             userId,
         ]);
@@ -293,8 +293,6 @@ export class UserService {
             salary: record.salary ? parseFloat(record.salary) : undefined,
             role: parseInt(record.role, 10),
         }));
-
-        console.log(`Parsed ${users.length} users from file.`);
 
         // insert
         for (const userData of users) {
