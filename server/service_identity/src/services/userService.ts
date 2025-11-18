@@ -10,26 +10,42 @@ export class UserService {
         if (companyId) {
             const result = await query(
                 `SELECT 
-            u.user_id,
-            u.email,
-            u.phone,
-            u.full_name,
-            e.employee_code,
-            e.department,
-            e.hire_date,
-            e.position,
-            e.status
-         FROM users u 
-         INNER JOIN employees e ON u.user_id = e.employee_id 
-         WHERE e.company_id = $1 
-         ORDER BY u.created_at DESC`,
+                u.user_id,
+                u.email,
+                u.phone,
+                u.full_name,
+                u.avatar_url,
+                u.role,
+                u.status,
+                u.created_at,
+                u.updated_at,
+                e.employee_code,
+                e.department,
+                e.hire_date,
+                e.position,
+                e.company_id,
+                COALESCE(
+                    (SELECT COUNT(*) 
+                     FROM face_profiles fp 
+                     WHERE fp.user_id = u.user_id 
+                     AND fp.company_id = e.company_id 
+                     AND fp.deleted_at IS NULL), 0
+                ) as face_data_count
+            FROM users u 
+            INNER JOIN employees e ON u.user_id = e.employee_id 
+            WHERE e.company_id = $1 
+            ORDER BY u.created_at DESC`,
                 [companyId]
             );
             return result.rows;
         }
 
         const result = await query(
-            'SELECT * FROM users ORDER BY created_at DESC'
+            `SELECT 
+            u.*,
+            0 as face_data_count
+        FROM users u 
+        ORDER BY u.created_at DESC`
         );
         return result.rows;
     }
@@ -50,6 +66,109 @@ export class UserService {
             WHERE u.user_id = $1`,
             [userId]
         );
+        return result.rows[0] || null;
+    }
+
+    async getCountProfileFaceUseer(
+        userId: string,
+        company_id: string
+    ): Promise<number> {
+        const sql_raw = `
+        SELECT COUNT(*) AS count
+        FROM face_profiles
+        WHERE user_id = $1 
+        AND company_id = $2
+        AND deleted_at IS NULL
+    `;
+
+        const result = await query(sql_raw, [userId, company_id]);
+        return parseInt(result.rows[0].count, 10);
+    }
+
+    async getFaceProfilesByUser(
+        userId: string,
+        company_id: string
+    ): Promise<any[]> {
+        const sql_raw = `
+        SELECT 
+            profile_id,
+            user_id,
+            company_id,
+            embedding_version,
+            enroll_image_path,
+            is_primary,
+            quality_score,
+            meta_data,
+            created_at,
+            updated_at,
+            indexed,
+            index_version
+        FROM face_profiles
+        WHERE user_id = $1 
+        AND company_id = $2
+        AND deleted_at IS NULL
+        ORDER BY is_primary DESC, created_at DESC
+    `;
+
+        const result = await query(sql_raw, [userId, company_id]);
+        return result.rows;
+    }
+
+    async getPrimaryFaceProfile(
+        userId: string,
+        company_id: string
+    ): Promise<any | null> {
+        const sql_raw = `
+        SELECT 
+            profile_id,
+            user_id,
+            company_id,
+            embedding_version,
+            enroll_image_path,
+            is_primary,
+            quality_score,
+            meta_data,
+            created_at,
+            updated_at,
+            indexed,
+            index_version
+        FROM face_profiles
+        WHERE user_id = $1 
+        AND company_id = $2
+        AND is_primary = true
+        AND deleted_at IS NULL
+        LIMIT 1
+    `;
+
+        const result = await query(sql_raw, [userId, company_id]);
+        return result.rows[0] || null;
+    }
+
+    async getFaceProfileById(
+        profileId: string,
+        company_id: string
+    ): Promise<any | null> {
+        const sql_raw = `
+        SELECT 
+            profile_id,
+            user_id,
+            company_id,
+            embedding_version,
+            enroll_image_path,
+            is_primary,
+            quality_score,
+            meta_data,
+            created_at,
+            updated_at,
+            indexed,
+            index_version
+        FROM face_profiles
+        WHERE profile_id = $1 
+        AND company_id = $2
+        AND deleted_at IS NULL
+    `;
+
+        const result = await query(sql_raw, [profileId, company_id]);
         return result.rows[0] || null;
     }
 

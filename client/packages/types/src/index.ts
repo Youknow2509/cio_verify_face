@@ -335,3 +335,5 @@ export interface AuditLog {
 
 // Export all shift types
 export * from './shift';
+// Face profile types
+export * from './faceProfile';

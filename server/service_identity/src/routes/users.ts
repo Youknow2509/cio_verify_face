@@ -177,7 +177,7 @@ const upload = multer({ dest: 'uploads/' });
  * /api/v1/users/{user_id}/face-data:
  *   post:
  *     summary: Upload face data
- *     description: Register a new face image for a user
+ *     description: Enroll a new face profile for a user via AI service and persist to face_profiles
  *     tags:
  *       - Face Data
  *     parameters:
@@ -195,16 +195,20 @@ const upload = multer({ dest: 'uploads/' });
  *             type: object
  *             required:
  *               - image_url
+ *               - company_id
  *             properties:
  *               image_url:
  *                 type: string
  *                 format: uri
- *               face_encoding:
+ *               company_id:
  *                 type: string
- *               quality_score:
- *                 type: number
- *                 minimum: 0
- *                 maximum: 1
+ *                 format: uuid
+ *               make_primary:
+ *                 type: boolean
+ *               metadata:
+ *                 type: object
+ *                 additionalProperties:
+ *                   type: string
  *     responses:
  *       201:
  *         description: Face data created successfully
@@ -216,15 +220,64 @@ const upload = multer({ dest: 'uploads/' });
 
 /**
  * @swagger
- * /api/v1/users/{user_id}/face-data:
- *   get:
- *     summary: Get face data list
- *     description: Retrieve all face images for a user
+ * /api/v1/users/{user_id}/face-data/upload:
+ *   post:
+ *     summary: Upload face data (binary)
+ *     description: Enroll face profile by uploading image file directly (multipart/form-data)
  *     tags:
  *       - Face Data
  *     parameters:
  *       - in: path
  *         name: user_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - image
+ *               - company_id
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: Image file (JPEG/PNG)
+ *               company_id:
+ *                 type: string
+ *                 format: uuid
+ *               make_primary:
+ *                 type: boolean
+ *     responses:
+ *       201:
+ *         description: Face profile enrolled successfully
+ *       400:
+ *         description: Validation error
+ *       404:
+ *         description: User not found
+ */
+
+/**
+ * @swagger
+ * /api/v1/users/{user_id}/face-data:
+ *   get:
+ *     summary: Get face data list
+ *     description: Retrieve face profiles for a user (requires company_id)
+ *     tags:
+ *       - Face Data
+ *     parameters:
+ *       - in: path
+ *         name: user_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: company_id
  *         required: true
  *         schema:
  *           type: string
@@ -241,7 +294,7 @@ const upload = multer({ dest: 'uploads/' });
  * /api/v1/users/{user_id}/face-data/{fid}:
  *   delete:
  *     summary: Delete face data
- *     description: Remove a specific face image
+ *     description: Soft delete a specific face profile (use hard=true to hard delete)
  *     tags:
  *       - Face Data
  *     parameters:
@@ -257,11 +310,65 @@ const upload = multer({ dest: 'uploads/' });
  *         schema:
  *           type: string
  *           format: uuid
+ *       - in: query
+ *         name: company_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: hard
+ *         required: false
+ *         schema:
+ *           type: boolean
  *     responses:
  *       200:
  *         description: Face data deleted successfully
  *       404:
  *         description: Face data not found
+ */
+
+/**
+ * @swagger
+ * /api/v1/users/{user_id}/face-data/{fid}/primary:
+ *   put:
+ *     summary: Update primary face profile
+ *     description: Set or unset a face profile as primary for the user
+ *     tags:
+ *       - Face Data
+ *     parameters:
+ *       - in: path
+ *         name: user_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: path
+ *         name: fid
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - company_id
+ *               - status
+ *             properties:
+ *               company_id:
+ *                 type: string
+ *                 format: uuid
+ *               status:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Primary face profile updated successfully
+ *       404:
+ *         description: Face profile not found
  */
 
 /**
@@ -302,11 +409,18 @@ router.post('/import-from-file', upload.single('file'), (req, res) =>
 router.post('/:user_id/face-data', (req, res) =>
     faceDataController.createFaceData(req, res)
 );
+router.post('/:user_id/face-data/upload', upload.single('image'), (req, res) =>
+    faceDataController.createFaceDataBinary(req, res)
+);
 router.get('/:user_id/face-data', (req, res) =>
     faceDataController.getFaceDataByUserId(req, res)
 );
 router.delete('/:user_id/face-data/:fid', (req, res) =>
     faceDataController.deleteFaceData(req, res)
+);
+
+router.put('/:user_id/face-data/:fid/primary', (req, res) =>
+    faceDataController.updatePrimaryFaceData(req, res)
 );
 
 export default router;

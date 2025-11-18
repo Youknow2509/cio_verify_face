@@ -1,0 +1,8 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@repo/types": ["../../types/src/*.ts"],
+      "@repo/types/*": ["../../types/src/*"]}
+  }
+}

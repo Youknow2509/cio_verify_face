@@ -5,3 +5,4 @@ export * from './format';
 export * from './validation';
 export * from './constants';
 export * from './shiftApi';
+export * from './faceApi';
