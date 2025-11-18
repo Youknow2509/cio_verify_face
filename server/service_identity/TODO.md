@@ -1,6 +1,0 @@
--   [DONE] Đếm số lượng khuôn mặt (face_data_count) tích hợp trong truy vấn users
--   [DONE] Triển khai bảng `face_profiles` + gRPC EnrollFace
--   [DONE] API thêm dữ liệu khuôn mặt (enroll) sử dụng service AI (gRPC)
--   [DONE] API liệt kê, xoá (soft/hard) profile khuôn mặt theo `company_id`
--   [TODO] Thêm API đặt profile primary riêng (nếu cần tách)
--   [TODO] Thêm API verify (1:1, 1:N) gọi gRPC `VerifyFace` / `VerifyFaceMultiFrame`
