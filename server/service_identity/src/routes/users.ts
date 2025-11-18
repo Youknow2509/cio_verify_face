@@ -286,6 +286,49 @@ const upload = multer({ dest: 'uploads/' });
  */
 
 /**
+ * @swagger
+ * /api/v1/users/{user_id}/face-data/{fid}/primary:
+ *   put:
+ *     summary: Update primary face profile
+ *     description: Set or unset a face profile as primary for the user
+ *     tags:
+ *       - Face Data
+ *     parameters:
+ *       - in: path
+ *         name: user_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: path
+ *         name: fid
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - company_id
+ *               - status
+ *             properties:
+ *               company_id:
+ *                 type: string
+ *                 format: uuid
+ *               status:
+ *                 type: boolean
+ *     responses:
+ *       200:
+ *         description: Primary face profile updated successfully
+ *       404:
+ *         description: Face profile not found
+ */
+
+/**
  * @route /api/v1/users/update-base
  * @summary Update user's base information
  * @method POST
@@ -328,6 +371,10 @@ router.get('/:user_id/face-data', (req, res) =>
 );
 router.delete('/:user_id/face-data/:fid', (req, res) =>
     faceDataController.deleteFaceData(req, res)
+);
+
+router.put('/:user_id/face-data/:fid/primary', (req, res) =>
+    faceDataController.updatePrimaryFaceData(req, res)
 );
 
 export default router;

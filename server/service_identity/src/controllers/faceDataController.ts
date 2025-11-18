@@ -3,6 +3,8 @@ import { faceDataService } from '../services/faceDataService';
 import { userService } from '../services/userService';
 import { sendSuccess, sendError } from '../utils/response';
 import fetch from 'node-fetch';
+import { status } from '@grpc/grpc-js';
+import { stat } from 'fs';
 
 async function fetchImageBuffer(image_url: string): Promise<Buffer> {
     const resp = await fetch(image_url);
@@ -46,6 +48,58 @@ export class FaceDataController {
                 error.message,
                 500,
                 'Failed to retrieve face profiles'
+            );
+        }
+    }
+
+    async updatePrimaryFaceData(req: Request, res: Response) {
+        try {
+            const { user_id, fid } = req.params; // fid becomes profile_id
+            const { company_id, status } = req.body as {
+                company_id?: string;
+                status?: boolean;
+            };
+
+            if (!company_id) {
+                return sendError(
+                    res,
+                    'company_id is required',
+                    400,
+                    'Validation Error'
+                );
+            }
+
+            const user = await userService.getUserById(user_id);
+            if (!user) {
+                return sendError(res, 'User not found', 404, 'Not Found');
+            }
+
+            const profile = await faceDataService.getProfile(fid, company_id);
+            if (!profile) {
+                return sendError(
+                    res,
+                    'Face profile not found',
+                    404,
+                    'Not Found'
+                );
+            }
+            await faceDataService.updatePrimaryProfile(
+                fid,
+                user_id,
+                company_id,
+                status === true
+            );
+            return sendSuccess(
+                res,
+                { profile_id: fid },
+                'Face profile update status successfully'
+            );
+        } catch (error: any) {
+            return sendError(
+                res,
+                error.message,
+                500,
+                'Failed to update primary face profile status'
             );
         }
     }

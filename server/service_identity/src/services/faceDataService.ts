@@ -140,6 +140,58 @@ export class FaceDataService {
         );
         return result.rowCount > 0;
     }
+
+    async updatePrimaryProfile(
+        profileId: string,
+        userId: string,
+        companyId: string,
+        status: boolean
+    ): Promise<boolean> {
+        const now = new Date().toISOString();
+
+        if (status) {
+            // Set this profile as primary, unset others
+            await query(
+                `UPDATE face_profiles 
+             SET is_primary = false, updated_at = $1
+             WHERE user_id = $2 AND company_id = $3 AND is_primary = true AND deleted_at IS NULL`,
+                [now, userId, companyId]
+            );
+
+            const result = await query(
+                `UPDATE face_profiles
+             SET is_primary = true, updated_at = $1
+             WHERE profile_id = $2 AND user_id = $3 AND company_id = $4 AND deleted_at IS NULL`,
+                [now, profileId, userId, companyId]
+            );
+            return result.rowCount > 0;
+        } else {
+            // Unset primary: check if this is the only primary profile BEFORE unsetting
+            const primaryCheck = await query(
+                `SELECT COUNT(*) as count 
+             FROM face_profiles 
+             WHERE user_id = $1 AND company_id = $2 AND is_primary = true AND deleted_at IS NULL`,
+                [userId, companyId]
+            );
+
+            const primaryCount = parseInt(primaryCheck.rows[0].count, 10);
+
+            if (primaryCount <= 1) {
+                // Don't allow unsetting the last primary profile
+                throw new Error(
+                    'Cannot unset the last primary profile. Set another profile as primary first.'
+                );
+            }
+
+            const result = await query(
+                `UPDATE face_profiles
+             SET is_primary = false, updated_at = $1
+             WHERE profile_id = $2 AND user_id = $3 AND company_id = $4 AND deleted_at IS NULL`,
+                [now, profileId, userId, companyId]
+            );
+            return result.rowCount > 0;
+        }
+    }
 }
 
 export const faceDataService = new FaceDataService();
