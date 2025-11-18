@@ -220,6 +220,49 @@ const upload = multer({ dest: 'uploads/' });
 
 /**
  * @swagger
+ * /api/v1/users/{user_id}/face-data/upload:
+ *   post:
+ *     summary: Upload face data (binary)
+ *     description: Enroll face profile by uploading image file directly (multipart/form-data)
+ *     tags:
+ *       - Face Data
+ *     parameters:
+ *       - in: path
+ *         name: user_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - image
+ *               - company_id
+ *             properties:
+ *               image:
+ *                 type: string
+ *                 format: binary
+ *                 description: Image file (JPEG/PNG)
+ *               company_id:
+ *                 type: string
+ *                 format: uuid
+ *               make_primary:
+ *                 type: boolean
+ *     responses:
+ *       201:
+ *         description: Face profile enrolled successfully
+ *       400:
+ *         description: Validation error
+ *       404:
+ *         description: User not found
+ */
+
+/**
+ * @swagger
  * /api/v1/users/{user_id}/face-data:
  *   get:
  *     summary: Get face data list
@@ -365,6 +408,9 @@ router.post('/import-from-file', upload.single('file'), (req, res) =>
 // Face data endpoints
 router.post('/:user_id/face-data', (req, res) =>
     faceDataController.createFaceData(req, res)
+);
+router.post('/:user_id/face-data/upload', upload.single('image'), (req, res) =>
+    faceDataController.createFaceDataBinary(req, res)
 );
 router.get('/:user_id/face-data', (req, res) =>
     faceDataController.getFaceDataByUserId(req, res)

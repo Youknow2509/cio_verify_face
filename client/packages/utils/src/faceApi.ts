@@ -20,19 +20,28 @@ export const listFaceProfiles = async (
 // Upload face images (multipart)
 export const uploadFaceProfiles = async (
     userId: string,
+    companyId: string,
     files: FileList | File[]
 ): Promise<FaceProfile[]> => {
     const formData = new FormData();
-    const fileArray = Array.from(files as any);
-    fileArray.forEach((file) => formData.append('images', file));
+    formData.append('company_id', companyId);
+
+    // Convert FileList to array with proper typing
+    const fileArray: File[] = Array.isArray(files) ? files : Array.from(files);
+
+    fileArray.forEach((file) => formData.append('image', file));
+
     const { data } = await apiClient.post<FaceProfileUploadResponse>(
-        `/api/v1/users/${userId}/face-data`,
+        `/api/v1/users/${userId}/face-data/upload`,
         formData,
         {
             headers: { 'Content-Type': 'multipart/form-data' },
         }
     );
-    return data.data || [];
+    const payload: any = (data as any)?.data;
+    if (Array.isArray(payload)) return payload as FaceProfile[];
+    if (payload) return [payload as FaceProfile];
+    return [];
 };
 
 // Set a profile as primary

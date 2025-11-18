@@ -2,22 +2,73 @@ syntax = "proto3";
 
 package face_verification;
 
+// Face verification service
 service FaceVerification {
+  // Enroll a face with single image
   rpc EnrollFace(EnrollRequest) returns (EnrollResponse);
+  
+  // Enroll a face with streaming image (optimized for bandwidth)
+  rpc EnrollFaceStream(stream EnrollStreamRequest) returns (EnrollResponse);
+  
+  // Verify face with single image (1:1 or 1:N)
   rpc VerifyFace(VerifyRequest) returns (VerifyResponse);
+  
+  // Verify face with streaming image (optimized for bandwidth)
+  rpc VerifyFaceStream(stream VerifyStreamRequest) returns (VerifyResponse);
+  
+  // Verify face with multiple frames (more robust)
   rpc VerifyFaceMultiFrame(VerifyMultiFrameRequest) returns (VerifyResponse);
+  
+  // Verify face with multiple frames using streaming (optimized for bandwidth)
+  rpc VerifyFaceMultiFrameStream(stream VerifyMultiFrameStreamRequest) returns (VerifyResponse);
+  
+  // Get user face profiles
   rpc GetUserProfiles(GetProfilesRequest) returns (GetProfilesResponse);
+  
+  // Update face profile
   rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+  
+  // Update face profile with streaming image (optimized for bandwidth)
+  rpc UpdateProfileStream(stream UpdateProfileStreamRequest) returns (UpdateProfileResponse);
+  
+  // Delete face profile
   rpc DeleteProfile(DeleteProfileRequest) returns (DeleteProfileResponse);
 }
 
+// Messages for enrollment
 message EnrollRequest {
   string user_id = 1;
   string company_id = 2;
-  bytes image_data = 3;  // JPEG/PNG bytes
+  bytes image_data = 3;  // Image bytes (JPEG/PNG)
   optional string device_id = 4;
   bool make_primary = 5;
   map<string, string> metadata = 6;
+}
+
+// Streaming enrollment request (for bandwidth optimization)
+message EnrollStreamRequest {
+  oneof payload {
+    EnrollMetadata metadata = 1;  // First message with metadata
+    bytes image_chunk = 2;  // Subsequent messages with image chunks
+  }
+}
+
+message EnrollMetadata {
+  string user_id = 1;
+  string company_id = 2;
+  optional string device_id = 3;
+  bool make_primary = 4;
+  map<string, string> metadata = 5;
+  int32 total_size = 6;  // Total image size in bytes
+  string image_format = 7;  // JPEG, PNG, etc.
+}
+
+message EnrollResponse {
+  string status = 1;  // ok, duplicate, failed
+  optional string profile_id = 2;
+  optional string message = 3;
+  repeated DuplicateProfile duplicate_profiles = 4;
+  optional float quality_score = 5;
 }
 
 message DuplicateProfile {
@@ -25,33 +76,75 @@ message DuplicateProfile {
   float similarity = 2;
 }
 
-message EnrollResponse {
-  string status = 1; // ok, duplicate, failed
-  optional string profile_id = 2;
-  optional string message = 3;
-  repeated DuplicateProfile duplicate_profiles = 4;
-  optional float quality_score = 5;
-  // Added embedding so we can persist to face_profiles table (vector(512))
-  repeated float embedding = 6; // length should be 512
-  optional string embedding_version = 7;
-}
-
+// Messages for verification
 message VerifyRequest {
-  bytes image_data = 1;
+  bytes image_data = 1;  // Image bytes
   string company_id = 2;
-  optional string user_id = 3; // for 1:1
+  optional string user_id = 3;  // For 1:1 verification
   optional string device_id = 4;
-  string search_mode = 5; // "1:1" or "1:N"
+  string search_mode = 5;  // "1:1" or "1:N"
   int32 top_k = 6;
 }
 
+// Streaming verification request (for bandwidth optimization)
+message VerifyStreamRequest {
+  oneof payload {
+    VerifyMetadata metadata = 1;  // First message with metadata
+    bytes image_chunk = 2;  // Subsequent messages with image chunks
+  }
+}
+
+message VerifyMetadata {
+  string company_id = 1;
+  optional string user_id = 2;  // For 1:1 verification
+  optional string device_id = 3;
+  string search_mode = 4;  // "1:1" or "1:N"
+  int32 top_k = 5;
+  int32 total_size = 6;  // Total image size in bytes
+  string image_format = 7;  // JPEG, PNG, etc.
+}
+
+// Multi-frame verification request
 message VerifyMultiFrameRequest {
-  repeated bytes frames = 1; // 3-5 frames
+  repeated bytes frames = 1;  // 3-5 image frames
   string company_id = 2;
-  optional string user_id = 3;
+  optional string user_id = 3;  // For 1:1 verification
   optional string device_id = 4;
-  string search_mode = 5;
+  string search_mode = 5;  // "1:1" or "1:N"
   int32 top_k = 6;
+}
+
+// Multi-frame streaming verification request (for bandwidth optimization)
+message VerifyMultiFrameStreamRequest {
+  oneof payload {
+    VerifyMultiFrameMetadata metadata = 1;  // First message with metadata
+    bytes frame_chunk = 2;  // Subsequent messages with frame chunks
+    FrameDelimiter frame_delimiter = 3;  // Delimiter between frames
+  }
+}
+
+message VerifyMultiFrameMetadata {
+  string company_id = 1;
+  optional string user_id = 2;  // For 1:1 verification
+  optional string device_id = 3;
+  string search_mode = 4;  // "1:1" or "1:N"
+  int32 top_k = 5;
+  int32 frame_count = 6;  // Number of frames (3-5)
+  string image_format = 7;  // JPEG, PNG, etc.
+}
+
+message FrameDelimiter {
+  int32 frame_number = 1;  // Frame index (0-based)
+  int32 frame_size = 2;  // Size of this frame in bytes
+}
+
+message VerifyResponse {
+  string status = 1;  // match, no_match, failed
+  bool verified = 2;
+  repeated Match matches = 3;
+  optional Match best_match = 4;
+  optional string message = 5;
+  optional float liveness_score = 6;
 }
 
 message Match {
@@ -62,18 +155,14 @@ message Match {
   bool is_primary = 5;
 }
 
-message VerifyResponse {
-  string status = 1; // match, no_match, failed
-  bool verified = 2;
-  repeated Match matches = 3;
-  optional Match best_match = 4;
-  optional string message = 5;
-  optional float liveness_score = 6;
-}
-
+// Messages for profile management
 message GetProfilesRequest {
   string user_id = 1;
   string company_id = 2;
+}
+
+message GetProfilesResponse {
+  repeated FaceProfile profiles = 1;
 }
 
 message FaceProfile {
@@ -87,12 +176,6 @@ message FaceProfile {
   optional string deleted_at = 8;
   map<string, string> metadata = 9;
   optional float quality_score = 10;
-  // Added embedding to allow syncing with DB
-  repeated float embedding = 11; // length 512
-}
-
-message GetProfilesResponse {
-  repeated FaceProfile profiles = 1;
 }
 
 message UpdateProfileRequest {
@@ -101,6 +184,24 @@ message UpdateProfileRequest {
   optional bytes image_data = 3;
   optional bool make_primary = 4;
   map<string, string> metadata = 5;
+}
+
+// Streaming update profile request (for bandwidth optimization)
+message UpdateProfileStreamRequest {
+  oneof payload {
+    UpdateProfileMetadata metadata = 1;  // First message with metadata
+    bytes image_chunk = 2;  // Subsequent messages with image chunks
+  }
+}
+
+message UpdateProfileMetadata {
+  string profile_id = 1;
+  string company_id = 2;
+  optional bool make_primary = 3;
+  map<string, string> metadata = 4;
+  bool has_image = 5;  // Whether image data will be sent
+  int32 total_size = 6;  // Total image size in bytes (if has_image=true)
+  string image_format = 7;  // JPEG, PNG, etc. (if has_image=true)
 }
 
 message UpdateProfileResponse {

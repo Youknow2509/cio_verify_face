@@ -1,25 +1,10 @@
 import { query } from '../config/database';
 import { FaceProfile } from '../types';
-import { v4 as uuidv4 } from 'uuid';
-import { faceVerificationClient } from '../grpc/faceVerificationClient';
-
-// Utility: ensure embedding array length is 512 and convert to pgvector literal
-function prepareEmbedding(embedding?: number[]): string {
-    if (!embedding || embedding.length === 0) {
-        throw new Error('Embedding missing from AI response');
-    }
-    if (embedding.length !== 512) {
-        throw new Error(`Embedding length ${embedding.length} != 512`);
-    }
-    // pgvector accepts ARRAY casting like '[e1,e2,...]' as text
-    return (
-        '[' +
-        embedding
-            .map((v) => (Number.isFinite(v) ? v.toFixed(6) : '0'))
-            .join(',') +
-        ']'
-    );
-}
+import {
+    faceVerificationClient,
+    EnrollParams,
+    EnrollResult,
+} from '../grpc/faceVerificationClient';
 
 export class FaceDataService {
     async listProfiles(
@@ -61,64 +46,46 @@ export class FaceDataService {
         metadata?: Record<string, string>;
         enroll_image_path?: string; // persisted path or URL after upload
     }): Promise<FaceProfile> {
-        const aiResp = await faceVerificationClient.enrollFace({
+        // Call gRPC AI service to handle face enrollment
+        const enrollParams: EnrollParams = {
             user_id: params.user_id,
             company_id: params.company_id,
             image_data: params.imageBuffer,
             make_primary: params.make_primary || false,
             metadata: params.metadata || {},
-        });
+        };
 
-        if (aiResp.status !== 'ok') {
-            throw new Error(
-                aiResp.message || `AI enroll failed: ${aiResp.status}`
-            );
-        }
-
-        const profile_id = aiResp.profile_id || uuidv4();
-        const now = new Date().toISOString();
-
-        // If make_primary true, unset previous primary
-        if (params.make_primary) {
-            await query(
-                `UPDATE face_profiles SET is_primary = false, updated_at = $1
-         WHERE user_id = $2 AND company_id = $3 AND is_primary = true AND deleted_at IS NULL`,
-                [now, params.user_id, params.company_id]
-            );
-        }
-
-        const embeddingLiteral = prepareEmbedding(aiResp.embedding);
-        const embedding_version = aiResp.embedding_version || 'v1';
-        const quality_score = aiResp.quality_score || null;
-        const meta_data = JSON.stringify(params.metadata || {});
-
-        const insertResult = await query(
-            `INSERT INTO face_profiles (
-         profile_id, user_id, company_id, embedding, embedding_version,
-         enroll_image_path, is_primary, quality_score, meta_data,
-         created_at, updated_at, indexed, index_version
-       ) VALUES (
-         $1, $2, $3, $4::vector, $5, $6, $7, $8, $9::jsonb, $10, $11, $12, $13
-       ) RETURNING profile_id, user_id, company_id, embedding_version, enroll_image_path, is_primary,
-         quality_score, meta_data, created_at, updated_at, deleted_at, indexed, index_version`,
-            [
-                profile_id,
-                params.user_id,
-                params.company_id,
-                embeddingLiteral,
-                embedding_version,
-                params.enroll_image_path || null,
-                params.make_primary || false,
-                quality_score,
-                meta_data,
-                now,
-                now,
-                false,
-                0,
-            ]
+        // Use enrollFace instead of enrollFaceStream if stream not implemented on server
+        const resp: EnrollResult = await faceVerificationClient.enrollFace(
+            enrollParams
         );
 
-        return insertResult.rows[0];
+        // Check response
+        if (
+            resp.status !== 'ok' ||
+            !resp.profile_id ||
+            resp.profile_id === ''
+        ) {
+            // Return error with more details
+            return Promise.reject(new Error(`${resp.message || resp.status}`));
+        }
+
+        // Call db get data profile id
+        const res: FaceProfile = {
+            profile_id: resp.profile_id,
+            user_id: params.user_id,
+            company_id: params.company_id,
+            enroll_image_path: params.enroll_image_path || '',
+            embedding_version: '',
+            is_primary: params.make_primary || false,
+            quality_score: resp.quality_score || 0,
+            meta_data: params.metadata || {},
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            indexed: false,
+            index_version: 0,
+        };
+        return Promise.resolve(res);
     }
 
     async deleteProfile(

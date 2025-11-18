@@ -171,6 +171,79 @@ export class FaceDataController {
         }
     }
 
+    async createFaceDataBinary(req: Request, res: Response) {
+        try {
+            const { user_id } = req.params;
+            const { company_id, make_primary } = req.body;
+            const file = req.file;
+
+            if (!file) {
+                return sendError(
+                    res,
+                    'image file is required',
+                    400,
+                    'Validation Error'
+                );
+            }
+            if (!company_id) {
+                return sendError(
+                    res,
+                    'company_id is required',
+                    400,
+                    'Validation Error'
+                );
+            }
+
+            const user = await userService.getUserById(user_id);
+            if (!user) {
+                return sendError(res, 'User not found', 404, 'Not Found');
+            }
+
+            // Read file buffer from multer
+            const fs = require('fs');
+            const imgBuffer = fs.readFileSync(file.path);
+
+            const metadata = {
+                filename: file.originalname,
+                mimetype: file.mimetype,
+                size: file.size.toString(),
+            };
+
+            const profile = await faceDataService.enrollProfile({
+                user_id,
+                company_id,
+                imageBuffer: imgBuffer,
+                make_primary: make_primary === 'true' || make_primary === true,
+                metadata,
+                enroll_image_path: file.path,
+            });
+
+            // Clean up temp file
+            fs.unlinkSync(file.path);
+
+            return sendSuccess(
+                res,
+                profile,
+                'Face profile enrolled successfully',
+                201
+            );
+        } catch (error: any) {
+            // Clean up temp file on error
+            if (req.file) {
+                const fs = require('fs');
+                try {
+                    fs.unlinkSync(req.file.path);
+                } catch {}
+            }
+            return sendError(
+                res,
+                error.message,
+                500,
+                'Failed to enroll face profile'
+            );
+        }
+    }
+
     async deleteFaceData(req: Request, res: Response) {
         try {
             const { user_id, fid } = req.params; // fid becomes profile_id
