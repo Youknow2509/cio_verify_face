@@ -1,0 +1,127 @@
+"""
+Configuration settings for the service
+"""
+from pydantic_settings import BaseSettings
+from typing import Optional
+import os
+
+
+class Settings(BaseSettings):
+    """Application settings"""
+    
+    # Environment
+    ENVIRONMENT: str = "development"
+    
+    # Service
+    SERVICE_NAME: str = "service_ai"
+    SERVICE_HOST: str = "0.0.0.0"
+    SERVICE_PORT: int = 8080
+    GRPC_PORT: int = 50051
+    
+    # Compute mode (cpu or gpu)
+    COMPUTE_MODE: str = "cpu"
+    
+    # GRPC client settings
+    GRPC_CLIENT_URL: str = "localhost:50051"
+    GRPC_CLIENT_TLS: bool = False
+    GRPC_CLIENT_CERT_PATH: Optional[str] = None
+    GRPC_CLIENT_KEY_PATH: Optional[str] = None
+    
+    # Database
+    DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/cio_attendance_db"
+    
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379/0"
+    
+    # ScyllaDB - for authentication state tracking
+    SCYLLADB_HOSTS: str = "localhost"
+    SCYLLADB_PORT: int = 9042
+    SCYLLADB_KEYSPACE: str = "cio_verify_face"
+    SCYLLADB_USERNAME: str = "cassandra"
+    SCYLLADB_PASSWORD: str = "root1234"
+    
+    # MinIO - for face image storage
+    MINIO_ENDPOINT: str = "localhost:9000"
+    MINIO_ACCESS_KEY: str = "minioadmin"
+    MINIO_SECRET_KEY: str = "minioadmin"
+    MINIO_SECURE: bool = False
+    MINIO_BUCKET_FACES: str = "face-images"
+    MINIO_BUCKET_VERIFICATIONS: str = "verification-images"
+    
+    # Image optimization settings
+    IMAGE_MAX_SIZE: int = 1920  # Max width/height in pixels
+    IMAGE_QUALITY: int = 85  # JPEG quality (1-100)
+    IMAGE_STORE_ENROLLMENTS: bool = True  # Always store enrollment images
+    IMAGE_STORE_VERIFICATIONS: bool = False  # Only store verification images on demand
+    IMAGE_STORE_FAILED_VERIFICATIONS: bool = False  # Store failed verification attempts
+    
+    # Model settings
+    FACE_DETECTOR_MODEL: str = "retinaface_r50_v1"
+    FACE_EMBEDDING_MODEL: str = "arcface_r100_v1"
+    EMBEDDING_DIMENSION: int = 512
+    
+    # Thresholds
+    DUPLICATE_THRESHOLD: float = 0.85
+    VERIFY_THRESHOLD: float = 0.50
+    MIN_FACE_SIZE: int = 80
+    
+    # Vector search settings (pgvector)
+    # Note: pgvector index is automatically maintained by PostgreSQL
+    # No need for manual rebuild intervals like FAISS
+    VECTOR_INDEX_REBUILD_INTERVAL: int = 3600  # seconds (for compatibility)
+    
+    # Liveness detection
+    LIVENESS_ENABLED: bool = True
+    LIVENESS_THRESHOLD: float = 0.7
+    
+    # Security
+    ENCRYPTION_KEY: Optional[str] = None
+    JWT_SECRET: Optional[str] = None
+    
+    # Logging
+    LOG_LEVEL: str = "INFO"
+    LOG_FORMAT: str = "json"
+    LOG_FILEPATH: str = "./service_ai.log"
+    
+    # Storage
+    STORAGE_PATH: str = "./data"
+    MODEL_PATH: str = "./models"
+    INDEX_PATH: str = "./data/indexes"
+    
+    # Performance
+    MAX_WORKERS: int = 4
+    BATCH_SIZE: int = 32
+    
+    # Retention policy (days)
+    SOFT_DELETE_RETENTION: int = 30
+    
+    # FAISS settings
+    FAISS_INDEX_TYPE: str = "IVF"  # Options: "Flat",
+    FAISS_REBUILD_INTERVAL: int = 3600
+    
+    # Pydantic v2 configuration: allow extra env vars (ignore unknowns)
+    model_config = {
+        "env_file": ".env",
+        "case_sensitive": True,
+        # If extra env vars are present (e.g. AUTH_SERVICE_URL) ignore them
+        "extra": "ignore",
+    }
+
+
+# Create settings instance
+settings = Settings()
+
+# Create directories if they don't exist (with error handling)
+def _ensure_directories():
+    """Create necessary directories if they don't exist"""
+    try:
+        os.makedirs(settings.STORAGE_PATH, exist_ok=True)
+        os.makedirs(settings.MODEL_PATH, exist_ok=True)
+        os.makedirs(settings.INDEX_PATH, exist_ok=True)
+    except OSError as e:
+        # If we can't create directories (e.g., read-only filesystem),
+        # warn but don't fail - let the application handle it later
+        import logging
+        logging.warning(f"Could not create directories: {e}")
+
+_ensure_directories()
