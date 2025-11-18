@@ -14,7 +14,15 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(helmet());
-app.use(cors());
+app.use(
+    cors({
+        origin: (_origin, cb) => cb(null, true),
+        credentials: true,
+        methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+    })
+);
+app.options('*', cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
@@ -24,7 +32,7 @@ app.get('/api-docs', swaggerUi.setup(swaggerSpec, { explorer: true }));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
+    res.status(200).json({ status: 'OK', timestamp: new Date().toISOString() });
 });
 
 // API routes
@@ -38,9 +46,9 @@ app.use(errorHandler);
 
 // Start server
 app.listen(PORT, () => {
-  console.log(`Identity & Organization Service running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`API Documentation: http://localhost:${PORT}/api-docs`);
+    console.log(`Identity & Organization Service running on port ${PORT}`);
+    console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+    console.log(`API Documentation: http://localhost:${PORT}/api-docs`);
 });
 
 export default app;

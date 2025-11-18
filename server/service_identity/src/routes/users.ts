@@ -177,7 +177,7 @@ const upload = multer({ dest: 'uploads/' });
  * /api/v1/users/{user_id}/face-data:
  *   post:
  *     summary: Upload face data
- *     description: Register a new face image for a user
+ *     description: Enroll a new face profile for a user via AI service and persist to face_profiles
  *     tags:
  *       - Face Data
  *     parameters:
@@ -195,16 +195,20 @@ const upload = multer({ dest: 'uploads/' });
  *             type: object
  *             required:
  *               - image_url
+ *               - company_id
  *             properties:
  *               image_url:
  *                 type: string
  *                 format: uri
- *               face_encoding:
+ *               company_id:
  *                 type: string
- *               quality_score:
- *                 type: number
- *                 minimum: 0
- *                 maximum: 1
+ *                 format: uuid
+ *               make_primary:
+ *                 type: boolean
+ *               metadata:
+ *                 type: object
+ *                 additionalProperties:
+ *                   type: string
  *     responses:
  *       201:
  *         description: Face data created successfully
@@ -219,12 +223,18 @@ const upload = multer({ dest: 'uploads/' });
  * /api/v1/users/{user_id}/face-data:
  *   get:
  *     summary: Get face data list
- *     description: Retrieve all face images for a user
+ *     description: Retrieve face profiles for a user (requires company_id)
  *     tags:
  *       - Face Data
  *     parameters:
  *       - in: path
  *         name: user_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: company_id
  *         required: true
  *         schema:
  *           type: string
@@ -241,7 +251,7 @@ const upload = multer({ dest: 'uploads/' });
  * /api/v1/users/{user_id}/face-data/{fid}:
  *   delete:
  *     summary: Delete face data
- *     description: Remove a specific face image
+ *     description: Soft delete a specific face profile (use hard=true to hard delete)
  *     tags:
  *       - Face Data
  *     parameters:
@@ -257,6 +267,17 @@ const upload = multer({ dest: 'uploads/' });
  *         schema:
  *           type: string
  *           format: uuid
+ *       - in: query
+ *         name: company_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *       - in: query
+ *         name: hard
+ *         required: false
+ *         schema:
+ *           type: boolean
  *     responses:
  *       200:
  *         description: Face data deleted successfully
