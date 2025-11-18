@@ -1,0 +1,71 @@
+syntax = "proto3";
+
+package auth;
+
+option go_package = "github.com/youknow2509/cio_verify_face/server/service_auth/proto/pb";
+
+// Auth service for inter-service communication
+service AuthService {
+    rpc CreateUserToken(CreateUserTokenRequest) returns (CreateUserTokenResponse);
+    rpc CreateServiceToken(CreateServiceTokenRequest) returns (CreateServiceTokenResponse);
+    rpc CreateDeviceToken(CreateDeviceTokenRequest) returns (CreateDeviceTokenResponse);
+    rpc ParseUserToken(ParseUserTokenRequest) returns (ParseUserTokenResponse);
+    rpc ParseServiceToken(ParseServiceTokenRequest) returns (ParseServiceTokenResponse);
+    rpc ParseDeviceToken(ParseDeviceTokenRequest) returns (ParseDeviceTokenResponse);
+}
+
+message CreateUserTokenRequest {
+    string user_id = 1;
+    int32 roles = 2;
+}
+
+message CreateUserTokenResponse {
+    string access_token = 1;
+    string refresh_token = 2;
+}
+
+message CreateDeviceTokenRequest {
+    string device_id = 1;
+    string company_id = 2;
+}
+
+message CreateDeviceTokenResponse {
+    string token = 1;
+}
+
+message CreateServiceTokenRequest {
+    string service_id = 1;
+}
+
+message CreateServiceTokenResponse {
+    string token = 1;
+}
+
+message ParseUserTokenRequest {
+    string token = 1;
+}
+
+message ParseUserTokenResponse {
+    string user_id = 1;
+    int32 roles = 2;
+    string token_id = 3;
+    string company_id = 4;
+    int64 exprires_at = 5;
+}
+
+message ParseServiceTokenRequest {
+    string service_id = 1;
+}
+
+message ParseServiceTokenResponse {
+    string service_id = 1;
+}
+
+message ParseDeviceTokenRequest {
+    string token = 1;
+    string device_id = 2;
+}
+
+message ParseDeviceTokenResponse {
+    string device_id = 1;
+}

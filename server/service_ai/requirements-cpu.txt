@@ -1,0 +1,7 @@
+# CPU-specific dependencies
+# Use this for development and testing on machines without GPU
+
+-r requirements-base.txt
+
+# ONNX Runtime (CPU version)
+onnxruntime==1.17.0

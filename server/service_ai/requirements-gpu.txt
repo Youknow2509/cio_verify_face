@@ -1,0 +1,7 @@
+# GPU-specific dependencies
+# Use this for production deployment on machines with NVIDIA GPU
+
+-r requirements-base.txt
+
+# ONNX Runtime (GPU version - requires CUDA)
+onnxruntime-gpu==1.17.0
