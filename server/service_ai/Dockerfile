@@ -1,51 +1,80 @@
-FROM python:3.10-slim
+## Multi-arch CPU image for Face Verification Service
+## Usage:
+##   docker build -t face-service:cpu .
+##   docker run --rm -p 8080:8080 -p 50051:50051 \
+##     -e DATABASE_URL=postgresql://... \
+##     -e COMPUTE_MODE=cpu \
+##     face-service:cpu
 
-# Build argument for compute mode (cpu or gpu)
-ARG COMPUTE_MODE=cpu
+# Builder stage: compile native deps (insightface) with toolchain
+FROM python:3.11-slim AS builder
 
-# Set working directory
-WORKDIR /app
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y \
-    libgl1-mesa-glx \
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    g++ \
+    libgl1 \
     libglib2.0-0 \
-    libsm6 \
-    libxext6 \
-    libxrender-dev \
     libgomp1 \
+    ca-certificates \
+    wget \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements files
-COPY requirements-base.txt requirements-cpu.txt requirements-gpu.txt ./
+WORKDIR /app
 
-# Install Python dependencies based on compute mode
-RUN if [ "$COMPUTE_MODE" = "gpu" ]; then \
-        pip install --no-cache-dir -r requirements-gpu.txt; \
-    else \
-        pip install --no-cache-dir -r requirements-cpu.txt; \
-    fi
+ARG REQUIREMENTS_FILE=requirements-cpu.txt
+COPY requirements-base.txt ${REQUIREMENTS_FILE} ./
+RUN python -m pip install --upgrade pip \
+    && pip install --no-cache-dir -r ${REQUIREMENTS_FILE}
 
-# Copy proto files and generate gRPC code
-COPY protos ./protos
-COPY generate_grpc.sh .
-RUN chmod +x generate_grpc.sh && ./generate_grpc.sh
+# Runtime stage: slim image without compiler toolchain
+FROM python:3.11-slim AS runtime
 
-# Copy application code
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# System runtime libs for OpenCV, ONNXRuntime, etc.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1 \
+    libglib2.0-0 \
+    libgomp1 \
+    ca-certificates \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Bring installed site-packages and binaries from builder
+COPY --from=builder /usr/local /usr/local
+
+# Copy application source
 COPY . .
 
-# Create directory for models and data
-RUN mkdir -p /app/models /app/data/indexes /app/logs
+# Create non-root user and set permissions for writable dirs
+RUN useradd -m appuser \
+    && mkdir -p /app/data /app/models /app/data/indexes \
+    && chown -R appuser:appuser /app
+USER appuser
 
-# Expose port
 EXPOSE 8080 50051
 
-# Set default compute mode environment variable
-ENV COMPUTE_MODE=${COMPUTE_MODE}
+# Default environment (override at runtime)
+ENV SERVICE_HOST=0.0.0.0 \
+    SERVICE_PORT=8080 \
+    GRPC_PORT=50051 \
+    COMPUTE_MODE=cpu \
+    STORAGE_PATH=/app/data \
+    MODEL_PATH=/app/models \
+    INDEX_PATH=/app/data/indexes
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8080/health')" || exit 1
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=5 \
+    CMD wget -qO- http://localhost:8080/health || exit 1
 
-# Run the application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8080", "--workers", "1"]
+CMD ["python", "-u", "run_servers.py"]
+
