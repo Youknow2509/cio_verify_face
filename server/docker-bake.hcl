@@ -22,6 +22,7 @@ group "default" {
         "service_notify",
         "service_workforce",
         "service_ws_delivery",
+        "service_ai_with_cpu",
     ]
 }
 
@@ -35,6 +36,14 @@ target "service_ws_delivery" {
         "${docker_hub_info}/${proj_name}_service_ws_delivery:latest",
     ]
     
+}
+
+target "service_ai_with_cpu" {
+    context = "./service_ai"
+    dockerfile = "Dockerfile"
+    tags = [
+        "${docker_hub_info}/${proj_name}_service_ai:cpu",
+    ]
 }
 
 target "service_workforce" {

@@ -1,0 +1,94 @@
+## NVIDIA GPU image for Face Verification Service (requires NVIDIA Container Toolkit)
+## Usage:
+##   docker build -f Dockerfile.gpu -t face-service:gpu .
+##   docker run --rm --gpus all -p 8080:8080 -p 50051:50051 \
+##     -e COMPUTE_MODE=gpu \
+##     -e DATABASE_URL=postgresql://... \
+##     face-service:gpu
+
+## Multi-stage GPU build: builder compiles native deps, runtime is slim
+## Requires: NVIDIA Container Toolkit on host for --gpus all
+
+# Builder uses CUDA devel image (has compiler toolchain & headers)
+FROM nvidia/cuda:12.2.0-cudnn8-devel-ubuntu22.04 AS builder
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    software-properties-common \
+    wget curl ca-certificates \
+    libgl1 libglib2.0-0 libgomp1 \
+    && add-apt-repository ppa:deadsnakes/ppa -y \
+    && apt-get update && apt-get install -y --no-install-recommends \
+    python3.11 python3.11-venv python3.11-distutils \
+    && ln -s /usr/bin/python3.11 /usr/local/bin/python \
+    && curl -sS https://bootstrap.pypa.io/get-pip.py | python \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install Python dependencies (GPU requirements)
+COPY requirements-base.txt requirements-gpu.txt ./
+RUN python -m pip install --upgrade pip \
+    && pip install --no-cache-dir -r requirements-gpu.txt
+
+# Copy application source (into builder first)
+COPY app ./app
+COPY run_servers.py ./
+COPY pyproject.toml ./
+COPY README.md ./
+COPY data ./data
+COPY models ./models
+
+########################################
+# Runtime Stage (slim, no compiler)
+########################################
+FROM nvidia/cuda:12.2.0-cudnn8-runtime-ubuntu22.04 AS runtime
+
+ENV DEBIAN_FRONTEND=noninteractive \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_NO_CACHE_DIR=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wget curl ca-certificates \
+    libgl1 libglib2.0-0 libgomp1 \
+    python3.11 python3.11-venv python3.11-distutils \
+    && ln -s /usr/bin/python3.11 /usr/local/bin/python \
+    && curl -sS https://bootstrap.pypa.io/get-pip.py | python \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy Python site-packages and installed dependencies from builder
+COPY --from=builder /usr/local/lib/python3.11 /usr/local/lib/python3.11
+COPY --from=builder /usr/local/bin /usr/local/bin
+
+# Copy application code from builder
+COPY --from=builder /app /app
+
+# Create non-root user & set permissions
+RUN useradd -m appuser \
+    && mkdir -p /app/data /app/models /app/data/indexes \
+    && chown -R appuser:appuser /app
+USER appuser
+
+EXPOSE 8080 50051
+
+ENV SERVICE_HOST=0.0.0.0 \
+    SERVICE_PORT=8080 \
+    GRPC_PORT=50051 \
+    COMPUTE_MODE=gpu \
+    STORAGE_PATH=/app/data \
+    MODEL_PATH=/app/models \
+    INDEX_PATH=/app/data/indexes
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=5 \
+    CMD wget -qO- http://localhost:8080/health || exit 1
+
+CMD ["python", "-u", "run_servers.py"]

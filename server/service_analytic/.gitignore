@@ -2,6 +2,7 @@
 /dist
 /node_modules
 /build
+/bin
 
 # Logs
 logs
@@ -54,3 +55,28 @@ pids
 
 # Diagnostic reports (https://nodejs.org/api/report.html)
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
+
+# Mac system files
+.DS_Store
+
+# SASS cache
+.sass-cache
+
+# config
+config/config.yaml
+
+# Go binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Go test binaries
+*.test
+
+# Go coverage
+*.out
+
+# exports
+/exports
