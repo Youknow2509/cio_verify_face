@@ -78,7 +78,7 @@ func initServerGrpc() error {
 
 // init client grpc
 func initClientGrpc() error {
-	config := global.SettingServer.Grpc
+	config := global.SettingServer.ServiceAuth
 	// load configuration
 	var opts []grpc.DialOption
 	if config.Tls.Enabled {
@@ -90,7 +90,7 @@ func initClientGrpc() error {
 	} else {
 		opts = append(opts, grpc.WithInsecure())
 	}
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", config.Host, config.Port), opts...)
+	conn, err := grpc.Dial(fmt.Sprintf(config.GrpcAddr), opts...)
 	if err != nil {
 		return fmt.Errorf("failed to connect to gRPC server: %w", err)
 	}

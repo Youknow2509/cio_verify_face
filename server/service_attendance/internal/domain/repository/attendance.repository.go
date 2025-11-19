@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+
 	model "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/domain/model"
 )
 
@@ -10,10 +11,23 @@ import (
 // Interface for Attendance repository
 // ============================================
 type IAttendanceRepository interface {
-	AddCheckInRecord(ctx context.Context, input *model.AddCheckInRecordInput) error
-	AddCheckOutRecord(ctx context.Context, input *model.AddCheckOutRecordInput) error
-	GetAttendanceRecordRangeTime(ctx context.Context, input *model.GetAttendanceRecordRangeTimeInput) ([]*model.AttendanceRecord, error)
-	GetAttendanceRecordRangeTimeWithUserId(ctx context.Context, input *model.GetAttendanceRecordRangeTimeWithUserIdInput) ([]*model.AttendanceRecord, error)
+	// Add Attendance Record
+	AddAttendanceRecord(ctx context.Context, input *model.AddAttendanceRecordInput) error
+	AddDailySummaries(ctx context.Context, input *model.AddDailySummariesInput) error
+	// Get
+	GetAttendanceRecordCompany(ctx context.Context, input *model.GetAttendanceRecordCompanyInput) (*model.AttendanceRecordOutput, error)
+	GetAttendanceRecordCompanyForEmployee(ctx context.Context, input *model.GetAttendanceRecordCompanyForEmployeeInput) (*model.AttendanceRecordOutput, error)
+	GetDailySummarieCompany(ctx context.Context, input *model.GetDailySummariesCompanyInput) (*model.DailySummariesCompanyOutput, error)
+	GetDailySummarieCompanyForEmployee(ctx context.Context, input *model.GetDailySummariesCompanyForEmployeeInput) (*model.DailySummariesEmployeeOutput, error)
+	// Delete
+	DeleteAttendanceRecordBeforeTimestamp(ctx context.Context, input *model.DeleteAttendanceRecordInput) error
+	DeleteDailySummariesCompanyBeforeDate(ctx context.Context, input *model.DeleteDailySummariesInput) error
+	DeleteDailySummariesEmployeeBeforeDate(ctx context.Context, input *model.DeleteDailySummariesEmployeeInput) error
+	DeleteAttendanceRecord(ctx context.Context, input *model.DeleteAttendanceRecordInput) error
+	DeleteDailySummariesCompany(ctx context.Context, input *model.DeleteDailySummariesInput) error
+	DeleteDailySummariesEmployee(ctx context.Context, input *model.DeleteDailySummariesEmployeeInput) error
+	// Update
+	UpdateDailySummariesEmployee(ctx context.Context, input *model.UpdateDailySummariesEmployeeInput) error
 }
 
 // ============================================

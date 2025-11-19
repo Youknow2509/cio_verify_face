@@ -8,6 +8,14 @@ server:
     degraded_threshold: 85.0
     out_of_service_threshold: 95.0
 
+service_auth:
+    enabled: true
+    grpc_addr: 'localhost:50051'  # service_auth gRPC address
+    tls:
+        enabled: false
+        cert_file: ''
+        key_file: ''
+
 grpc:
     network: 'tcp'
     host: '0.0.0.0'

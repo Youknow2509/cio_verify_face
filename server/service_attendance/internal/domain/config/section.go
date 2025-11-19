@@ -7,6 +7,7 @@ package config
 // ==========================================================
 type (
 	Setting struct {
+		ServiceAuth       ServiceAuthSetting   `mapstructure:"service_auth"`
 		Grpc              GrpcSetting          `mapstructure:"grpc"`
 		Server            ServerSetting        `mapstructure:"server"`
 		WsServer          WsSetting            `mapstructure:"ws"`
@@ -32,6 +33,17 @@ type (
 //	List of configuration sections
 //
 // ==========================================================
+// ServiceAuthSetting
+type ServiceAuthSetting struct {
+	Enabled bool   `mapstructure:"enabled"`
+	GrpcAddr string `mapstructure:"grpc_addr"`
+	Tls     struct {
+		Enabled  bool   `mapstructure:"enabled"`
+		CertFile string `mapstructure:"cert_file"`
+		KeyFile  string `mapstructure:"key_file"`
+	}
+}
+
 // RateLimitPolicySetting
 type RateLimitPolicySetting struct {
 	Policies []RateLimitPolicy
