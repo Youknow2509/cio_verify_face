@@ -1,0 +1,125 @@
+syntax = "proto3";
+package analytic;
+option go_package = "github.com/youknow2509/cio_verify_face/server/service_analytic/proto/pb";
+
+// Analytics service for inter-service communication
+service AnalyticService {
+    // Get daily attendance report
+    rpc GetDailyReport(GetDailyReportRequest) returns (GetDailyReportResponse);
+    // Get monthly summary report
+    rpc GetSummaryReport(GetSummaryReportRequest) returns (GetSummaryReportResponse);
+    // Export attendance report
+    rpc ExportReport(ExportReportRequest) returns (ExportReportResponse);
+}
+
+message GetDailyReportRequest {
+    SessionInfo session_info = 1;
+    string date = 2;             // YYYY-MM-DD
+    string company_id = 3;       // Required
+    string location_id = 4;      // Optional
+}
+
+message GetDailyReportResponse {
+    string msg = 1;
+    int32 status_code = 2;
+    DailyReportData data = 3;
+}
+
+message DailyReportData {
+    string date = 1;
+    int32 total_employees = 2;
+    int32 present_employees = 3;
+    int32 late_employees = 4;
+    int32 early_leave_employees = 5;
+    int32 absent_employees = 6;
+    double attendance_rate = 7;
+    repeated DepartmentReport departments = 8;
+    repeated ShiftReport shifts = 9;
+}
+
+message DepartmentReport {
+    string department_name = 1;
+    int32 total_employees = 2;
+    int32 present_employees = 3;
+    double attendance_rate = 4;
+}
+
+message ShiftReport {
+    string shift_name = 1;
+    string start_time = 2;
+    string end_time = 3;
+    int32 total_employees = 4;
+    int32 present_employees = 5;
+    double attendance_rate = 6;
+}
+
+message GetSummaryReportRequest {
+    SessionInfo session_info = 1;
+    string month = 2;           // YYYY-MM
+    string company_id = 3;      // Required
+}
+
+message GetSummaryReportResponse {
+    string msg = 1;
+    int32 status_code = 2;
+    SummaryReportData data = 3;
+}
+
+message SummaryReportData {
+    string month = 1;
+    int32 total_working_days = 2;
+    int32 total_employees = 3;
+    double average_attendance_rate = 4;
+    int32 total_working_hours = 5;
+    int32 total_overtime_hours = 6;
+    repeated WeeklySummary weekly_summary = 7;
+    repeated EmployeeAttendanceStat top_attendance_employees = 8;
+    repeated EmployeeAttendanceStat low_attendance_employees = 9;
+}
+
+message WeeklySummary {
+    int32 week = 1;
+    string start_date = 2;
+    string end_date = 3;
+    double attendance_rate = 4;
+    int32 total_hours = 5;
+}
+
+message EmployeeAttendanceStat {
+    string employee_code = 1;
+    string full_name = 2;
+    int32 present_days = 3;
+    double attendance_rate = 4;
+    int32 total_hours = 5;
+}
+
+message ExportReportRequest {
+    SessionInfo session_info = 1;
+    string start_date = 2;      // YYYY-MM-DD
+    string end_date = 3;        // YYYY-MM-DD
+    string format = 4;          // excel, pdf, csv
+    string company_id = 5;      // Required
+    string email = 6;           // Optional
+}
+
+message ExportReportResponse {
+    string msg = 1;
+    int32 status_code = 2;
+    ExportReportData data = 3;
+}
+
+message ExportReportData {
+    string job_id = 1;
+    string status = 2;
+    string message = 3;
+    string download_url = 4;
+}
+
+message SessionInfo {
+    string user_id = 1;
+    int32 role = 2;
+    string session_id = 3;
+    string client_ip = 4;
+    string client_agent = 5;
+    string company_id = 6;      // Company ID from token
+}
