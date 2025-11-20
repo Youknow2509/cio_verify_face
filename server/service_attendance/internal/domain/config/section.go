@@ -7,24 +7,25 @@ package config
 // ==========================================================
 type (
 	Setting struct {
-		ServiceAuth       ServiceAuthSetting   `mapstructure:"service_auth"`
-		Grpc              GrpcSetting          `mapstructure:"grpc"`
-		Server            ServerSetting        `mapstructure:"server"`
-		WsServer          WsSetting            `mapstructure:"ws"`
-		Cassandra         CassandraSetting     `mapstructure:"cassandra"`
-		Elasticsearch     ElasticsearchSetting `mapstructure:"elasticsearch"`
-		Jaeger            JaegerSetting        `mapstructure:"jaeger"`
-		Kafka             KafkaSetting         `mapstructure:"kafka"`
-		Memcached         MemcachedSetting     `mapstructure:"memcached"`
-		Minio             MinioSetting         `mapstructure:"minio"`
-		Postgres          PostgresSetting      `mapstructure:"postgres"`
-		Redis             RedisSetting         `mapstructure:"redis"`
-		ScyllaDb          ScyllaDbSetting      `mapstructure:"scylladb"`
-		Logstash          LogstashSetting      `mapstructure:"logstash"`
-		SMTP              SMTPSetting          `mapstructure:"smtp"`
-		JWT               JWTSetting           `mapstructure:"jwt"`
-		Logger            LoggerSetting        `mapstructure:"logger"`
-		RateLimitPolicies []RateLimitPolicy    `mapstructure:"policy_rate_limit"`
+		WorkerAttendance  WorkerAttendanceSetting `mapstructure:"worker_attendance"`
+		ServiceAuth       ServiceAuthSetting      `mapstructure:"service_auth"`
+		Grpc              GrpcSetting             `mapstructure:"grpc"`
+		Server            ServerSetting           `mapstructure:"server"`
+		WsServer          WsSetting               `mapstructure:"ws"`
+		Cassandra         CassandraSetting        `mapstructure:"cassandra"`
+		Elasticsearch     ElasticsearchSetting    `mapstructure:"elasticsearch"`
+		Jaeger            JaegerSetting           `mapstructure:"jaeger"`
+		Kafka             KafkaSetting            `mapstructure:"kafka"`
+		Memcached         MemcachedSetting        `mapstructure:"memcached"`
+		Minio             MinioSetting            `mapstructure:"minio"`
+		Postgres          PostgresSetting         `mapstructure:"postgres"`
+		Redis             RedisSetting            `mapstructure:"redis"`
+		ScyllaDb          ScyllaDbSetting         `mapstructure:"scylladb"`
+		Logstash          LogstashSetting         `mapstructure:"logstash"`
+		SMTP              SMTPSetting             `mapstructure:"smtp"`
+		JWT               JWTSetting              `mapstructure:"jwt"`
+		Logger            LoggerSetting           `mapstructure:"logger"`
+		RateLimitPolicies []RateLimitPolicy       `mapstructure:"policy_rate_limit"`
 	}
 )
 
@@ -33,11 +34,19 @@ type (
 //	List of configuration sections
 //
 // ==========================================================
+
+// WorkerAttendanceSetting
+type WorkerAttendanceSetting struct {
+	NumWorkers           int `mapstructure:"num_workers"`
+	SizeBufferChan       int `mapstructure:"size_buffer_chan"`
+	DailySummaryJobLimit int `mapstructure:"daily_summary_job_limit"`
+}
+
 // ServiceAuthSetting
 type ServiceAuthSetting struct {
-	Enabled bool   `mapstructure:"enabled"`
+	Enabled  bool   `mapstructure:"enabled"`
 	GrpcAddr string `mapstructure:"grpc_addr"`
-	Tls     struct {
+	Tls      struct {
 		Enabled  bool   `mapstructure:"enabled"`
 		CertFile string `mapstructure:"cert_file"`
 		KeyFile  string `mapstructure:"key_file"`

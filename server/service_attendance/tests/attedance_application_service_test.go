@@ -2,6 +2,7 @@ package tests
 
 import (
 	"context"
+	"sync"
 	"testing"
 	"time"
 
@@ -14,6 +15,9 @@ import (
 	domainConfig "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/domain/config"
 	domainLogger "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/domain/logger"
 	domainRepository "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/domain/repository"
+	domainWorker "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/domain/worker"
+	domainWorkerAttendance "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/domain/worker/attendance"
+	global "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/global"
 	infraCache "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/infrastructure/cache"
 	infraConn "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/infrastructure/conn"
 	infraLogger "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/infrastructure/logger"
@@ -52,9 +56,11 @@ func TestAddAttendanceRecordInApplicationService(t *testing.T) {
 		LocationCoordinates: "37.7749,-122.4194",
 	}
 	if err := service.AddAttendance(ctx, req); err != nil {
-		t.Fatalf("failed to add attendance record: %+v", err)
+		t.Fatalf("failed to add attendance record: %+v", err) // TODO: remove in production
 	}
 	t.Log("add attendance record successfully")
+	// Watt for worker to process
+	time.Sleep(3 * time.Second)
 }
 
 // TestGetAttendanceRecordsCompany tests the GetAttendanceRecordsCompany service method.
@@ -274,6 +280,23 @@ func initAttendanceApplicationServiceTest() error {
 		return err
 	}
 	if err := domainCache.SetLocalCache(localCacheImpl); err != nil {
+		return err
+	}
+	// init worker pool
+	global.WaitGroup = &sync.WaitGroup{}
+	configWorker := domainConfig.WorkerAttendanceSetting{
+		NumWorkers:           2,
+		SizeBufferChan:       100,
+		DailySummaryJobLimit: 1,
+	}
+	worker := domainWorkerAttendance.NewAttendanceServiceWorker(
+		configWorker,
+		domainLogger.GetLogger(),
+		domainRepository.GetAttendanceRepository(),
+	)
+	_ = domainWorker.SetWorkerAttendanceServiceWorker(worker)
+	global.AttendanceServiceWorker = worker
+	if err := worker.RunDailySummaryWorker(); err != nil {
 		return err
 	}
 	return nil

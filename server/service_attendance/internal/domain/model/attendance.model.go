@@ -9,7 +9,25 @@ import (
 // ============================================
 // Attendance Record Model
 // ============================================
+type GetFirstCheckInInput struct {
+	CompanyID      uuid.UUID `json:"company_id"`
+	EmployeeID     uuid.UUID `json:"employee_id"`
+	YearMonth      string    `json:"year_month"`
+	ShiftTimeStart time.Time `json:"shift_time_start"`
+	ShiftTimeEnd   time.Time `json:"shift_time_end"`
+	DateCheckOut   time.Time `json:"date_check_out"`
+}
+
+type GetFirstCheckInOutput struct {
+	RecordTime          time.Time `json:"record_time"`
+	DeviceID            uuid.UUID `json:"device_id"`
+	VerificationMethod  string    `json:"verification_method"`
+	VerificationScore   float64   `json:"verification_score"`
+	LocationCoordinates string    `json:"location_coordinates"`
+}
+
 type ShiftTimeEmployee struct {
+	ShiftID               uuid.UUID  `json:"shift_id"`
 	StartTime             time.Time  `json:"start_time"`
 	EndTime               time.Time  `json:"end_time"`
 	GracePeriodMinutes    int        `json:"grace_period_minutes"`

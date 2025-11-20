@@ -15,6 +15,7 @@ type IAttendanceRepository interface {
 	AddAttendanceRecord(ctx context.Context, input *model.AddAttendanceRecordInput) error
 	AddDailySummaries(ctx context.Context, input *model.AddDailySummariesInput) error
 	// Get
+	GetFirstCheckIn(ctx context.Context, input *model.GetFirstCheckInInput) (*model.GetFirstCheckInOutput, error)
 	GetAttendanceRecordCompany(ctx context.Context, input *model.GetAttendanceRecordCompanyInput) (*model.AttendanceRecordOutput, error)
 	GetAttendanceRecordCompanyForEmployee(ctx context.Context, input *model.GetAttendanceRecordCompanyForEmployeeInput) (*model.AttendanceRecordOutput, error)
 	GetDailySummarieCompany(ctx context.Context, input *model.GetDailySummariesCompanyInput) (*model.DailySummariesCompanyOutput, error)

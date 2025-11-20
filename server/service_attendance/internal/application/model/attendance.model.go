@@ -8,6 +8,7 @@ import (
 
 // ShiftTimeEmployee
 type ShiftTimeEmployee struct {
+	ShiftID               uuid.UUID  `json:"shift_id"`
 	StartTime             time.Time  `json:"start_time"`
 	EndTime               time.Time  `json:"end_time"`
 	GracePeriodMinutes    int        `json:"grace_period_minutes"`

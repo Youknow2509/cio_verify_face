@@ -15,6 +15,7 @@ import (
 	domainLogger "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/domain/logger"
 	domainModel "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/domain/model"
 	domainRepo "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/domain/repository"
+	"github.com/youknow2509/cio_verify_face/server/service_attendance/internal/global"
 	utilsCache "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/shared/utils/cache"
 	utilsCrypto "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/shared/utils/crypto"
 )
@@ -438,6 +439,7 @@ func (a *AttendanceService) AddAttendance(ctx context.Context, req *model.AddAtt
 		// mapping data
 		for _, item := range respListShiftEmployee {
 			shiftTimes = append(shiftTimes, model.ShiftTimeEmployee{
+				ShiftID:               item.ShiftID,
 				StartTime:             item.StartTime,
 				EndTime:               item.EndTime,
 				GracePeriodMinutes:    item.GracePeriodMinutes,
@@ -454,89 +456,17 @@ func (a *AttendanceService) AddAttendance(ctx context.Context, req *model.AddAtt
 		_ = a.localCache.SetTTL(ctx, keyListShiftEmployee, cacheValue, getTTLTimeCacheLocal(constants.TTL_CACHE_DEFAULT))
 	}
 	// 3. Check req is check in or check out
-	var (
-		isCheckIn       = true
-		foundValidShift = false
-		// Khởi tạo chênh lệch thời gian tối đa (12 giờ) để tìm ca làm việc gần nhất
-		minDiffMinutes = float64(12 * 60)
+	matchedShift, isCheckIn, foundValidShift := findShiftAndDetermineCheckIn(
+		req.RecordTime,
+		shiftTimes,
 	)
-
-	// Chuyển đổi ngày trong tuần của Go (0=Chủ nhật) sang quy ước ISO 8601 (1=Thứ hai...7=Chủ nhật)
-	currentWeekday := int32(req.RecordTime.Weekday())
-	if currentWeekday == 0 {
-		currentWeekday = 7
-	}
-
-	for _, shift := range shiftTimes {
-		// A. Kiểm tra ngày hiệu lực của ca làm việc
-		if req.RecordTime.Before(shift.EffectiveFrom) {
-			continue
-		}
-		if shift.EffectiveTo != nil && req.RecordTime.After(*shift.EffectiveTo) {
-			continue
-		}
-
-		// B. Kiểm tra xem hôm nay có phải là ngày làm việc theo lịch không
-		isWorkDay := false
-		for _, day := range shift.WorkDays {
-			if day == currentWeekday {
-				isWorkDay = true
-				break
-			}
-		}
-		if !isWorkDay {
-			continue
-		}
-
-		// C. Chuẩn hóa thời gian bắt đầu/kết thúc ca về cùng ngày với ngày chấm công
-		year, month, day := req.RecordTime.Date()
-		shiftStart := time.Date(year, month, day, shift.StartTime.Hour(), shift.StartTime.Minute(), 0, 0, req.RecordTime.Location())
-		shiftEnd := time.Date(year, month, day, shift.EndTime.Hour(), shift.EndTime.Minute(), 0, 0, req.RecordTime.Location())
-
-		// Xử lý ca đêm (ví dụ: 22:00 - 06:00)
-		// Nếu giờ kết thúc nhỏ hơn giờ bắt đầu, nghĩa là ca làm việc kết thúc vào ngày hôm sau
-		if shiftEnd.Before(shiftStart) {
-			// Nếu thời gian chấm công là sáng sớm (ví dụ: 05:00), so sánh với ca bắt đầu từ hôm qua
-			if req.RecordTime.Hour() < 12 {
-				shiftStart = shiftStart.Add(-24 * time.Hour)
-			} else {
-				// Nếu thời gian chấm công là tối muộn (ví dụ: 23:00), ca làm việc sẽ kết thúc vào ngày mai
-				shiftEnd = shiftEnd.Add(24 * time.Hour)
-			}
-		}
-
-		// D. Tính toán độ chênh lệch (tính theo phút) để xác định là Check-in hay Check-out
-		diffStart := req.RecordTime.Sub(shiftStart).Minutes()
-		if diffStart < 0 {
-			diffStart = -diffStart
-		}
-
-		diffEnd := req.RecordTime.Sub(shiftEnd).Minutes()
-		if diffEnd < 0 {
-			diffEnd = -diffEnd
-		}
-
-		// Tìm ca làm việc có thời gian gần nhất với thời gian chấm công
-		localMin := diffStart
-		if diffEnd < localMin {
-			localMin = diffEnd
-		}
-
-		if localMin < minDiffMinutes {
-			minDiffMinutes = localMin
-			foundValidShift = true
-			// Nếu gần thời gian bắt đầu hơn -> Check In, ngược lại -> Check Out
-			isCheckIn = diffStart <= diffEnd
-		}
-	}
-
 	if !foundValidShift {
-		a.logger.Warn("No scheduled shift found for the record time", "employee_id", req.EmployeeID, "record_time", req.RecordTime)
+		a.logger.Warn("No valid shift found for employee", "employee_id", req.EmployeeID, "record_time", req.RecordTime)
 		return &errors.Error{
-			ErrorClient: "NoScheduledShift",
-			ErrorSystem: nil,
+			ErrorClient: "NoValidShiftFound",
 		}
 	}
+
 	// 4. Add attendance record
 	inputAddAttendanceRecord := &domainModel.AddAttendanceRecordInput{
 		CompanyID:  req.CompanyID,
@@ -567,6 +497,27 @@ func (a *AttendanceService) AddAttendance(ctx context.Context, req *model.AddAtt
 			ErrorClient: "InternalError",
 		}
 	}
+
+	// 5. Send to message queue for worker processing daily_summaries if checkout
+	if !isCheckIn {
+		// TODO: feature gửi lên mq tự xử lí với hiệu năng cao
+		a.logger.Info("Handle cal daily summary", "mathced_shift", matchedShift, "record_time", req.RecordTime)
+		global.AttendanceServiceWorker.AddJobToDailySummaryWorkerV2(
+			req.CompanyID,
+			req.EmployeeID,
+			req.RecordTime,
+			domainModel.ShiftTimeEmployee{
+				ShiftID:               matchedShift.ShiftID,
+				StartTime:             matchedShift.StartTime,
+				EndTime:               matchedShift.EndTime,
+				GracePeriodMinutes:    matchedShift.GracePeriodMinutes,
+				EarlyDepartureMinutes: matchedShift.EarlyDepartureMinutes,
+				WorkDays:              matchedShift.WorkDays,
+				EffectiveFrom:         matchedShift.EffectiveFrom,
+				EffectiveTo:           matchedShift.EffectiveTo,
+			},
+		)
+	}
 	return nil
 }
 
@@ -592,6 +543,105 @@ func NewAttendanceService() service.IAttendanceService {
 // =================================================
 // Helper Functions
 // =================================================
+
+// findShiftAndDetermineCheckIn finds the most suitable shift for a given record time
+// and determines if it's a check-in or check-out event.
+func findShiftAndDetermineCheckIn(recordTime time.Time, shiftTimes []model.ShiftTimeEmployee) (model.ShiftTimeEmployee, bool, bool) {
+	// Initialize variables
+	isCheckIn := true
+	foundValidShift := false
+	// Khởi tạo chênh lệch thời gian tối đa (12 giờ) để tìm ca làm việc gần nhất
+	minDiffMinutes := float64(12 * 60)
+	var matchedShift model.ShiftTimeEmployee
+
+	// Chuyển đổi ngày trong tuần của Go (0=Chủ nhật) sang quy ước ISO 8601 (1=Thứ hai...7=Chủ nhật)
+	currentWeekday := int32(recordTime.Weekday())
+	if currentWeekday == 0 {
+		currentWeekday = 7
+	}
+
+	for _, shift := range shiftTimes {
+		// A. Kiểm tra ngày hiệu lực của ca làm việc
+		if recordTime.Before(shift.EffectiveFrom) {
+			continue
+		}
+		if shift.EffectiveTo != nil && recordTime.After(*shift.EffectiveTo) {
+			continue
+		}
+
+		// B. Kiểm tra xem hôm nay có phải là ngày làm việc theo lịch không
+		isWorkDay := false
+		for _, day := range shift.WorkDays {
+			if day == currentWeekday {
+				isWorkDay = true
+				break
+			}
+		}
+		if !isWorkDay {
+			continue
+		}
+
+		// C. Chuẩn hóa thời gian bắt đầu/kết thúc ca về cùng ngày với ngày chấm công
+		year, month, day := recordTime.Date()
+		shiftStart := time.Date(year, month, day, shift.StartTime.Hour(), shift.StartTime.Minute(), 0, 0, recordTime.Location())
+		shiftEnd := time.Date(year, month, day, shift.EndTime.Hour(), shift.EndTime.Minute(), 0, 0, recordTime.Location())
+
+		// Xử lý ca đêm (ví dụ: 22:00 - 06:00)
+		if shiftEnd.Before(shiftStart) {
+			if recordTime.Hour() < 12 {
+				shiftStart = shiftStart.Add(-24 * time.Hour)
+			} else {
+				shiftEnd = shiftEnd.Add(24 * time.Hour)
+			}
+		}
+
+		// D. Tính toán độ chênh lệch
+		diffStart := recordTime.Sub(shiftStart).Minutes() // Dương nếu đến muộn, Âm nếu đến sớm
+		diffEnd := recordTime.Sub(shiftEnd).Minutes()     // Dương nếu về muộn, Âm nếu về sớm
+
+		absDiffStart := diffStart
+		if absDiffStart < 0 {
+			absDiffStart = -absDiffStart
+		}
+
+		absDiffEnd := diffEnd
+		if absDiffEnd < 0 {
+			absDiffEnd = -absDiffEnd
+		}
+
+		// Tìm ca làm việc phù hợp nhất
+		localMin := absDiffStart
+		if absDiffEnd < localMin {
+			localMin = absDiffEnd
+		}
+
+		if localMin < minDiffMinutes {
+			minDiffMinutes = localMin
+			foundValidShift = true
+			matchedShift = shift
+
+			// LOGIC QUYẾT ĐỊNH CHECK-IN HAY CHECK-OUT:
+			// 1. Tính điểm giữa ca làm việc (midpoint)
+			midPoint := shiftStart.Add(shiftEnd.Sub(shiftStart) / 2)
+
+			// 2. Nếu thời gian chấm công nằm trước điểm giữa -> Check In
+			//    Nếu thời gian chấm công nằm sau điểm giữa -> Check Out
+			//    Cách này xử lý tốt trường hợp đến rất muộn (vẫn là Check In) hoặc về rất sớm (vẫn là Check Out)
+			if recordTime.Before(midPoint) {
+				isCheckIn = true
+			} else {
+				isCheckIn = false
+			}
+		}
+	}
+
+	if !foundValidShift {
+		return model.ShiftTimeEmployee{}, false, false
+	}
+
+	return matchedShift, isCheckIn, foundValidShift
+}
+
 // handler ttl time cache local
 func getTTLTimeCacheLocal(ttlDistributed int64) int64 {
 	ttlLocal := ttlDistributed / 3

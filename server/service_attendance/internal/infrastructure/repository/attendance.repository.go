@@ -19,6 +19,153 @@ type AttendanceRepository struct {
 	dbSession *gocql.Session
 }
 
+// GetFirstCheckIn implements repository.IAttendanceRepository.
+func (a *AttendanceRepository) GetFirstCheckIn(ctx context.Context, input *model.GetFirstCheckInInput) (*model.GetFirstCheckInOutput, error) {
+	// 1. Trích xuất giờ/phút/giây của ca từ ShiftTimeStart/ShiftTimeEnd
+	startHour, startMinute, startSecond := input.ShiftTimeStart.Hour(), input.ShiftTimeStart.Minute(), input.ShiftTimeStart.Second()
+	endHour, endMinute, endSecond := input.ShiftTimeEnd.Hour(), input.ShiftTimeEnd.Minute(), input.ShiftTimeEnd.Second()
+
+	// 2. Lấy ngày theo DateCheckOut
+	y, m, d := input.DateCheckOut.Date()
+	loc := input.DateCheckOut.Location()
+
+	var shiftStartActual, shiftEndActual time.Time
+
+	// Ca bình thường (End > Start về thời gian trong ngày)
+	if time.Date(0, 1, 1, endHour, endMinute, endSecond, 0, time.UTC).After(
+		time.Date(0, 1, 1, startHour, startMinute, startSecond, 0, time.UTC),
+	) {
+		shiftStartActual = time.Date(y, m, d, startHour, startMinute, startSecond, 0, loc)
+		shiftEndActual = time.Date(y, m, d, endHour, endMinute, endSecond, 0, loc)
+	} else {
+		// Ca qua đêm (End <= Start)
+		shiftEndActual = time.Date(y, m, d, endHour, endMinute, endSecond, 0, loc)
+		// Bắt đầu ca là ngày trước đó
+		shiftStartActual = time.Date(y, m, d, startHour, startMinute, startSecond, 0, loc).Add(-24 * time.Hour)
+	}
+
+	// 3. Xác định khoảng query
+	earlyBuffer := time.Duration(1) * time.Hour // Có thể đến sớm hơn 1 tiếng
+	lateBuffer := time.Duration(2) * time.Hour  // Có thể đến trễ hơn 2 tiếng
+	startQuery := shiftStartActual.Add(-earlyBuffer)
+	endQuery := minTime(input.DateCheckOut, shiftEndActual.Add(lateBuffer))
+
+	// 4. Truy vấn Cassandra
+	iter := a.dbSession.Query(`
+        SELECT record_time, device_id, verification_method, verification_score,
+               location_coordinates, record_type
+        FROM attendance_records_by_user
+        WHERE company_id = ?
+          AND employee_id = ?
+          AND year_month = ?
+          AND record_time >= ?
+          AND record_time <= ?;
+        `,
+		marshalUuid(input.CompanyID),
+		marshalUuid(input.EmployeeID),
+		input.YearMonth,
+		startQuery,
+		endQuery,
+	).WithContext(ctx).Iter()
+
+	var (
+		recordTime          time.Time
+		deviceID            gocql.UUID
+		verificationMethod  string
+		verificationScore   float32
+		locationCoordinates string
+		recordType          int
+
+		bestCheckIn *model.GetFirstCheckInOutput
+		bestDelta   time.Duration // Khoảng cách tối ưu hiện tại
+		found       bool
+	)
+
+	for iter.Scan(
+		&recordTime,
+		&deviceID,
+		&verificationMethod,
+		&verificationScore,
+		&locationCoordinates,
+		&recordType,
+	) {
+		if recordType != 0 {
+			continue
+		}
+
+		// 5. Tính delta so với shiftStartActual
+		delta := recordTime.Sub(shiftStartActual)
+
+		// Ưu tiên delta >= 0 (sau hoặc bằng giờ bắt đầu); nếu chưa có, chấp nhận delta âm (đến sớm)
+		if !found {
+			bestCheckIn = &model.GetFirstCheckInOutput{
+				RecordTime:          recordTime,
+				DeviceID:            uuid.MustParse(deviceID.String()),
+				VerificationMethod:  verificationMethod,
+				VerificationScore:   float64(verificationScore),
+				LocationCoordinates: locationCoordinates,
+			}
+			bestDelta = delta
+			found = true
+			continue
+		}
+
+		// Logic chọn tối ưu:
+		// 1. Nếu bestDelta < 0 (chỉ có bản ghi trước giờ bắt đầu)
+		//    và delta >= 0 → chọn ngay (có bản ghi đúng hoặc trễ nhẹ).
+		// 2. Nếu cả hai cùng >= 0 → chọn bản ghi có delta nhỏ hơn (trễ ít hơn).
+		// 3. Nếu cả hai cùng < 0 → chọn bản ghi delta âm "lớn hơn" (gần giờ bắt đầu hơn).
+		switch {
+		case bestDelta < 0 && delta >= 0:
+			// Bản ghi mới nằm sau giờ bắt đầu → ưu tiên hơn
+			bestCheckIn = &model.GetFirstCheckInOutput{
+				RecordTime:          recordTime,
+				DeviceID:            uuid.MustParse(deviceID.String()),
+				VerificationMethod:  verificationMethod,
+				VerificationScore:   float64(verificationScore),
+				LocationCoordinates: locationCoordinates,
+			}
+			bestDelta = delta
+		case bestDelta >= 0 && delta >= 0:
+			if delta < bestDelta {
+				bestCheckIn = &model.GetFirstCheckInOutput{
+					RecordTime:          recordTime,
+					DeviceID:            uuid.MustParse(deviceID.String()),
+					VerificationMethod:  verificationMethod,
+					VerificationScore:   float64(verificationScore),
+					LocationCoordinates: locationCoordinates,
+				}
+				bestDelta = delta
+			}
+		case bestDelta < 0 && delta < 0:
+			// Cả hai đến sớm; delta âm càng "lớn" (ít âm hơn) thì gần hơn
+			if delta > bestDelta {
+				bestCheckIn = &model.GetFirstCheckInOutput{
+					RecordTime:          recordTime,
+					DeviceID:            uuid.MustParse(deviceID.String()),
+					VerificationMethod:  verificationMethod,
+					VerificationScore:   float64(verificationScore),
+					LocationCoordinates: locationCoordinates,
+				}
+				bestDelta = delta
+			}
+		}
+	}
+
+	if err := iter.Close(); err != nil {
+		return nil, err
+	}
+
+	return bestCheckIn, nil
+}
+
+func minTime(time1, time2 time.Time) time.Time {
+	if time1.Before(time2) {
+		return time1
+	}
+	return time2
+}
+
 // DeleteDailySummariesCompany implements repository.IAttendanceRepository.
 func (a *AttendanceRepository) DeleteDailySummariesCompany(ctx context.Context, input *model.DeleteDailySummariesInput) error {
 	// 1. Get All Records

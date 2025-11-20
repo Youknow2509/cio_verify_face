@@ -71,6 +71,7 @@ func (q *Queries) GetCompanyIdUser(ctx context.Context, employeeID pgtype.UUID) 
 
 const getListTimeShiftEmployee = `-- name: GetListTimeShiftEmployee :many
 SELECT 
+    ws.shift_id,
     ws.start_time,
     ws.end_time,
     ws.grace_period_minutes,
@@ -95,6 +96,7 @@ type GetListTimeShiftEmployeeParams struct {
 }
 
 type GetListTimeShiftEmployeeRow struct {
+	ShiftID               pgtype.UUID
 	StartTime             pgtype.Time
 	EndTime               pgtype.Time
 	GracePeriodMinutes    pgtype.Int4
@@ -114,6 +116,7 @@ func (q *Queries) GetListTimeShiftEmployee(ctx context.Context, arg GetListTimeS
 	for rows.Next() {
 		var i GetListTimeShiftEmployeeRow
 		if err := rows.Scan(
+			&i.ShiftID,
 			&i.StartTime,
 			&i.EndTime,
 			&i.GracePeriodMinutes,

@@ -49,6 +49,7 @@ func (u *UserRepository) GetListTimeShiftEmployee(ctx context.Context, input *do
 		endTime := time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC).Add(time.Duration(r.EndTime.Microseconds) * time.Microsecond)
 
 		result[i] = domainModel.ShiftTimeEmployee{
+			ShiftID:               r.ShiftID.Bytes,
 			StartTime:             startTime,
 			EndTime:               endTime,
 			GracePeriodMinutes:    int(r.GracePeriodMinutes.Int32),

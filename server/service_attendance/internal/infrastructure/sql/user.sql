@@ -1,5 +1,6 @@
 -- name: GetListTimeShiftEmployee :many
 SELECT 
+    ws.shift_id,
     ws.start_time,
     ws.end_time,
     ws.grace_period_minutes,
