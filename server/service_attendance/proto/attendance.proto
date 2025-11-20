@@ -4,58 +4,128 @@ option go_package = "github.com/youknow2509/cio_verify_face/server/service_atten
 
 // Attendance service for inter-service communication
 service AttendanceService {
-    // Check in attendance
-    rpc CheckInAttendance(CheckIOAttendanceRequest) returns (ResponseBase);
-    // Check out attendance
-    rpc CheckOutAttendance(CheckIOAttendanceRequest) returns (ResponseBase);
-    // Get attendance records within a date range for company
-    rpc GetAttendanceRecords(GetAttendanceRecordsRequest) returns (GetAttendanceRecordsResponse);
+    rpc AddAttendance(AddAttendanceInput) returns (AddAttendanceOutput);
+	rpc GetAttendanceRecords(GetAttendanceRecordsInput) returns (GetAttendanceRecordsOutput);
+	rpc GetAttendanceRecordsEmployee(GetAttendanceRecordsEmployeeInput) returns (GetAttendanceRecordsOutput);
+	rpc GetDailyAttendanceSummary(GetDailyAttendanceSummaryInput) returns (GetDailyAttendanceSummaryOutput);
+	rpc GetDailyAttendanceSummaryEmployee(GetDailyAttendanceSummaryEmployeeInput) returns (GetDailyAttendanceSummaryOutput);
+    rpc AddBatchAttendance(stream AddAttendanceInput) returns (AddAttendanceOutput);
 }
 
-message GetAttendanceRecordsResponse {
-    repeated AttendanceRecord records = 1;
-    string msg = 2;
-    int32 status_code = 3;
-}
-
-message AttendanceRecord {
-    string user_id = 1;
-    string device_id = 2;
-    string check_type = 3; // "check_in" or "check_out"
-    int64 timestamp = 4;
-    string location = 5;
-    string verification_method = 6;
-    float verification_score = 7;
-    string face_image_url = 8;
-}
-
-message GetAttendanceRecordsRequest {
+// For getting daily attendance summary of an employee within a company
+message GetDailyAttendanceSummaryEmployeeInput {
     string company_id = 1;
-    string device_id = 2;
-    int64 start_date = 3;
-    int64 end_date = 4;
-    SessionInfo session_info = 5;
+    string employee_id = 2;
+    string summary_month = 3;
+    int32 page_size = 4;
+    string page_stage = 5;
+    SessionInfo session = 6;
 }
 
-message CheckIOAttendanceRequest {
-    SessionInfo session_info = 1;
-    string device_id = 2;
-    string location = 3;
-    string verification_method = 4;
-    float verification_score = 5;
-    string face_image_url = 6;
-    int64 recorded_at = 7;
+// For getting daily attendance summary
+message GetDailyAttendanceSummaryInput {
+    string company_id = 1;
+    string employee_id = 2;
+    string summary_month = 3;
+    int32 page_size = 4;
+    string page_stage = 5;
+    SessionInfo session = 6;
 }
 
-message ResponseBase {
-    string msg = 1;
+message GetDailyAttendanceSummaryOutput {
+    bytes page_stage_next = 1;
+    int32 page_size = 2;
+    repeated DailyAttendanceSummaryInfo records = 3;
+}
+
+message DailyAttendanceSummaryInfo {
+    string company_id = 1;
+    string summary_month = 2;
+    int64 work_date = 3;
+    string employee_id = 4;
+    string shift_id = 5;
+    int64 actual_check_in = 6;
+    int64 actual_check_out = 7;
+    string attendance_status = 8;
+    int32 late_minutes = 9;
+    int32 early_leave_minutes = 10;
+    int32 total_work_minutes = 11;
+    string notes = 12;
+    int64 updated_at = 13;
+}
+
+// For getting attendance records of an employee within a company
+message GetAttendanceRecordsEmployeeInput {
+    string company_id = 1;
+    string employee_id = 2;
+    string year_month = 3;
+    int32 page_size = 4;
+    string page_stage = 5;
+    SessionInfo session = 6;
+}
+
+message GetAttendanceRecordsEmployeeOutput {
+    bytes page_stage_next = 1;
+    int32 page_size = 2;
+    repeated AttendanceRecordInfo records = 3;
+}
+
+// For getting attendance records
+message GetAttendanceRecordsInput {
+    string company_id = 1;
+    string employee_id = 2;
+    string year_month = 3;
+    int32 page_size = 4;
+    string page_stage = 5;
+    SessionInfo session = 6;
+}
+
+message GetAttendanceRecordsOutput {
+    bytes page_stage_next = 1;
+    int32 page_size = 2;
+    repeated AttendanceRecordInfo records = 3;
+}
+
+message AttendanceRecordInfo {
+    string company_id = 1;
+    string year_month = 2;
+    int64 record_time = 3;
+    string employee_id = 4;
+    string device_id = 5;
+    int32 record_type = 6;
+    string verification_method = 7;
+    double verification_score = 8;
+    string face_image_url = 9;
+    string location_coordinates = 10;
+    map<string, string> metadata = 11;
+    string sync_status = 12;
+    int64 created_at = 13;
+}
+
+// For adding attendance record
+message AddAttendanceInput {
+    string company_id = 1;
+    string employee_id = 2;
+    string device_id = 3;
+    int64 record_time = 4;
+    string verification_method = 5;
+    double verification_score = 6;
+    string face_image_url = 7;
+    string location_coordinates = 8;
+    SessionInfo session = 9;
+}
+
+message AddAttendanceOutput {
+    string message = 1;
     int32 status_code = 2;
 }
 
+// For session info
 message SessionInfo {
     string user_id = 1;
     int32 role = 2;
     string session_id = 3;
-    string client_ip = 4;
-    string client_agent = 5;
+    string company_id = 4;
+    string client_ip = 5;
+    string client_agent = 6;
 }
