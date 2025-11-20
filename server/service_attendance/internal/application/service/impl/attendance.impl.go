@@ -32,41 +32,342 @@ type AttendanceService struct {
 // GetAttendanceRecordsEmployeeForConpany implements service.IAttendanceService.
 func (a *AttendanceService) GetAttendanceRecordsEmployeeForConpany(ctx context.Context, req *model.GetAttendanceRecordsEmployeeModel) (*model.GetAttendanceRecordsCompanyResultModel, *errors.Error) {
 	// 1. Check permission
-
+	if err := checkPermissionEmployee(ctx, *req.Session, req.CompanyID); err != nil {
+		a.logger.Warn("Permission Denied", "session", req.Session)
+		return nil, err
+	}
 	// 2. Check cache -> get from DB if not exist
-
+	keyAttendanceRecordsEmployee := utilsCache.GetKeyAttendanceRecordsEmployee(
+		utilsCrypto.GetHash(req.EmployeeID.String()),
+		req.YearMonth,
+		req.PageSize,
+		req.PageStage,
+	)
+	cacheData := ""
+	if data, err := a.localCache.Get(ctx, keyAttendanceRecordsEmployee); err == nil {
+		cacheData = data
+		a.logger.Info("Get attendance records from local cache", "key", keyAttendanceRecordsEmployee)
+	} else if data, err := a.distributedCache.Get(ctx, keyAttendanceRecordsEmployee); err == nil {
+		cacheData = data
+		a.logger.Info("Get attendance records from distributed cache", "key", keyAttendanceRecordsEmployee)
+		// Set to local cache
+		_ = a.localCache.SetTTL(ctx, keyAttendanceRecordsEmployee, cacheData, getTTLTimeCacheLocal(constants.TTL_CACHE_DEFAULT))
+	}
+	var result model.GetAttendanceRecordsCompanyResultModel
+	if err := json.Unmarshal([]byte(cacheData), &result); err == nil && cacheData != "" {
+		return &result, nil
+	}
 	// 3. Return result
-	panic("unimplemented")
+	reps, err := a.attendanceRepo.GetAttendanceRecordCompanyForEmployee(
+		ctx,
+		&domainModel.GetAttendanceRecordCompanyForEmployeeInput{
+			CompanyID:  req.CompanyID,
+			EmployeeID: req.EmployeeID,
+			YearMonth:  req.YearMonth,
+			PageSize:   req.PageSize,
+			PageStage:  req.PageStage,
+		},
+	)
+	if err != nil {
+		a.logger.Error("Failed to get attendance records from DB", "error", err)
+		return nil, &errors.Error{
+			ErrorSystem: err,
+			ErrorClient: "InternalError",
+		}
+	}
+	if reps == nil {
+		return nil, &errors.Error{
+			ErrorClient: "NoData",
+		}
+	}
+	// mapping data output
+	result = model.GetAttendanceRecordsCompanyResultModel{
+		Records:       []model.AttendanceRecordInfo{},
+		PageSize:      reps.PageSize,
+		PageStageNext: string(reps.PageStageNext),
+	}
+	for _, item := range reps.Records {
+		result.Records = append(result.Records, model.AttendanceRecordInfo{
+			CompanyID:           item.CompanyID,
+			YearMonth:           item.YearMonth,
+			RecordTime:          item.RecordTime,
+			EmployeeID:          item.EmployeeID,
+			DeviceID:            item.DeviceID,
+			RecordType:          item.RecordType,
+			VerificationMethod:  item.VerificationMethod,
+			VerificationScore:   item.VerificationScore,
+			FaceImageURL:        item.FaceImageURL,
+			LocationCoordinates: item.LocationCoordinates,
+			Metadata:            item.Metadata,
+			SyncStatus:          item.SyncStatus,
+			CreatedAt:           item.CreatedAt,
+		})
+	}
+	// Set to caches
+	marshaledData, _ := json.Marshal(result)
+	cacheValue := string(marshaledData)
+	_ = a.distributedCache.SetTTL(ctx, keyAttendanceRecordsEmployee, cacheValue, constants.TTL_ATTENDANCE_RECORDS_EMPLOYEE)
+	_ = a.localCache.SetTTL(ctx, keyAttendanceRecordsEmployee, cacheValue, getTTLTimeCacheLocal(constants.TTL_ATTENDANCE_RECORDS_EMPLOYEE))
+	// 3. Return result
+	return &result, nil
 }
 
 // GetDailyAttendanceSummaryEmployeeForCompany implements service.IAttendanceService.
 func (a *AttendanceService) GetDailyAttendanceSummaryEmployeeForCompany(ctx context.Context, req *model.GetDailyAttendanceSummaryEmployeeModel) (*model.GetDailyAttendanceSummaryEmployeeResultModel, *errors.Error) {
 	// 1. Check permission
-
+	if err := checkPermissionEmployee(ctx, *req.Session, req.CompanyID); err != nil {
+		a.logger.Warn("Permission Denied", "session", req.Session)
+		return nil, err
+	}
 	// 2. Check cache -> get from DB if not exist
+	keyDailySummaryEmployee := utilsCache.GetKeyDailyAttendanceSummaryEmployee(
+		utilsCrypto.GetHash(req.EmployeeID.String()),
+		req.SummaryMonth,
+		req.PageSize,
+		req.PageStage,
+	)
+	cacheData := ""
+	if data, err := a.localCache.Get(ctx, keyDailySummaryEmployee); err == nil {
+		cacheData = data
+		a.logger.Info("Get daily summary from local cache", "key", keyDailySummaryEmployee)
+	} else if data, err := a.distributedCache.Get(ctx, keyDailySummaryEmployee); err == nil {
+		cacheData = data
+		a.logger.Info("Get daily summary from distributed cache", "key", keyDailySummaryEmployee)
+		_ = a.localCache.SetTTL(ctx, keyDailySummaryEmployee, cacheData, getTTLTimeCacheLocal(constants.TTL_CACHE_DEFAULT))
+	}
 
-	// 3. Return result
-	panic("unimplemented")
+	var result model.GetDailyAttendanceSummaryEmployeeResultModel
+	if err := json.Unmarshal([]byte(cacheData), &result); err == nil && cacheData != "" {
+		return &result, nil
+	}
+
+	// 3. Get from DB
+	reps, err := a.attendanceRepo.GetDailySummarieCompanyForEmployee(
+		ctx,
+		&domainModel.GetDailySummariesCompanyForEmployeeInput{
+			CompanyID:    req.CompanyID,
+			EmployeeID:   req.EmployeeID,
+			SummaryMonth: req.SummaryMonth,
+			PageSize:     req.PageSize,
+			PageStage:    req.PageStage,
+		},
+	)
+	if err != nil {
+		a.logger.Error("Failed to get daily attendance summary from DB", "error", err)
+		return nil, &errors.Error{
+			ErrorSystem: err,
+			ErrorClient: "InternalError",
+		}
+	}
+	if reps == nil {
+		return nil, &errors.Error{
+			ErrorClient: "NoData",
+		}
+	}
+
+	// mapping data output
+	result = model.GetDailyAttendanceSummaryEmployeeResultModel{
+		Records:       []model.DailySummariesEmployeeInfo{},
+		PageSize:      reps.PageSize,
+		PageStageNext: string(reps.PageStageNext),
+	}
+	for _, item := range reps.Records {
+		result.Records = append(result.Records, model.DailySummariesEmployeeInfo{
+			CompanyId:         item.CompanyId,
+			SummaryMonth:      item.SummaryMonth,
+			WorkDate:          item.WorkDate,
+			EmployeeId:        item.EmployeeId,
+			ShiftId:           item.ShiftId,
+			ActualCheckIn:     item.ActualCheckIn,
+			ActualCheckOut:    item.ActualCheckOut,
+			AttendanceStatus:  item.AttendanceStatus,
+			LateMinutes:       item.LateMinutes,
+			EarlyLeaveMinutes: item.EarlyLeaveMinutes,
+			TotalWorkMinutes:  item.TotalWorkMinutes,
+			Notes:             item.Notes,
+			UpdatedAt:         item.UpdatedAt,
+		})
+	}
+
+	// Set to caches
+	marshaledData, _ := json.Marshal(result)
+	cacheValue := string(marshaledData)
+	_ = a.distributedCache.SetTTL(ctx, keyDailySummaryEmployee, cacheValue, constants.TTL_ATTENDANCE_RECORDS_EMPLOYEE)
+	_ = a.localCache.SetTTL(ctx, keyDailySummaryEmployee, cacheValue, getTTLTimeCacheLocal(constants.TTL_ATTENDANCE_RECORDS_EMPLOYEE))
+
+	// 4. Return result
+	return &result, nil
 }
 
 // GetDailyAttendanceSummaryForCompany implements service.IAttendanceService.
 func (a *AttendanceService) GetDailyAttendanceSummaryForCompany(ctx context.Context, req *model.GetDailyAttendanceSummaryModel) (*model.GetDailyAttendanceSummaryResultModel, *errors.Error) {
 	// 1. Check permission
-
+	if err := checkPermisionManager(ctx, *req.Session, req.CompanyID); err != nil {
+		a.logger.Warn("Permission Denied", "session", req.Session)
+		return nil, err
+	}
 	// 2. Check cache -> get from DB if not exist
+	keyDailySummary := utilsCache.GetKeyDailyAttendanceSummary(
+		utilsCrypto.GetHash(req.CompanyID.String()),
+		req.SummaryMonth,
+		req.WorkDate.Unix(),
+		req.PageSize,
+		req.PageStage,
+	)
+	cacheData := ""
+	if data, err := a.localCache.Get(ctx, keyDailySummary); err == nil {
+		cacheData = data
+		a.logger.Info("Get daily summary from local cache", "key", keyDailySummary)
+	} else if data, err := a.distributedCache.Get(ctx, keyDailySummary); err == nil {
+		cacheData = data
+		a.logger.Info("Get daily summary from distributed cache", "key", keyDailySummary)
+		_ = a.localCache.SetTTL(ctx, keyDailySummary, cacheData, getTTLTimeCacheLocal(constants.TTL_CACHE_DEFAULT))
+	}
 
-	// 3. Return result
-	panic("unimplemented")
+	var result model.GetDailyAttendanceSummaryResultModel
+	if err := json.Unmarshal([]byte(cacheData), &result); err == nil && cacheData != "" {
+		return &result, nil
+	}
+
+	// 3. Get from DB
+	reps, err := a.attendanceRepo.GetDailySummarieCompany(
+		ctx,
+		&domainModel.GetDailySummariesCompanyInput{
+			CompanyID:    req.CompanyID,
+			SummaryMonth: req.SummaryMonth,
+			WorkDate:     req.WorkDate,
+			PageSize:     req.PageSize,
+			PageStage:    req.PageStage,
+		},
+	)
+	if err != nil {
+		a.logger.Error("Failed to get daily attendance summary from DB", "error", err)
+		return nil, &errors.Error{
+			ErrorSystem: err,
+			ErrorClient: "InternalError",
+		}
+	}
+	if reps == nil {
+		return nil, &errors.Error{
+			ErrorClient: "NoData",
+		}
+	}
+
+	// mapping data output
+	result = model.GetDailyAttendanceSummaryResultModel{
+		Records:       []model.DailySummariesCompanyInfo{},
+		PageSize:      reps.PageSize,
+		PageStageNext: string(reps.PageStageNext),
+	}
+	for _, item := range reps.Records {
+		result.Records = append(result.Records, model.DailySummariesCompanyInfo{
+			CompanyId:         item.CompanyId,
+			SummaryMonth:      item.SummaryMonth,
+			WorkDate:          item.WorkDate,
+			EmployeeId:        item.EmployeeId,
+			ShiftId:           item.ShiftId,
+			ActualCheckIn:     item.ActualCheckIn,
+			ActualCheckOut:    item.ActualCheckOut,
+			AttendanceStatus:  item.AttendanceStatus,
+			LateMinutes:       item.LateMinutes,
+			EarlyLeaveMinutes: item.EarlyLeaveMinutes,
+			TotalWorkMinutes:  item.TotalWorkMinutes,
+			Notes:             item.Notes,
+			UpdatedAt:         item.UpdatedAt,
+		})
+	}
+
+	// Set to caches
+	marshaledData, _ := json.Marshal(result)
+	cacheValue := string(marshaledData)
+	_ = a.distributedCache.SetTTL(ctx, keyDailySummary, cacheValue, constants.TTL_ATTENDANCE_RECORDS_EMPLOYEE)
+	_ = a.localCache.SetTTL(ctx, keyDailySummary, cacheValue, getTTLTimeCacheLocal(constants.TTL_ATTENDANCE_RECORDS_EMPLOYEE))
+
+	// 4. Return result
+	return &result, nil
 }
 
 // GetAttendanceRecordsCompany implements service.IAttendanceService.
 func (a *AttendanceService) GetAttendanceRecordsCompany(ctx context.Context, req *model.GetAttendanceRecordsCompanyModel) (*model.GetAttendanceRecordsCompanyResultModel, *errors.Error) {
 	// 1. Check permission
-
+	if err := checkPermisionManager(ctx, *req.Session, req.CompanyID); err != nil {
+		a.logger.Warn("Permission Denied", "session", req.Session)
+		return nil, err
+	}
 	// 2. Check cache -> get from DB if not exist
+	keyAttendanceRecordsCompany := utilsCache.GetKeyAttendanceRecordsCompany(
+		utilsCrypto.GetHash(req.CompanyID.String()),
+		req.YearMonth,
+		req.PageSize,
+		req.PageStage,
+	)
+	cacheData := ""
+	if data, err := a.localCache.Get(ctx, keyAttendanceRecordsCompany); err == nil {
+		cacheData = data
+		a.logger.Info("Get attendance records from local cache", "key", keyAttendanceRecordsCompany)
+	} else if data, err := a.distributedCache.Get(ctx, keyAttendanceRecordsCompany); err == nil {
+		cacheData = data
+		a.logger.Info("Get attendance records from distributed cache", "key", keyAttendanceRecordsCompany)
+		// Set to local cache
+		_ = a.localCache.SetTTL(ctx, keyAttendanceRecordsCompany, cacheData, getTTLTimeCacheLocal(constants.TTL_CACHE_DEFAULT))
+	}
+	var result model.GetAttendanceRecordsCompanyResultModel
+	if err := json.Unmarshal([]byte(cacheData), &result); err == nil && cacheData != "" {
+		return &result, nil
+	}
 
-	// 3. Return result
-	panic("unimplemented")
+	// 3. Get from DB
+	reps, err := a.attendanceRepo.GetAttendanceRecordCompany(
+		ctx,
+		&domainModel.GetAttendanceRecordCompanyInput{
+			CompanyID: req.CompanyID,
+			YearMonth: req.YearMonth,
+			PageSize:  req.PageSize,
+			PageStage: req.PageStage,
+		},
+	)
+	if err != nil {
+		a.logger.Error("Failed to get attendance records from DB", "error", err)
+		return nil, &errors.Error{
+			ErrorSystem: err,
+			ErrorClient: "InternalError",
+		}
+	}
+	if reps == nil {
+		return nil, &errors.Error{
+			ErrorClient: "NoData",
+		}
+	}
+	// mapping data output
+	result = model.GetAttendanceRecordsCompanyResultModel{
+		Records:       []model.AttendanceRecordInfo{},
+		PageSize:      reps.PageSize,
+		PageStageNext: string(reps.PageStageNext),
+	}
+	for _, item := range reps.Records {
+		result.Records = append(result.Records, model.AttendanceRecordInfo{
+			CompanyID:           item.CompanyID,
+			YearMonth:           item.YearMonth,
+			RecordTime:          item.RecordTime,
+			EmployeeID:          item.EmployeeID,
+			DeviceID:            item.DeviceID,
+			RecordType:          item.RecordType,
+			VerificationMethod:  item.VerificationMethod,
+			VerificationScore:   item.VerificationScore,
+			FaceImageURL:        item.FaceImageURL,
+			LocationCoordinates: item.LocationCoordinates,
+			Metadata:            item.Metadata,
+			SyncStatus:          item.SyncStatus,
+			CreatedAt:           item.CreatedAt,
+		})
+	}
+	// Set to caches
+	marshaledData, _ := json.Marshal(result)
+	cacheValue := string(marshaledData)
+	_ = a.distributedCache.SetTTL(ctx, keyAttendanceRecordsCompany, cacheValue, constants.TTL_ATTENDANCE_RECORDS_EMPLOYEE)
+	_ = a.localCache.SetTTL(ctx, keyAttendanceRecordsCompany, cacheValue, getTTLTimeCacheLocal(constants.TTL_ATTENDANCE_RECORDS_EMPLOYEE))
+	// 4. Return result
+	return &result, nil
 }
 
 // AddAttendance implements service.IAttendanceService.
@@ -97,7 +398,7 @@ func (a *AttendanceService) AddAttendance(ctx context.Context, req *model.AddAtt
 		_ = a.localCache.SetTTL(ctx, keyListShiftEmployee, cacheData, getTTLTimeCacheLocal(constants.TTL_CACHE_DEFAULT))
 	}
 	var shiftTimes []model.ShiftTimeEmployee
-	if err := json.Unmarshal([]byte(cacheData), &shiftTimes); err != nil  && cacheData != "" {
+	if err := json.Unmarshal([]byte(cacheData), &shiftTimes); err != nil && cacheData != "" {
 		a.logger.Warn("Failed to unmarshal shift times", "error", err, "cache_data", cacheData)
 	} else {
 		respListShiftEmployee, err := a.userRepo.GetListTimeShiftEmployee(
@@ -278,8 +579,8 @@ func NewAttendanceService() service.IAttendanceService {
 // handler ttl time cache local
 func getTTLTimeCacheLocal(ttlDistributed int64) int64 {
 	ttlLocal := ttlDistributed / 3
-	if ttlLocal <= 0 {
-		ttlLocal = 10 // default 10 seconds
+	if ttlLocal <= 0 || ttlLocal >= 60 {
+		ttlLocal = 12 // default 12 seconds
 	}
 	return ttlLocal
 }

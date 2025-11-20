@@ -76,11 +76,11 @@ type DailySummariesEmployeeInfo struct {
 type GetDailyAttendanceSummaryEmployeeModel struct {
 	Session *SessionReq `json:"session"`
 	//
-	CompanyID  uuid.UUID `json:"company_id"`
-	EmployeeID uuid.UUID `json:"employee_id"`
-	YearMonth  string    `json:"year_month" ` // Format: YYYY-MM,
-	PageSize   int       `json:"page_size"`
-	PageStage  []byte    `json:"page_stage"`
+	CompanyID    uuid.UUID `json:"company_id"`
+	EmployeeID   uuid.UUID `json:"employee_id"`
+	SummaryMonth string    `json:"summary_month" ` // Format: YYYY-MM,
+	PageSize     int       `json:"page_size"`
+	PageStage    []byte    `json:"page_stage"`
 }
 
 type GetAttendanceRecordsCompanyResultModel struct {

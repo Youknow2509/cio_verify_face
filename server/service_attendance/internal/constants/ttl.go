@@ -10,7 +10,13 @@ const (
 	TTL_CACHE_DEFAULT = 60 * 5  // 5 minutes
 	TTL_CACHE_SHORT   = 60      // 1 minute
 	TTL_CACHE_LONG    = 60 * 60 // 1 hour
+	// attendance records
+	TTL_ATTENDANCE_RECORDS_EMPLOYEE = 60 * 5 // 5 minutes
+	TTL_SHIFT_TIME_EMPLOYEE         = 60 * 10 // 30 minutes
+)
 
+// For user auth and info
+const (
 	// Save second
 	TTL_OTP_REGISTER                = 60 * 8            // 8 minutes
 	TTL_LOCAL_OTP_REGISTER          = 3                 // 3 seconds

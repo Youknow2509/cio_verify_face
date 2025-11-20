@@ -138,7 +138,7 @@ func (a *AttendanceHandler) GetDailyAttendanceSummary(c *gin.Context) {
 // @Failure      400  {object}  dto.ErrResponseData
 // @Router       /v1/attendance/records/employee/summary/daily  [post]
 func (a *AttendanceHandler) GetDailyAttendanceSummaryEmployee(c *gin.Context) {
-	var req *dto.GetAttendanceRecordsEmployeeRequest
+	var req *dto.GetDailyAttendanceSummaryEmployeeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		response.ErrorResponse(c, 400, "Invalid request body")
 		return
@@ -190,23 +190,23 @@ func (a *AttendanceHandler) GetDailyAttendanceSummaryEmployee(c *gin.Context) {
 		response.BadRequestResponse(c, response.ErrCodeParamInvalid, "Invalid employee_id")
 		return
 	}
-	yearMonth := req.YearMonth
-	if len(yearMonth) != 7 || yearMonth[4] != '-' {
-		response.BadRequestResponse(c, response.ErrCodeParamInvalid, "Invalid year_month format, expected YYYY-MM")
+	summaryMonth := req.SummaryMonth
+	if len(summaryMonth) != 7 || summaryMonth[4] != '-' {
+		response.BadRequestResponse(c, response.ErrCodeParamInvalid, "Invalid summary_month format, expected YYYY-MM")
 		return
 	}
-	pageStageByte := []byte(yearMonth)
+	pageStageByte := []byte(req.PageStage)
 	// Call application service
 	summary, errApplication := applicationService.GetAttendanceService().GetDailyAttendanceSummaryEmployeeForCompany(
 		c,
 		&applicationModel.GetDailyAttendanceSummaryEmployeeModel{
 			Session: &sessionReq,
 			//
-			CompanyID:  companyIdReq,
-			YearMonth:  yearMonth,
-			EmployeeID: employeeIdReq,
-			PageSize:   req.PageSize,
-			PageStage:  pageStageByte,
+			CompanyID:    companyIdReq,
+			SummaryMonth: summaryMonth,
+			EmployeeID:   employeeIdReq,
+			PageSize:     req.PageSize,
+			PageStage:    pageStageByte,
 		},
 	)
 	if errApplication != nil {

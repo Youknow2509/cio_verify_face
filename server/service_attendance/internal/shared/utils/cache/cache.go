@@ -8,16 +8,30 @@ import "fmt"
 //
 // =================================
 
+// Key get attendance records employee
+func GetKeyAttendanceRecordsEmployee(employeeIdHash string, yearMonth string, pageSize int, pageStage []byte) string {
+	if pageStage == nil {
+		return fmt.Sprintf("employee:attendance:records:%s:%s", employeeIdHash, yearMonth)
+	} else {
+		return fmt.Sprintf("employee:attendance:records:%s:%s:%d:%s", employeeIdHash, yearMonth, pageSize, string(pageStage))
+	}
+}
+
+// Key get attendance records company
+func GetKeyAttendanceRecordsCompany(companyIdHash string, yearMonth string, pageSize int, pageStage []byte) string {
+	if pageStage == nil {
+		return fmt.Sprintf("company:attendance:records:%s:%s", companyIdHash, yearMonth)
+	} else {
+		return fmt.Sprintf("company:attendance:records:%s:%s:%d:%s", companyIdHash, yearMonth, pageSize, string(pageStage))
+	}
+}
+
 // Key get list shift time employee
 func GetKeyListShiftTimeEmployee(employeeIdHash string) string {
 	return fmt.Sprintf("employee:shift:time:list:%s", employeeIdHash)
 }
 
-
-
-
-
-////////////////////////
+// //////////////////////
 // Key GetKeyUserIsManagerCompanyForUser
 func GetKeyUserIsManagerCompanyForUser(userIdReqHash string, userIdHash string) string {
 	return fmt.Sprintf("user:is:manager:company:%s:%s", userIdReqHash, userIdHash)
@@ -125,4 +139,22 @@ func GetKeyAttendanceUserLastCheckIn(userIdHash string, date string) string {
 // Key for device attendance records cache per company and date
 func GetKeyAttendanceDeviceRecords(companyIdHash string, deviceIdHash string, page int, size int, date string) string {
 	return fmt.Sprintf("attendance:device:records:%s:%s:%d:%d:%s", companyIdHash, deviceIdHash, page, size, date)
+}
+
+// Key get daily attendance summary employee
+func GetKeyDailyAttendanceSummaryEmployee(employeeIdHash string, summaryMonth string, pageSize int, pageStage []byte) string {
+	if pageStage == nil {
+		return fmt.Sprintf("employee:attendance:summary:%s:%s", employeeIdHash, summaryMonth)
+	} else {
+		return fmt.Sprintf("employee:attendance:summary:%s:%s:%d:%s", employeeIdHash, summaryMonth, pageSize, string(pageStage))
+	}
+}
+
+// Key get daily attendance summary for company
+func GetKeyDailyAttendanceSummary(companyIdHash string, summaryMonth string, workDate int64, pageSize int, pageStage []byte) string {
+	if pageStage == nil {
+		return fmt.Sprintf("company:attendance:summary:%s:%s:%d", companyIdHash, summaryMonth, workDate)
+	} else {
+		return fmt.Sprintf("company:attendance:summary:%s:%s:%d:%d:%s", companyIdHash, summaryMonth, workDate, pageSize, string(pageStage))
+	}
 }
