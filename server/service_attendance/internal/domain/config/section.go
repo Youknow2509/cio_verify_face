@@ -39,7 +39,6 @@ type (
 type WorkerAttendanceSetting struct {
 	NumWorkers           int `mapstructure:"num_workers"`
 	SizeBufferChan       int `mapstructure:"size_buffer_chan"`
-	DailySummaryJobLimit int `mapstructure:"daily_summary_job_limit"`
 }
 
 // ServiceAuthSetting

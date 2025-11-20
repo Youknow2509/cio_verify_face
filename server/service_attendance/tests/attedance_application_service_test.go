@@ -287,7 +287,6 @@ func initAttendanceApplicationServiceTest() error {
 	configWorker := domainConfig.WorkerAttendanceSetting{
 		NumWorkers:           2,
 		SizeBufferChan:       100,
-		DailySummaryJobLimit: 1,
 	}
 	worker := domainWorkerAttendance.NewAttendanceServiceWorker(
 		configWorker,

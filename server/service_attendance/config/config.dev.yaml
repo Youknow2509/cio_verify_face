@@ -8,9 +8,13 @@ server:
     degraded_threshold: 85.0
     out_of_service_threshold: 95.0
 
+worker_attendance:
+    num_workers: 5
+    size_buffer_chan: 1000
+
 service_auth:
     enabled: true
-    grpc_addr: 'localhost:50051'  # service_auth gRPC address
+    grpc_addr: 'localhost:50051' # service_auth gRPC address
     tls:
         enabled: false
         cert_file: ''
@@ -33,8 +37,8 @@ policy_rate_limit:
 
 scylladb:
     authentication:
-        username: scylla
-        password: scylla
+        username: cassandra
+        password: root1234
     address:
         - 127.0.1:9042
         # - v.v
@@ -101,14 +105,6 @@ redis:
     pool_size: 10 # maximum number of connections in the pool
     min_idle_conns: 2 # minimum number of idle connections
     max_retries: 3 # maximum number of retries for a command
-
-jwt:
-    secret: 'your_jwt_secret_key'
-    issuer: 'cio_verify_face'
-    subject: 'cio_verify_face'
-    audience:
-        - vinh
-        - hihihi
 
 logger:
     folder_store: './logs'
