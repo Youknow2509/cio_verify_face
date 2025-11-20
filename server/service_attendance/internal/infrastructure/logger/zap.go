@@ -57,6 +57,7 @@ func NewZapLogger(initializer *ZapLoggerInitializer) (domainLogger.ILogger, erro
 	// create logger with core
 	logger := zap.New(core).WithOptions(
 		zap.AddCaller(),
+		zap.AddCallerSkip(1),
 		zap.AddStacktrace(zap.ErrorLevel),
 	)
 	return &ZapLogger{

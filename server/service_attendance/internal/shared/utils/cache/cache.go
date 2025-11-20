@@ -8,6 +8,16 @@ import "fmt"
 //
 // =================================
 
+// Key get list shift time employee
+func GetKeyListShiftTimeEmployee(employeeIdHash string) string {
+	return fmt.Sprintf("employee:shift:time:list:%s", employeeIdHash)
+}
+
+
+
+
+
+////////////////////////
 // Key GetKeyUserIsManagerCompanyForUser
 func GetKeyUserIsManagerCompanyForUser(userIdReqHash string, userIdHash string) string {
 	return fmt.Sprintf("user:is:manager:company:%s:%s", userIdReqHash, userIdHash)

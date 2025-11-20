@@ -9,6 +9,21 @@ import (
 // ============================================
 // Attendance Record Model
 // ============================================
+type ShiftTimeEmployee struct {
+	StartTime             time.Time  `json:"start_time"`
+	EndTime               time.Time  `json:"end_time"`
+	GracePeriodMinutes    int        `json:"grace_period_minutes"`
+	EarlyDepartureMinutes int        `json:"early_departure_minutes"`
+	WorkDays              []int32    `json:"work_days"`
+	EffectiveFrom         time.Time  `json:"effective_from"`
+	EffectiveTo           *time.Time `json:"effective_to"`
+}
+
+type GetListTimeShiftEmployeeInput struct {
+	EmployeeID uuid.UUID `json:"employee_id"`
+	CompanyID  uuid.UUID `json:"company_id"`
+}
+
 type DailySummariesEmployeeOutput struct {
 	Records       []DailySummariesEmployeeInfo `json:"records"`
 	PageStageNext []byte                       `json:"page_stage_next" omitempty`

@@ -6,6 +6,17 @@ import (
 	"github.com/google/uuid"
 )
 
+// ShiftTimeEmployee
+type ShiftTimeEmployee struct {
+	StartTime             time.Time  `json:"start_time"`
+	EndTime               time.Time  `json:"end_time"`
+	GracePeriodMinutes    int        `json:"grace_period_minutes"`
+	EarlyDepartureMinutes int        `json:"early_departure_minutes"`
+	WorkDays              []int32    `json:"work_days"`
+	EffectiveFrom         time.Time  `json:"effective_from"`
+	EffectiveTo           *time.Time `json:"effective_to"`
+}
+
 // For GetDailyAttendanceSummary
 type GetDailyAttendanceSummaryModel struct {
 	Session *SessionReq `json:"session"`

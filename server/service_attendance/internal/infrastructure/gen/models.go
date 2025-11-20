@@ -8,6 +8,7 @@ import (
 	"net/netip"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/pgvector/pgvector-go"
 )
 
 type AttendanceException struct {
@@ -135,13 +136,45 @@ type Employee struct {
 }
 
 type EmployeeShift struct {
-	EmployeeShiftID pgtype.UUID
-	EmployeeID      pgtype.UUID
-	ShiftID         pgtype.UUID
-	EffectiveFrom   pgtype.Date
-	EffectiveTo     pgtype.Date
-	IsActive        pgtype.Bool
+	EmployeeID    pgtype.UUID
+	ShiftID       pgtype.UUID
+	EffectiveFrom pgtype.Date
+	EffectiveTo   pgtype.Date
+	IsActive      pgtype.Bool
+	CreatedAt     pgtype.Timestamptz
+}
+
+type FaceAuditLog struct {
+	LogID           pgtype.UUID
+	ProfileID       pgtype.UUID
+	UserID          pgtype.UUID
+	Operation       string
+	Status          string
+	DeviceID        pgtype.Text
+	IpAddress       pgtype.Text
+	SimilarityScore pgtype.Float8
+	LivenessScore   pgtype.Float8
+	QualityScore    pgtype.Float8
+	Metadata        []byte
+	ErrorMessage    pgtype.Text
 	CreatedAt       pgtype.Timestamptz
+}
+
+type FaceProfile struct {
+	ProfileID        pgtype.UUID
+	UserID           pgtype.UUID
+	CompanyID        pgtype.UUID
+	Embedding        pgvector.Vector
+	EmbeddingVersion string
+	EnrollImagePath  pgtype.Text
+	IsPrimary        bool
+	QualityScore     pgtype.Float8
+	MetaData         []byte
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	DeletedAt        pgtype.Timestamptz
+	Indexed          bool
+	IndexVersion     int32
 }
 
 type SystemSetting struct {

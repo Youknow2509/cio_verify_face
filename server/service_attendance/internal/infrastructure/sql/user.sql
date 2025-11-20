@@ -1,3 +1,21 @@
+-- name: GetListTimeShiftEmployee :many
+SELECT 
+    ws.start_time,
+    ws.end_time,
+    ws.grace_period_minutes,
+    ws.early_departure_minutes,
+    ws.work_days,
+    es.effective_from,
+    es.effective_to
+FROM 
+    employee_shifts es
+JOIN 
+    work_shifts ws ON es.shift_id = ws.shift_id
+WHERE 
+    ws.company_id = $1
+    AND es.employee_id = $2
+    AND es.is_active = TRUE
+    AND ws.is_active = TRUE;
 
 -- name: GetCompanyIdUser :one
 SELECT company_id

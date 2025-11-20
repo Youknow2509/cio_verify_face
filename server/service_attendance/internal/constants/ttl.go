@@ -6,6 +6,11 @@ package constants
 //
 // ========================
 const (
+	//
+	TTL_CACHE_DEFAULT = 60 * 5  // 5 minutes
+	TTL_CACHE_SHORT   = 60      // 1 minute
+	TTL_CACHE_LONG    = 60 * 60 // 1 hour
+
 	// Save second
 	TTL_OTP_REGISTER                = 60 * 8            // 8 minutes
 	TTL_LOCAL_OTP_REGISTER          = 3                 // 3 seconds

@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
@@ -17,6 +18,47 @@ import (
 // ============================================
 type UserRepository struct {
 	q db.Queries
+}
+
+// GetListTimeShiftEmployee implements repository.IUserRepository.
+func (u *UserRepository) GetListTimeShiftEmployee(ctx context.Context, input *domainModel.GetListTimeShiftEmployeeInput) ([]domainModel.ShiftTimeEmployee, error) {
+	reps, err := u.q.GetListTimeShiftEmployee(
+		ctx,
+		db.GetListTimeShiftEmployeeParams{
+			CompanyID:  pgtype.UUID{Valid: true, Bytes: input.CompanyID},
+			EmployeeID: pgtype.UUID{Valid: true, Bytes: input.EmployeeID},
+		},
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return []domainModel.ShiftTimeEmployee{}, nil
+		}
+		return nil, err
+	}
+
+	result := make([]domainModel.ShiftTimeEmployee, len(reps))
+	for i, r := range reps {
+		var effectiveTo *time.Time
+		if r.EffectiveTo.Valid {
+			t := r.EffectiveTo.Time
+			effectiveTo = &t
+		}
+
+		// Convert pgtype.Time to time.Time (using date 0000-01-01 as base)
+		startTime := time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC).Add(time.Duration(r.StartTime.Microseconds) * time.Microsecond)
+		endTime := time.Date(0, 1, 1, 0, 0, 0, 0, time.UTC).Add(time.Duration(r.EndTime.Microseconds) * time.Microsecond)
+
+		result[i] = domainModel.ShiftTimeEmployee{
+			StartTime:             startTime,
+			EndTime:               endTime,
+			GracePeriodMinutes:    int(r.GracePeriodMinutes.Int32),
+			EarlyDepartureMinutes: int(r.EarlyDepartureMinutes.Int32),
+			WorkDays:              r.WorkDays,
+			EffectiveFrom:         r.EffectiveFrom.Time,
+			EffectiveTo:           effectiveTo,
+		}
+	}
+	return result, nil
 }
 
 // UserIsManagerCompany implements repository.IUserRepository.
