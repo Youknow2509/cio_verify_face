@@ -30,7 +30,7 @@ func initDomain() error {
 	}
 	// init IAuditLogRepository
 	if err := domainRepository.SetAuditRepository(
-		infraRepository.NewAuditRepository(postgres),
+		infraRepository.NewAuditRepository(cql),
 	); err != nil {
 		return err
 	}

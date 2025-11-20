@@ -1,33 +1,30 @@
 package handler
 
 import (
+	"strings"
 	"time"
 
 	gin "github.com/gin-gonic/gin"
 	validator "github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
-	appModel "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/application/model"
-	appService "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/application/service"
+	applicationModel "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/application/model"
+	applicationService "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/application/service"
 	constants "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/constants"
-	domainModel "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/domain/model"
 	dto "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/interfaces/dto"
 	response "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/interfaces/response"
 	contextShared "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/shared/utils/context"
-	sharedUuid "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/shared/utils/uuid"
+	uuidShared "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/shared/utils/uuid"
 )
 
 // ============================================
 // Attendance handler
 // ============================================
 type iAttendanceHandler interface {
-	// CheckIn handles check-in requests
-	CheckIn(c *gin.Context)
-	// CheckOut handles check-out requests
-	CheckOut(c *gin.Context)
-	// GetRecords retrieves attendance records
-	GetRecords(c *gin.Context)
-	// GetMyHistory retrieves the attendance history for the current user
-	GetMyHistory(c *gin.Context)
+	AddAttendance(c *gin.Context)
+	GetAttendanceRecords(c *gin.Context)
+	GetAttendanceRecordsEmployee(c *gin.Context)
+	GetDailyAttendanceSummary(c *gin.Context)
+	GetDailyAttendanceSummaryEmployee(c *gin.Context)
 }
 
 // ============================================================
@@ -35,43 +32,35 @@ type iAttendanceHandler interface {
 // ============================================================
 type AttendanceHandler struct{}
 
-// CheckIn implements iAttendanceHandler.
-// @Summary      Check In attendance
-// @Description  User check-in for attendance
+// GetDailyAttendanceSummary implements iAttendanceHandler.
+// @Summary      Get daily attendance summary
+// @Description  Get daily attendance summary
 // @Tags         Attendance
 // @Accept       json
 // @Produce      json
-// @Param        authorization header string true "Bearer token"
-// @Param        request   body dto.CheckInRequest  true  "Request body check-in"
+// @Param 	  	 Authorization header string true "With the bearer started"
+// @Param        request   body dto.GetDailyAttendanceSummaryRequest  true  "Request body get daily attendance summary"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /v1/attendance/check_in [post]
-func (a *AttendanceHandler) CheckIn(c *gin.Context) {
-	// Get req
-	var req dto.CheckInRequest
+// @Router       /v1/attendance/records/summary/daily [post]
+func (a *AttendanceHandler) GetDailyAttendanceSummary(c *gin.Context) {
+	var req *dto.GetDailyAttendanceSummaryRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ErrorResponse(c, 400, "Invalid request body")
+		return
+	}
+	// Validate the request
+	validate := c.MustGet(constants.MIDDLEWARE_VALIDATE_SERVICE_NAME).(*validator.Validate)
+	if err := validate.Struct(req); err != nil {
+		var fieldErrors []string
+		for _, fieldError := range err.(validator.ValidationErrors) {
+			fieldErrors = append(fieldErrors, fieldError.Field())
+		}
 		response.BadRequestResponse(
 			c,
-			400,
-			"Data request error",
+			response.ErrCodeParamInvalid,
+			"Invalid request parameters: "+strings.Join(fieldErrors, ", "),
 		)
-		return
-	}
-	// Validate req
-	validateMiddleware, ok := c.Get(constants.MIDDLEWARE_VALIDATE_SERVICE_NAME)
-	if !ok {
-		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
-		return
-	}
-	validate, ok := validateMiddleware.(*validator.Validate)
-	if !ok {
-		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
-		return
-	}
-	err := validate.Struct(req)
-	if err != nil {
-		validationErrors := err.(validator.ValidationErrors)
-		response.ErrorResponse(c, response.ErrorCodeValidateRequest, validationErrors.Error())
 		return
 	}
 	// Get session
@@ -80,98 +69,92 @@ func (a *AttendanceHandler) CheckIn(c *gin.Context) {
 		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 		return
 	}
-	// Validate uuid
-	userUuid, _ := sharedUuid.ParseUUID(userId)
-	sessionUuid, _ := sharedUuid.ParseUUID(sessionId)
+	// Parse uuid
+	userUuid, _ := uuidShared.ParseUUID(userId)
+	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
 	var companyUuid uuid.UUID
-	if userRole == domainModel.RoleAdmin {
-		companyUuid = uuid.Nil
-	} else {
-		companyUuid, _ = sharedUuid.ParseUUID(companyId)
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
 	}
-	deviceUuid, err := sharedUuid.ParseUUID(req.DeviceId)
+	// Create session req
+	sessionReq := applicationModel.SessionReq{
+		UserId:      userUuid,
+		SessionId:   sessionUuid,
+		Role:        userRole,
+		CompanyId:   companyUuid,
+		ClientIp:    c.ClientIP(),
+		ClientAgent: c.Request.UserAgent(),
+	}
+	// Parse data request
+	companyIdReq, err := uuidShared.ParseUUID(req.CompanyID)
 	if err != nil {
-		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Device ID is not valid UUID")
+		response.BadRequestResponse(c, response.ErrCodeParamInvalid, "Invalid company_id")
 		return
 	}
-	userCheckInId, err := sharedUuid.ParseUUID(req.UserID)
-	if err != nil {
-		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "User Check-In ID is not valid UUID")
+	summaryMonth := req.SummaryMonth
+	if len(summaryMonth) != 7 || summaryMonth[4] != '-' {
+		response.BadRequestResponse(c, response.ErrCodeParamInvalid, "Invalid summary_month format, expected YYYY-MM")
 		return
 	}
-	// Call service to process check-in
-	errReps := appService.GetAttendanceService().CheckInUser(
+	var workDate time.Time
+	if req.WorkDate != 0 {
+		workDate = time.Unix(req.WorkDate, 0)
+	}
+	pageStageByte := []byte(summaryMonth)
+	// Call application service
+	summary, errApplication := applicationService.GetAttendanceService().GetDailyAttendanceSummaryForCompany(
 		c,
-		&appModel.CheckInInput{
-			UserCheckInId:      userCheckInId,
-			Timestamp:          req.Timestamp,
-			DeviceId:           deviceUuid,
-			Location:           req.Location,
-			VerificationMethod: req.VerificationMethod,
-			VerificationScore:  req.VerificationScore,
-			FaceImageURL:       req.FaceImageURL,
-			// Session info
-			UserID:      userUuid,
-			SessionID:   sessionUuid,
-			Role:        userRole,
-			ClientIp:    c.ClientIP(),
-			ClientAgent: c.Request.UserAgent(),
-			CompanyId:   companyUuid,
+		&applicationModel.GetDailyAttendanceSummaryModel{
+			Session: &sessionReq,
+			//
+			CompanyID:    companyIdReq,
+			SummaryMonth: summaryMonth,
+			WorkDate:     workDate,
+			PageSize:     req.PageSize,
+			PageStage:    pageStageByte,
 		},
 	)
-	if errReps != nil {
-		if errReps.ErrorSystem != nil {
-			response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
+	if errApplication != nil {
+		if errApplication.ErrorSystem != nil {
+			response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Server temporary busy, please try again later")
 			return
 		}
-		response.ErrorResponse(c, 400, errReps.ErrorClient)
+		response.BadRequestResponse(c, 400, errApplication.ErrorClient)
 		return
 	}
-	// Respond success
-	response.SuccessResponse(
-		c,
-		200,
-		"Check-in successful",
-	)
+	// Return response
+	response.SuccessResponse(c, 200, summary)
 }
 
-// CheckOut implements iAttendanceHandler.
-// @Summary      Check Out attendance
-// @Description  User check-out for attendance
+// GetDailyAttendanceSummaryEmployee implements iAttendanceHandler.
+// @Summary      Get daily attendance summary for employee
+// @Description  Get daily attendance summary for employee
 // @Tags         Attendance
 // @Accept       json
 // @Produce      json
-// @Param        authorization header string true "Bearer token"
-// @Param        request   body dto.CheckOutRequest  true  "Request body check-out"
+// @Param 	  	 Authorization header string true "With the bearer started"
+// @Param        request   body dto.GetDailyAttendanceSummaryEmployeeRequest  true  "Request body get daily attendance summary for employee"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /v1/attendance/check_out [post]
-func (a *AttendanceHandler) CheckOut(c *gin.Context) {
-	// Get req
-	var req dto.CheckOutRequest
+// @Router       /v1/attendance/records/employee/summary/daily  [post]
+func (a *AttendanceHandler) GetDailyAttendanceSummaryEmployee(c *gin.Context) {
+	var req *dto.GetAttendanceRecordsEmployeeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ErrorResponse(c, 400, "Invalid request body")
+		return
+	}
+	// Validate the request
+	validate := c.MustGet(constants.MIDDLEWARE_VALIDATE_SERVICE_NAME).(*validator.Validate)
+	if err := validate.Struct(req); err != nil {
+		var fieldErrors []string
+		for _, fieldError := range err.(validator.ValidationErrors) {
+			fieldErrors = append(fieldErrors, fieldError.Field())
+		}
 		response.BadRequestResponse(
 			c,
-			400,
-			"Data request error",
+			response.ErrCodeParamInvalid,
+			"Invalid request parameters: "+strings.Join(fieldErrors, ", "),
 		)
-		return
-	}
-	// Validate req
-	validateMiddleware, ok := c.Get(constants.MIDDLEWARE_VALIDATE_SERVICE_NAME)
-	if !ok {
-		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
-		return
-	}
-	validate, ok := validateMiddleware.(*validator.Validate)
-	if !ok {
-		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
-		return
-	}
-	err := validate.Struct(req)
-	if err != nil {
-		validationErrors := err.(validator.ValidationErrors)
-		response.ErrorResponse(c, response.ErrorCodeValidateRequest, validationErrors.Error())
 		return
 	}
 	// Get session
@@ -180,98 +163,93 @@ func (a *AttendanceHandler) CheckOut(c *gin.Context) {
 		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 		return
 	}
-	// Validate uuid
-	userUuid, _ := sharedUuid.ParseUUID(userId)
-	sessionUuid, _ := sharedUuid.ParseUUID(sessionId)
+	// Parse uuid
+	userUuid, _ := uuidShared.ParseUUID(userId)
+	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
 	var companyUuid uuid.UUID
-	if userRole == domainModel.RoleAdmin {
-		companyUuid = uuid.Nil
-	} else {
-		companyUuid, _ = sharedUuid.ParseUUID(companyId)
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
 	}
-	deviceUuid, err := sharedUuid.ParseUUID(req.DeviceId)
+	// Create session req
+	sessionReq := applicationModel.SessionReq{
+		UserId:      userUuid,
+		SessionId:   sessionUuid,
+		Role:        userRole,
+		CompanyId:   companyUuid,
+		ClientIp:    c.ClientIP(),
+		ClientAgent: c.Request.UserAgent(),
+	}
+	// Parse data request
+	companyIdReq, err := uuidShared.ParseUUID(req.CompanyID)
 	if err != nil {
-		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Device ID is not valid UUID")
+		response.BadRequestResponse(c, response.ErrCodeParamInvalid, "Invalid company_id")
 		return
 	}
-	userCheckOutId, err := sharedUuid.ParseUUID(req.UserID)
+	employeeIdReq, err := uuidShared.ParseUUID(req.EmployeeID)
 	if err != nil {
-		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "User Check-Out ID is not valid UUID")
+		response.BadRequestResponse(c, response.ErrCodeParamInvalid, "Invalid employee_id")
 		return
 	}
-	// Call service to process check-out
-	errReps := appService.GetAttendanceService().CheckOutUser(
+	yearMonth := req.YearMonth
+	if len(yearMonth) != 7 || yearMonth[4] != '-' {
+		response.BadRequestResponse(c, response.ErrCodeParamInvalid, "Invalid year_month format, expected YYYY-MM")
+		return
+	}
+	pageStageByte := []byte(yearMonth)
+	// Call application service
+	summary, errApplication := applicationService.GetAttendanceService().GetDailyAttendanceSummaryEmployeeForCompany(
 		c,
-		&appModel.CheckOutInput{
-			UserCheckOutId:     userCheckOutId,
-			Timestamp:          req.Timestamp,
-			DeviceId:           deviceUuid,
-			Location:           req.Location,
-			VerificationMethod: req.VerificationMethod,
-			VerificationScore:  req.VerificationScore,
-			FaceImageURL:       req.FaceImageURL,
-			// Session info
-			UserID:      userUuid,
-			SessionID:   sessionUuid,
-			Role:        userRole,
-			ClientIp:    c.ClientIP(),
-			ClientAgent: c.Request.UserAgent(),
-			CompanyId:   companyUuid,
+		&applicationModel.GetDailyAttendanceSummaryEmployeeModel{
+			Session: &sessionReq,
+			//
+			CompanyID:  companyIdReq,
+			YearMonth:  yearMonth,
+			EmployeeID: employeeIdReq,
+			PageSize:   req.PageSize,
+			PageStage:  pageStageByte,
 		},
 	)
-	if errReps != nil {
-		if errReps.ErrorSystem != nil {
-			response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
+	if errApplication != nil {
+		if errApplication.ErrorSystem != nil {
+			response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Server temporary busy, please try again later")
 			return
 		}
-		response.ErrorResponse(c, 400, errReps.ErrorClient)
+		response.BadRequestResponse(c, 400, errApplication.ErrorClient)
 		return
 	}
-	// Respond success
-	response.SuccessResponse(
-		c,
-		200,
-		"Check-out successful",
-	)
+	// Return response
+	response.SuccessResponse(c, 200, summary)
 }
 
-// GetMyHistory implements iAttendanceHandler.
-// @Summary      Get My Attendance History
-// @Description  Retrieve the attendance history for the current user
+// GetAttendanceRecordsEmployee implements iAttendanceHandler.
+// @Summary      Get attendance records for employee
+// @Description  Get attendance records for employee
 // @Tags         Attendance
 // @Accept       json
 // @Produce      json
-// @Param        authorization header string true "Bearer token"
-// @Param        req  body dto.GetMyAttendanceRecordsRequest  true  "Request body to get my attendance records"
+// @Param 	  	 Authorization header string true "With the bearer started"
+// @Param        request   body dto.GetAttendanceRecordsEmployeeRequest  true  "Request body get attendance records for employee"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /v1/attendance/history/my [post]
-func (a *AttendanceHandler) GetMyHistory(c *gin.Context) {
-	// Get req
-	var req dto.GetMyAttendanceRecordsRequest
+// @Router       /v1/attendance/records/employee [post]
+func (a *AttendanceHandler) GetAttendanceRecordsEmployee(c *gin.Context) {
+	var req *dto.GetAttendanceRecordsEmployeeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ErrorResponse(c, 400, "Invalid request body")
+		return
+	}
+	// Validate the request
+	validate := c.MustGet(constants.MIDDLEWARE_VALIDATE_SERVICE_NAME).(*validator.Validate)
+	if err := validate.Struct(req); err != nil {
+		var fieldErrors []string
+		for _, fieldError := range err.(validator.ValidationErrors) {
+			fieldErrors = append(fieldErrors, fieldError.Field())
+		}
 		response.BadRequestResponse(
 			c,
-			400,
-			"Data request error",
+			response.ErrCodeParamInvalid,
+			"Invalid request parameters: "+strings.Join(fieldErrors, ", "),
 		)
-		return
-	}
-	// Validate req
-	validateMiddleware, ok := c.Get(constants.MIDDLEWARE_VALIDATE_SERVICE_NAME)
-	if !ok {
-		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
-		return
-	}
-	validate, ok := validateMiddleware.(*validator.Validate)
-	if !ok {
-		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
-		return
-	}
-	err := validate.Struct(req)
-	if err != nil {
-		validationErrors := err.(validator.ValidationErrors)
-		response.ErrorResponse(c, response.ErrorCodeValidateRequest, validationErrors.Error())
 		return
 	}
 	// Get session
@@ -280,117 +258,96 @@ func (a *AttendanceHandler) GetMyHistory(c *gin.Context) {
 		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 		return
 	}
-	// Validate uuid
-	userUuid, _ := sharedUuid.ParseUUID(userId)
-	sessionUuid, _ := sharedUuid.ParseUUID(sessionId)
+	// Parse uuid
+	userUuid, _ := uuidShared.ParseUUID(userId)
+	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
 	var companyUuid uuid.UUID
-	if userRole == domainModel.RoleAdmin {
-		companyUuid = uuid.Nil
-	} else {
-		companyUuid, _ = sharedUuid.ParseUUID(companyId)
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
 	}
-	// Validate date format
-	var (
-		startDate time.Time
-		endDate   time.Time
-	)
-	if req.StartDate != "" {
-		var err error
-		startDate, err = time.Parse("2006-01-02", req.StartDate)
+	// Create session req
+	sessionReq := applicationModel.SessionReq{
+		UserId:      userUuid,
+		SessionId:   sessionUuid,
+		Role:        userRole,
+		CompanyId:   companyUuid,
+		ClientIp:    c.ClientIP(),
+		ClientAgent: c.Request.UserAgent(),
+	}
+	// Parse date request
+	companyIdReq, err := uuidShared.ParseUUID(req.CompanyID)
+	if err != nil {
+		response.BadRequestResponse(c, response.ErrCodeParamInvalid, "Invalid company_id")
+		return
+	}
+	var employeeIdReq uuid.UUID
+	if req.EmployeeID != "" {
+		employeeIdReq, err = uuidShared.ParseUUID(req.EmployeeID)
 		if err != nil {
-			response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Start date is not valid format YYYY-MM-DD")
+			response.BadRequestResponse(c, response.ErrCodeParamInvalid, "Invalid employee_id")
 			return
 		}
 	}
-	if req.EndDate != "" {
-		var err error
-		endDate, err = time.Parse("2006-01-02", req.EndDate)
-		if err != nil {
-			response.ErrorResponse(c, response.ErrorCodeValidateRequest, "End date is not valid format YYYY-MM-DD")
-			return
-		}
-	}
-	if !startDate.IsZero() && !endDate.IsZero() && endDate.Before(startDate) {
-		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "End date must be after start date")
+	yearMonth := req.YearMonth
+	if len(yearMonth) != 7 || yearMonth[4] != '-' {
+		response.BadRequestResponse(c, response.ErrCodeParamInvalid, "Invalid year_month format, expected YYYY-MM")
 		return
 	}
-	// Set default pagination if not provided
-	if req.Page == 0 {
-		req.Page = 1
-	}
-	if req.PageSize == 0 {
-		req.PageSize = 20
-	}
-	// Call service to get my records
-	records, errReps := appService.GetAttendanceService().GetMyRecords(
+	pageStageByte := []byte(yearMonth)
+	// Call application service
+	records, errApplication := applicationService.GetAttendanceService().GetAttendanceRecordsEmployeeForConpany(
 		c,
-		&appModel.GetMyRecordsInput{
-			Page:      req.Page,
-			Size:      req.PageSize,
-			StartDate: startDate,
-			EndDate:   endDate,
-			// Session info
-			UserID:      userUuid,
-			SessionID:   sessionUuid,
-			Role:        userRole,
-			ClientIp:    c.ClientIP(),
-			ClientAgent: c.Request.UserAgent(),
-			CompanyId:   companyUuid,
+		&applicationModel.GetAttendanceRecordsEmployeeModel{
+			Session: &sessionReq,
+			//
+			CompanyID:  companyIdReq,
+			YearMonth:  yearMonth,
+			EmployeeID: employeeIdReq,
+			PageSize:   req.PageSize,
+			PageStage:  pageStageByte,
 		},
 	)
-	if errReps != nil {
-		if errReps.ErrorSystem != nil {
-			response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
+	if errApplication != nil {
+		if errApplication.ErrorSystem != nil {
+			response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Server temporary busy, please try again later")
 			return
 		}
-		response.ErrorResponse(c, 400, errReps.ErrorClient)
+		response.BadRequestResponse(c, 400, errApplication.ErrorClient)
 		return
 	}
-	// Respond success
-	response.SuccessResponse(
-		c,
-		200,
-		records,
-	)
+	// Return response
+	response.SuccessResponse(c, 200, records)
 }
 
-// GetRecords implements iAttendanceHandler.
-// @Summary      Get Attendance Records
-// @Description  Retrieve attendance records for device, day, user, ...
+// GetAttendanceRecords implements iAttendanceHandler.
+// @Summary      Get attendance records
+// @Description  Get attendance records
 // @Tags         Attendance
 // @Accept       json
 // @Produce      json
-// @Param        authorization header string true "Bearer token"
-// @Param        req  body dto.GetAttendanceRecordsRequest  true  "Request body to get attendance records"
+// @Param 	  	 Authorization header string true "With the bearer started"
+// @Param        request   body dto.GetAttendanceRecordsRequest  true  "Request body get attendance records"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
 // @Router       /v1/attendance/records [post]
-func (a *AttendanceHandler) GetRecords(c *gin.Context) {
-	// Get req
-	var req dto.GetAttendanceRecordsRequest
+func (a *AttendanceHandler) GetAttendanceRecords(c *gin.Context) {
+	var req *dto.GetAttendanceRecordsRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ErrorResponse(c, 400, "Invalid request body")
+		return
+	}
+	// Validate the request
+	validate := c.MustGet(constants.MIDDLEWARE_VALIDATE_SERVICE_NAME).(*validator.Validate)
+	if err := validate.Struct(req); err != nil {
+		var fieldErrors []string
+		for _, fieldError := range err.(validator.ValidationErrors) {
+			fieldErrors = append(fieldErrors, fieldError.Field())
+		}
 		response.BadRequestResponse(
 			c,
-			400,
-			"Data request error",
+			response.ErrCodeParamInvalid,
+			"Invalid request parameters: "+strings.Join(fieldErrors, ", "),
 		)
-		return
-	}
-	// Validate req
-	validateMiddleware, ok := c.Get(constants.MIDDLEWARE_VALIDATE_SERVICE_NAME)
-	if !ok {
-		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
-		return
-	}
-	validate, ok := validateMiddleware.(*validator.Validate)
-	if !ok {
-		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
-		return
-	}
-	err := validate.Struct(req)
-	if err != nil {
-		validationErrors := err.(validator.ValidationErrors)
-		response.ErrorResponse(c, response.ErrorCodeValidateRequest, validationErrors.Error())
 		return
 	}
 	// Get session
@@ -399,90 +356,154 @@ func (a *AttendanceHandler) GetRecords(c *gin.Context) {
 		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 		return
 	}
-	// Validate uuid
-	userUuid, _ := sharedUuid.ParseUUID(userId)
-	sessionUuid, _ := sharedUuid.ParseUUID(sessionId)
-	var companyUuidUser uuid.UUID
-	if userRole == domainModel.RoleAdmin {
-		companyUuidUser = uuid.Nil
-	} else {
-		companyUuidUser, _ = sharedUuid.ParseUUID(companyId)
+	// Parse uuid
+	userUuid, _ := uuidShared.ParseUUID(userId)
+	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
 	}
-	deviceUuid, err := sharedUuid.ParseUUID(req.DeviceId)
+	// Create session req
+	sessionReq := applicationModel.SessionReq{
+		UserId:      userUuid,
+		SessionId:   sessionUuid,
+		Role:        userRole,
+		CompanyId:   companyUuid,
+		ClientIp:    c.ClientIP(),
+		ClientAgent: c.Request.UserAgent(),
+	}
+	// Parse date request
+	companyIdReq, err := uuidShared.ParseUUID(req.CompanyID)
 	if err != nil {
-		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Device ID is not valid UUID")
+		response.BadRequestResponse(c, response.ErrCodeParamInvalid, "Invalid company_id")
 		return
 	}
-	companyUuid, err := sharedUuid.ParseUUID(req.CompanyID)
-	if err != nil {
-		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Company ID is not valid UUID")
+	yearMonth := req.YearMonth
+	if len(yearMonth) != 7 || yearMonth[4] != '-' {
+		response.BadRequestResponse(c, response.ErrCodeParamInvalid, "Invalid year_month format, expected YYYY-MM")
 		return
 	}
-	// Validate date format
-	var (
-		startDate time.Time
-		endDate   time.Time
-	)
-	if req.StartDate != "" {
-		var err error
-		startDate, err = time.Parse("2006-01-02", req.StartDate)
-		if err != nil {
-			response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Start date is not valid format YYYY-MM-DD")
-			return
-		}
-	}
-	if req.EndDate != "" {
-		var err error
-		endDate, err = time.Parse("2006-01-02", req.EndDate)
-		if err != nil {
-			response.ErrorResponse(c, response.ErrorCodeValidateRequest, "End date is not valid format YYYY-MM-DD")
-			return
-		}
-	}
-	if !startDate.IsZero() && !endDate.IsZero() && endDate.Before(startDate) {
-		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "End date must be after start date")
-		return
-	}
-	// Set default pagination if not provided
-	if req.Page == 0 {
-		req.Page = 1
-	}
-	if req.PageSize == 0 {
-		req.PageSize = 20
-	}
-	// Call service to get records
-	records, errReps := appService.GetAttendanceService().GetRecords(
+	pageStageByte := []byte(yearMonth)
+	// Call application service
+	records, errApplication := applicationService.GetAttendanceService().GetAttendanceRecordsCompany(
 		c,
-		&appModel.GetAttendanceRecordsInput{
-			Page:      req.Page,
-			Size:      req.PageSize,
-			StartDate: startDate,
-			EndDate:   endDate,
-			DeviceID:  deviceUuid,
-			CompanyId: companyUuid,
-			// Session info
-			UserID:        userUuid,
-			SessionID:     sessionUuid,
-			Role:          userRole,
-			ClientIp:      c.ClientIP(),
-			ClientAgent:   c.Request.UserAgent(),
-			CompanyIdUser: companyUuidUser,
+		&applicationModel.GetAttendanceRecordsCompanyModel{
+			Session: &sessionReq,
+			//
+			CompanyID: companyIdReq,
+			YearMonth: yearMonth,
+			PageSize:  req.PageSize,
+			PageStage: pageStageByte,
 		},
 	)
-	if errReps != nil {
-		if errReps.ErrorSystem != nil {
-			response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
+	if errApplication != nil {
+		if errApplication.ErrorSystem != nil {
+			response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Server temporary busy, please try again later")
 			return
 		}
-		response.ErrorResponse(c, 400, errReps.ErrorClient)
+		response.BadRequestResponse(c, 400, errApplication.ErrorClient)
 		return
 	}
-	// Respond success
-	response.SuccessResponse(
+	// Return response
+	response.SuccessResponse(c, 200, records)
+}
+
+// AddAttendance implements iAttendanceHandler.
+// @Summary      Add attendance record
+// @Description  Add attendance record
+// @Tags         Attendance
+// @Accept       json
+// @Produce      json
+// @Param 	  	 Authorization header string true "With the bearer started"
+// @Param        request   body dto.AddAttendanceRequest  true  "Request body add attendance record"
+// @Success      200  {object}  dto.ResponseData
+// @Failure      400  {object}  dto.ErrResponseData
+// @Router       /v1/attendance [post]
+func (a *AttendanceHandler) AddAttendance(c *gin.Context) {
+	var req *dto.AddAttendanceRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.ErrorResponse(c, 400, "Invalid request body")
+		return
+	}
+	// Validate the request
+	validate := c.MustGet(constants.MIDDLEWARE_VALIDATE_SERVICE_NAME).(*validator.Validate)
+	if err := validate.Struct(req); err != nil {
+		var fieldErrors []string
+		for _, fieldError := range err.(validator.ValidationErrors) {
+			fieldErrors = append(fieldErrors, fieldError.Field())
+		}
+		response.BadRequestResponse(
+			c,
+			response.ErrCodeParamInvalid,
+			"Invalid request parameters: "+strings.Join(fieldErrors, ", "),
+		)
+		return
+	}
+	// Get ession
+	userId, sessionId, userRole, companyId, ok := contextShared.GetSessionFromContext(c)
+	if !ok {
+		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+	// Parse uuid
+	userUuid, _ := uuidShared.ParseUUID(userId)
+	sessionUuid, _ := uuidShared.ParseUUID(sessionId)
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
+	}
+	// Create session req
+	sessionReq := applicationModel.SessionReq{
+		UserId:      userUuid,
+		SessionId:   sessionUuid,
+		Role:        userRole,
+		CompanyId:   companyUuid,
+		ClientIp:    c.ClientIP(),
+		ClientAgent: c.Request.UserAgent(),
+	}
+	// Parse date request
+	companyIdReq, err := uuidShared.ParseUUID(req.CompanyID)
+	if err != nil {
+		response.BadRequestResponse(c, response.ErrCodeParamInvalid, "Invalid company_id")
+		return
+	}
+	employeeIdReq, err := uuidShared.ParseUUID(req.EmployeeID)
+	if err != nil {
+		response.BadRequestResponse(c, response.ErrCodeParamInvalid, "Invalid employee_id")
+		return
+	}
+	deviceIdReq, err := uuidShared.ParseUUID(req.DeviceID)
+	if err != nil {
+		response.BadRequestResponse(c, response.ErrCodeParamInvalid, "Invalid device_id")
+		return
+	}
+	recordTime := time.Unix(req.RecordTime, 0)
+	// Call application service
+	errApplication := applicationService.GetAttendanceService().AddAttendance(
 		c,
-		200,
-		records,
+		&applicationModel.AddAttendanceModel{
+			Session: &sessionReq,
+			// Map request to model
+			CompanyID:           companyIdReq,
+			EmployeeID:          employeeIdReq,
+			DeviceID:            deviceIdReq,
+			RecordTime:          recordTime,
+			VerificationMethod:  req.VerificationMethod,
+			VerificationScore:   req.VerificationScore,
+			FaceImageURL:        req.FaceImageURL,
+			LocationCoordinates: req.LocationCoordinates,
+		},
 	)
+	if errApplication != nil {
+		if errApplication.ErrorSystem != nil {
+			response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Server temporary busy, please try again later")
+			return
+		}
+		response.BadRequestResponse(c, 400, errApplication.ErrorClient)
+		return
+	}
+	// Return response
+	response.SuccessResponse(c, 200, "Attendance record added successfully")
 }
 
 // NewAttendanceHandler creates a new instance of AttendanceHandler

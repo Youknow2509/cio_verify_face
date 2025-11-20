@@ -17,13 +17,20 @@ func (r *AttendanceRouter) Deploy(g *gin.RouterGroup) {
 	v1Admin := g.Group("/v1/attendance")
 	v1Admin.Use(middleware.GetAuthAdminMiddleware().Apply())
 	{
-		v1Admin.POST("/check_in", httpHandler.NewAttendanceHandler().CheckIn)
-		v1Admin.POST("/check_out", httpHandler.NewAttendanceHandler().CheckOut)
-		v1Admin.POST("/records", httpHandler.NewAttendanceHandler().GetRecords)
+		// Add attendance record
+		v1Admin.POST("/", httpHandler.NewAttendanceHandler().AddAttendance)
+		// Get attendance records for company
+		v1Admin.POST("/records", httpHandler.NewAttendanceHandler().GetAttendanceRecords)
+		// Get daily attendance summary for company
+		v1Admin.POST("/records/summary/daily", httpHandler.NewAttendanceHandler().GetDailyAttendanceSummary)
 	}
+	//
 	v1User := g.Group("/v1/attendance")
 	v1User.Use(middleware.GetAuthAccessTokenJwtMiddleware().Apply())
 	{
-		v1User.POST("/history/my", httpHandler.NewAttendanceHandler().GetMyHistory)
+		// Get attendance records for employee
+		v1User.POST("/records/employee", httpHandler.NewAttendanceHandler().GetAttendanceRecordsEmployee)
+		// Get daily attendance summary for employee
+		v1User.POST("/records/employee/summary/daily", httpHandler.NewAttendanceHandler().GetDailyAttendanceSummaryEmployee)
 	}
 }
