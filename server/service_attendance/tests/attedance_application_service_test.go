@@ -57,6 +57,140 @@ func TestAddAttendanceRecordInApplicationService(t *testing.T) {
 	t.Log("add attendance record successfully")
 }
 
+// TestGetAttendanceRecordsCompany tests the GetAttendanceRecordsCompany service method.
+func TestGetAttendanceRecordsCompany(t *testing.T) {
+	if err := initAttendanceApplicationServiceTest(); err != nil {
+		t.Fatalf("failed to init service test: %v", err)
+	}
+	service := applicationServiceImpl.NewAttendanceService()
+	ctx := context.Background()
+
+	req := &applicationModel.GetAttendanceRecordsCompanyModel{
+		Session: &applicationModel.SessionReq{
+			SessionId:   uuid.New(),
+			UserId:      uuid.MustParse("16584457-022a-4929-818f-96d36e2c4678"), // Manager User
+			CompanyId:   uuid.MustParse("7f204e50-4628-406d-bcd2-40ceb1351256"),
+			Role:        1, // Manager
+			ClientIp:    "127.0.0.1",
+			ClientAgent: "Go-Test",
+		},
+		CompanyID: uuid.MustParse("7f204e50-4628-406d-bcd2-40ceb1351256"),
+		YearMonth: "2025-11",
+		PageSize:  20,
+	}
+
+	resp, err := service.GetAttendanceRecordsCompany(ctx, req)
+	if err != nil {
+		t.Fatalf("GetAttendanceRecordsCompany failed: %+v", err)
+	}
+	if resp == nil {
+		t.Fatal("GetAttendanceRecordsCompany returned nil response")
+	}
+
+	t.Logf("GetAttendanceRecordsCompany successful. Records: %d", len(resp.Records))
+}
+
+// TestGetDailyAttendanceSummaryForCompany tests the GetDailyAttendanceSummaryForCompany service method.
+func TestGetDailyAttendanceSummaryForCompany(t *testing.T) {
+	if err := initAttendanceApplicationServiceTest(); err != nil {
+		t.Fatalf("failed to init service test: %v", err)
+	}
+	service := applicationServiceImpl.NewAttendanceService()
+	ctx := context.Background()
+
+	req := &applicationModel.GetDailyAttendanceSummaryModel{
+		Session: &applicationModel.SessionReq{
+			SessionId:   uuid.New(),
+			UserId:      uuid.MustParse("16584457-022a-4929-818f-96d36e2c4678"), // Manager User
+			CompanyId:   uuid.MustParse("7f204e50-4628-406d-bcd2-40ceb1351256"),
+			Role:        1, // Manager
+			ClientIp:    "127.0.0.1",
+			ClientAgent: "Go-Test",
+		},
+		CompanyID:    uuid.MustParse("7f204e50-4628-406d-bcd2-40ceb1351256"),
+		SummaryMonth: "2025-11",
+		WorkDate:     time.Now(),
+		PageSize:     20,
+	}
+
+	resp, err := service.GetDailyAttendanceSummaryForCompany(ctx, req)
+	if err != nil {
+		t.Fatalf("GetDailyAttendanceSummaryForCompany failed: %+v", err)
+	}
+	if resp == nil {
+		t.Fatal("GetDailyAttendanceSummaryForCompany returned nil response")
+	}
+
+	t.Logf("GetDailyAttendanceSummaryForCompany successful. Records: %d", len(resp.Records))
+}
+
+// TestGetDailyAttendanceSummaryEmployeeForCompany tests the GetDailyAttendanceSummaryEmployeeForCompany service method.
+func TestGetDailyAttendanceSummaryEmployeeForCompany(t *testing.T) {
+	if err := initAttendanceApplicationServiceTest(); err != nil {
+		t.Fatalf("failed to init service test: %v", err)
+	}
+	service := applicationServiceImpl.NewAttendanceService()
+	ctx := context.Background()
+
+	req := &applicationModel.GetDailyAttendanceSummaryEmployeeModel{
+		Session: &applicationModel.SessionReq{
+			SessionId:   uuid.New(),
+			UserId:      uuid.MustParse("459ce207-d091-4dd4-a994-c87fdde47a83"), // Employee's own ID
+			CompanyId:   uuid.MustParse("7f204e50-4628-406d-bcd2-40ceb1351256"),
+			Role:        2, // Employee
+			ClientIp:    "127.0.0.1",
+			ClientAgent: "Go-Test",
+		},
+		CompanyID:    uuid.MustParse("7f204e50-4628-406d-bcd2-40ceb1351256"),
+		EmployeeID:   uuid.MustParse("459ce207-d091-4dd4-a994-c87fdde47a83"),
+		SummaryMonth: "2025-11",
+	}
+
+	resp, err := service.GetDailyAttendanceSummaryEmployeeForCompany(ctx, req)
+	if err != nil {
+		t.Fatalf("GetDailyAttendanceSummaryEmployeeForCompany failed: %+v", err)
+	}
+	if resp == nil {
+		t.Fatal("GetDailyAttendanceSummaryEmployeeForCompany returned nil response")
+	}
+
+	t.Logf("GetDailyAttendanceSummaryEmployeeForCompany successful. Records: %d", len(resp.Records))
+}
+
+// TestGetAttendanceRecordsEmployeeForConpany tests the GetAttendanceRecordsEmployeeForConpany service method.
+func TestGetAttendanceRecordsEmployeeForConpany(t *testing.T) {
+	if err := initAttendanceApplicationServiceTest(); err != nil {
+		t.Fatalf("failed to init service test: %v", err)
+	}
+	service := applicationServiceImpl.NewAttendanceService()
+	ctx := context.Background()
+
+	req := &applicationModel.GetAttendanceRecordsEmployeeModel{
+		Session: &applicationModel.SessionReq{
+			SessionId:   uuid.New(),
+			UserId:      uuid.MustParse("459ce207-d091-4dd4-a994-c87fdde47a83"), // Employee's own ID
+			CompanyId:   uuid.MustParse("7f204e50-4628-406d-bcd2-40ceb1351256"),
+			Role:        2, // Employee
+			ClientIp:    "127.0.0.1",
+			ClientAgent: "Go-Test",
+		},
+		CompanyID:  uuid.MustParse("7f204e50-4628-406d-bcd2-40ceb1351256"),
+		EmployeeID: uuid.MustParse("459ce207-d091-4dd4-a994-c87fdde47a83"),
+		YearMonth:  "2025-11",
+		PageSize:   20,
+	}
+
+	resp, err := service.GetAttendanceRecordsEmployeeForConpany(ctx, req)
+	if err != nil {
+		t.Fatalf("GetAttendanceRecordsEmployeeForConpany failed: %+v", err)
+	}
+	if resp == nil {
+		t.Fatal("GetAttendanceRecordsEmployeeForConpany returned nil response")
+	}
+
+	t.Logf("GetAttendanceRecordsEmployeeForConpany successful. Records: %d", len(resp.Records))
+}
+
 // init service use for application service test - attendance
 func initAttendanceApplicationServiceTest() error {
 	// init logger

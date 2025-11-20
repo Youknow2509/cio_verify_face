@@ -32,7 +32,7 @@ type AttendanceService struct {
 // GetAttendanceRecordsEmployeeForConpany implements service.IAttendanceService.
 func (a *AttendanceService) GetAttendanceRecordsEmployeeForConpany(ctx context.Context, req *model.GetAttendanceRecordsEmployeeModel) (*model.GetAttendanceRecordsCompanyResultModel, *errors.Error) {
 	// 1. Check permission
-	if err := checkPermissionEmployee(ctx, *req.Session, req.CompanyID); err != nil {
+	if err := checkPermissionEmployee(ctx, *req.Session, req.EmployeeID); err != nil {
 		a.logger.Warn("Permission Denied", "session", req.Session)
 		return nil, err
 	}
@@ -115,7 +115,7 @@ func (a *AttendanceService) GetAttendanceRecordsEmployeeForConpany(ctx context.C
 // GetDailyAttendanceSummaryEmployeeForCompany implements service.IAttendanceService.
 func (a *AttendanceService) GetDailyAttendanceSummaryEmployeeForCompany(ctx context.Context, req *model.GetDailyAttendanceSummaryEmployeeModel) (*model.GetDailyAttendanceSummaryEmployeeResultModel, *errors.Error) {
 	// 1. Check permission
-	if err := checkPermissionEmployee(ctx, *req.Session, req.CompanyID); err != nil {
+	if err := checkPermissionEmployee(ctx, *req.Session, req.EmployeeID); err != nil {
 		a.logger.Warn("Permission Denied", "session", req.Session)
 		return nil, err
 	}
