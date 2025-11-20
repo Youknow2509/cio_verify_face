@@ -2,8 +2,11 @@ package start
 
 import (
 	"fmt"
+	"net"
+	"os"
+
 	global "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/global"
-	// router "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/interfaces/grpc/router"
+	interfaceGrpc "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/interfaces/grpc"
 	pb "github.com/youknow2509/cio_verify_face/server/service_attendance/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
@@ -14,61 +17,59 @@ var (
 )
 
 // init server grpc
-
-// init server grpc
 func initServerGrpc() error {
-	// config := global.SettingServer.Grpc
+	config := global.SettingServer.Grpc
 
-	// // Initialize the gRPC server
-	// lis, err := net.Listen(
-	// 	config.Network,
-	// 	fmt.Sprintf(":%d", config.Port),
-	// )
-	// if err != nil {
-	// 	global.Logger.Error("failed to listen", "error", err)
-	// 	return err
-	// }
+	// Initialize the gRPC server
+	lis, err := net.Listen(
+		config.Network,
+		fmt.Sprintf(":%d", config.Port),
+	)
+	if err != nil {
+		global.Logger.Error("failed to listen", "error", err)
+		return err
+	}
 
-	// // ServerOption
-	// var opts []grpc.ServerOption
+	// ServerOption
+	var opts []grpc.ServerOption
 
-	// // TLS
-	// if config.Tls.Enabled {
-	// 	// check file existence
-	// 	if _, err := os.Stat(config.Tls.CertFile); os.IsNotExist(err) {
-	// 		global.Logger.Error("TLS cert file does not exist", "error", err)
-	// 		return err
-	// 	}
-	// 	if _, err := os.Stat(config.Tls.KeyFile); os.IsNotExist(err) {
-	// 		global.Logger.Error("TLS key file does not exist", "error", err)
-	// 		return err
-	// 	}
+	// TLS
+	if config.Tls.Enabled {
+		// check file existence
+		if _, err := os.Stat(config.Tls.CertFile); os.IsNotExist(err) {
+			global.Logger.Error("TLS cert file does not exist", "error", err)
+			return err
+		}
+		if _, err := os.Stat(config.Tls.KeyFile); os.IsNotExist(err) {
+			global.Logger.Error("TLS key file does not exist", "error", err)
+			return err
+		}
 
-	// 	// create TLS credentials
-	// 	creds, err := credentials.NewServerTLSFromFile(
-	// 		config.Tls.CertFile,
-	// 		config.Tls.KeyFile,
-	// 	)
-	// 	if err != nil {
-	// 		global.Logger.Error("failed to generate credentials", "error", err)
-	// 		return err
-	// 	}
-	// 	opts = []grpc.ServerOption{grpc.Creds(creds)}
-	// }
+		// create TLS credentials
+		creds, err := credentials.NewServerTLSFromFile(
+			config.Tls.CertFile,
+			config.Tls.KeyFile,
+		)
+		if err != nil {
+			global.Logger.Error("failed to generate credentials", "error", err)
+			return err
+		}
+		opts = []grpc.ServerOption{grpc.Creds(creds)}
+	}
 
-	// grpcServer := grpc.NewServer(opts...)
+	grpcServer := grpc.NewServer(opts...)
 
-	// // Register service
-	// pb.RegisterAttendanceServiceServer(grpcServer, router.NewAttendanceRouter())
+	// Register service
+	pb.RegisterAttendanceServiceServer(grpcServer, interfaceGrpc.NewAttendanceGRPCServer())
 
-	// // start server
-	// global.Logger.Info("gRPC server starting", "address", lis.Addr().String())
+	// start server
+	global.Logger.Info("gRPC server starting", "address", lis.Addr().String())
 
-	// go func() {
-	// 	if err := grpcServer.Serve(lis); err != nil {
-	// 		global.Logger.Error("failed to start gRPC server", "error", err)
-	// 	}
-	// }()
+	go func() {
+		if err := grpcServer.Serve(lis); err != nil {
+			global.Logger.Error("failed to start gRPC server", "error", err)
+		}
+	}()
 
 	return nil
 }
@@ -87,7 +88,7 @@ func initClientGrpc() error {
 	} else {
 		opts = append(opts, grpc.WithInsecure())
 	}
-	conn, err := grpc.Dial(fmt.Sprintf(config.GrpcAddr), opts...)
+	conn, err := grpc.Dial(config.GrpcAddr, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to connect to gRPC server: %w", err)
 	}

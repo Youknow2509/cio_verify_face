@@ -139,7 +139,15 @@ type AddAttendanceModel struct {
 	FaceImageURL        string    `json:"face_image_url"`
 	LocationCoordinates string    `json:"location_coordinates"`
 	// Session information
-	Session *SessionReq `json:"session"`
+	Session        *SessionReq     `json:"session"`
+	ServiceSession *ServiceSession `json:"service_session" omitempty`
+}
+
+type ServiceSession struct {
+	ServiceId   string `json:"service_id"`
+	ServiceName string `json:"service_name"`
+	ClientIp    string `json:"client_ip"`
+	ClientAgent string `json:"client_agent"`
 }
 
 // Session input for adding attendance record

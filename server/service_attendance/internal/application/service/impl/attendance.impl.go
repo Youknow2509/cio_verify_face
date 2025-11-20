@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -373,13 +374,32 @@ func (a *AttendanceService) GetAttendanceRecordsCompany(ctx context.Context, req
 // AddAttendance implements service.IAttendanceService.
 func (a *AttendanceService) AddAttendance(ctx context.Context, req *model.AddAttendanceModel) *errors.Error {
 	// 1. Check permission
-	if err := checkPermisionManager(
+	sessionInfo, errSession := checkPermissionForManagerAdminService(
 		ctx,
-		*req.Session,
+		req.Session,
+		req.ServiceSession,
 		req.CompanyID,
-	); err != nil {
-		a.logger.Warn("Permission Denied", "session", req.Session)
-		return err
+	)
+	if errSession != nil {
+		a.logger.Warn("Permission Denied", "session", req.Session, "service_session", req.ServiceSession)
+		return errSession
+	}
+	var mapDataSession = map[string]string{}
+	switch sessionInfo {
+	case 0:
+		// service session
+		mapDataSession["service_session_id"] = req.ServiceSession.ServiceId
+		mapDataSession["service_name"] = req.ServiceSession.ServiceName
+		mapDataSession["service_ip"] = req.ServiceSession.ClientIp
+		mapDataSession["service_agent"] = req.ServiceSession.ClientAgent
+	case 1:
+		// manager, admin
+		mapDataSession["user_id"] = req.Session.UserId.String()
+		mapDataSession["role"] = strconv.Itoa(req.Session.Role)
+		mapDataSession["company_id"] = req.Session.CompanyId.String()
+		mapDataSession["session_id"] = req.Session.SessionId.String()
+		mapDataSession["client_ip"] = req.Session.ClientIp
+		mapDataSession["client_agent"] = req.Session.ClientAgent
 	}
 	// 2. Get shift info -> check in(0) or check out(1)
 	// - Cache local cache, distributed cache(Redis)
@@ -535,11 +555,7 @@ func (a *AttendanceService) AddAttendance(ctx context.Context, req *model.AddAtt
 		VerificationScore:   req.VerificationScore,
 		FaceImageURL:        req.FaceImageURL,
 		LocationCoordinates: req.LocationCoordinates,
-		Metadata: map[string]string{
-			"client_ip":    req.Session.ClientIp,
-			"client_agent": req.Session.ClientAgent,
-			"session_id":   req.Session.SessionId.String(),
-		},
+		Metadata:            mapDataSession,
 	}
 	if err := a.attendanceRepo.AddAttendanceRecord(
 		ctx,
@@ -583,6 +599,20 @@ func getTTLTimeCacheLocal(ttlDistributed int64) int64 {
 		ttlLocal = 12 // default 12 seconds
 	}
 	return ttlLocal
+}
+
+// Check permission for manager, admin, service
+// 0: service session
+// 1: manager, admin
+// 2: permission denied
+func checkPermissionForManagerAdminService(ctx context.Context, session *model.SessionReq, serviceSession *model.ServiceSession, companyReq uuid.UUID) (int, *errors.Error) {
+	if serviceSession != nil {
+		return 0, nil
+	}
+	if err := checkPermisionManager(ctx, *session, companyReq); err != nil {
+		return 2, err
+	}
+	return 1, nil
 }
 
 // Check perrmission manager helper function

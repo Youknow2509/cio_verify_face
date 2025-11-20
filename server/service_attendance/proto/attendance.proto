@@ -10,6 +10,27 @@ service AttendanceService {
 	rpc GetDailyAttendanceSummary(GetDailyAttendanceSummaryInput) returns (GetDailyAttendanceSummaryOutput);
 	rpc GetDailyAttendanceSummaryEmployee(GetDailyAttendanceSummaryEmployeeInput) returns (GetDailyAttendanceSummaryOutput);
     rpc AddBatchAttendance(stream AddAttendanceInput) returns (AddAttendanceOutput);
+    rpc ServiceAddBatchAttendance(stream ServiceAddBatchAttendanceInput) returns (AddAttendanceOutput);
+}
+
+// For service adding batch attendance records
+message ServiceAddBatchAttendanceInput {
+    string company_id = 1;
+    string employee_id = 2;
+    string device_id = 3;
+    int64 record_time = 4;
+    string verification_method = 5;
+    double verification_score = 6;
+    string face_image_url = 7;
+    string location_coordinates = 8;
+    ServiceSessionInfo session = 9;
+}
+
+message ServiceSessionInfo {
+    string service_name = 1;
+    string service_id = 2;
+    string client_ip = 3;
+    string client_agent = 4;
 }
 
 // For getting daily attendance summary of an employee within a company
@@ -27,9 +48,10 @@ message GetDailyAttendanceSummaryInput {
     string company_id = 1;
     string employee_id = 2;
     string summary_month = 3;
-    int32 page_size = 4;
-    string page_stage = 5;
-    SessionInfo session = 6;
+    int64 work_date = 4;
+    int32 page_size = 5;
+    string page_stage = 6;
+    SessionInfo session = 7;
 }
 
 message GetDailyAttendanceSummaryOutput {
