@@ -1,6 +1,5 @@
 """
 PostgreSQL pgvector manager for efficient face embedding search in microservices
-Replaces FAISS with a distributed, database-backed vector store
 """
 import logging
 import numpy as np

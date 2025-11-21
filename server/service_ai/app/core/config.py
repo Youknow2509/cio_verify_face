@@ -11,6 +11,8 @@ class Settings(BaseSettings):
     
     # Environment
     ENVIRONMENT: str = "development"
+    SERVICE_NAME: str = "service_ai"
+    SERVICE_ID: str = "service_ai_001"
     
     # Service
     SERVICE_NAME: str = "service_ai"
@@ -21,11 +23,17 @@ class Settings(BaseSettings):
     # Compute mode (cpu or gpu)
     COMPUTE_MODE: str = "cpu"
     
-    # GRPC client settings
+    # GRPC client auth settings
     GRPC_CLIENT_URL: str = "localhost:50051"
     GRPC_CLIENT_TLS: bool = False
     GRPC_CLIENT_CERT_PATH: Optional[str] = None
     GRPC_CLIENT_KEY_PATH: Optional[str] = None
+    
+    # GRPC attendance client settings
+    GRPC_ATTENDANCE_URL: str = "localhost:50052"
+    GRPC_ATTENDANCE_TLS: bool = False
+    GRPC_ATTENDANCE_CERT_PATH: Optional[str] = None
+    GRPC_ATTENDANCE_KEY_PATH: Optional[str] = None
     
     # Database
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/cio_attendance_db"
@@ -69,6 +77,7 @@ class Settings(BaseSettings):
     # Note: pgvector index is automatically maintained by PostgreSQL
     # No need for manual rebuild intervals like FAISS
     VECTOR_INDEX_REBUILD_INTERVAL: int = 3600  # seconds (for compatibility)
+    VECTOR_DB_INDEX_VERSION: int = 1
     
     # Liveness detection
     LIVENESS_ENABLED: bool = True
