@@ -13,6 +13,7 @@ import (
 	pb "github.com/youknow2509/cio_verify_face/server/service_auth/proto"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 // AuthGRPCHandler implements the gRPC AuthService
@@ -34,6 +35,10 @@ func NewAuthGRPCHandler(
 		coreAuthService:  coreAuthService,
 		logger:           logger,
 	}
+}
+
+func (a *AuthGRPCHandler) HealthCheck(ctx context.Context, rep *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
 
 func (a *AuthGRPCHandler) CreateUserToken(ctx context.Context, req *pb.CreateUserTokenRequest) (*pb.CreateUserTokenResponse, error) {
