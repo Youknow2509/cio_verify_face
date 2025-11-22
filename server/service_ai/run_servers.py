@@ -13,7 +13,6 @@ from app.grpc_generated import attendance_pb2
 
 # ---- Import & dependency checks ----
 try:
-    from app.main import app
     from app.grpc.server.grpc_server import serve_grpc
     from app.services.face_service import FaceService
     from app.core.config import settings

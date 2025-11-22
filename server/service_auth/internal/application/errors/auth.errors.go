@@ -16,7 +16,7 @@ const (
 	AuthUserIdInvalidErrorCode                  = 10008
 	AuthUUIDParseErrorCode                      = 10009
 	AuthDontHavePermissionErrorCode             = 10010
-	TokenExpiredErrorCode                       = 20010
+	TokenExpiredErrorCode                       = 10011
 )
 
 var mapAuthErrors = map[int]string{

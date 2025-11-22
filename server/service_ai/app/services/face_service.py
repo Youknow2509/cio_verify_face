@@ -73,6 +73,25 @@ class FaceService:
         logger.info("FaceService ready.")
 
     # ---------------- Helpers ----------------
+    def _sanitize_metadata(self, metadata: Optional[Dict]) -> Dict:
+        """Convert metadata values to JSON-serializable types."""
+        if not metadata:
+            return {}
+
+        sanitized = {}
+        for key, value in metadata.items():
+            if isinstance(value, UUID):
+                sanitized[key] = str(value)
+            elif isinstance(value, datetime):
+                sanitized[key] = value.isoformat()
+            elif isinstance(value, (list, tuple)):
+                sanitized[key] = [str(v) if isinstance(v, (UUID, datetime)) else v for v in value]
+            elif isinstance(value, dict):
+                sanitized[key] = self._sanitize_metadata(value)
+            else:
+                sanitized[key] = value
+        return sanitized
+    
     def _year_month(self, dt: Optional[datetime] = None) -> str:
         """Trả về 'YYYY-MM' từ một datetime."""
         return dt.strftime("%Y-%m") if dt else datetime.utcnow().strftime("%Y-%m")
@@ -233,20 +252,14 @@ class FaceService:
                 )
             # Check duplicate enrollment face for another user
             matches = self.index_manager.search(str(company_id), embedding, k=5)
+            logger.info(f"Enroll search found {len(matches)} matches for duplicate check.")
             if matches:
                 best = matches[0]
                 if best["similarity"] > settings.DUPLICATE_THRESHOLD and best["user_id"] != str(user_id):
-                    self._log_audit(
-                        db, company_id=company_id, actor_id=user_id,
-                        action_category="face_enrollment", action_name="enroll_duplicate",
-                        resource_type="face_profile", resource_id=best["profile_id"],
-                        status="duplicate",
-                        details={
-                            "device_id": device_id,
-                            "similarity_score": best["similarity"],
-                            "matched_user": best["user_id"]
-                        },
-                        ip_address=ip_address, user_agent=user_agent
+                    logger.warning(
+                        f"Enroll failed: duplicate face detected "
+                        f"(matched_user={best['user_id']}, similarity={best['similarity']:.4f})"
+                        f" device_id={device_id}, ip_address={ip_address}, user_agent={user_agent}"
                     )
                     return EnrollResponse(
                         status="duplicate",
@@ -264,7 +277,7 @@ class FaceService:
                 embedding_version=settings.FACE_EMBEDDING_MODEL,
                 is_primary=make_primary,
                 quality_score=quality,
-                meta_data=metadata or {},
+                meta_data=self._sanitize_metadata(metadata),  # <-- Changed this line
                 indexed=False,
                 index_version=self.index_manager.index_version
             )
@@ -306,15 +319,20 @@ class FaceService:
                 logger.error(f"Index add failed: {e}")
                 db.rollback()
                 return EnrollResponse(status="failed", message="Indexing failed")
-
-            self._log_audit(
-                db, company_id=company_id, actor_id=user_id,
-                action_category="face_enrollment", action_name="enroll",
-                resource_type="face_profile", resource_id=str(profile.profile_id),
-                status="success",
-                details={"device_id": device_id, "quality_score": quality, "image_path": image_path or ""},
-                ip_address=ip_address, user_agent=user_agent
-            )
+            # Audit log
+            try:
+                self.scylladb.add_face_enrollment_log(
+                    company_id=company_id,
+                    employee_id=user_id,
+                    action_type="enroll",
+                    status="success",
+                    image_url=image_path,
+                    metadata=metadata or {},
+                    created_at=datetime.utcnow()
+                )
+            except Exception as e:
+                logger.error(f"Audit log failed: {e}")
+                
             logger.info(f"Face enrollment successful for user {user_id} with profile ID {profile.profile_id}")
             return EnrollResponse(
                 status="ok",
@@ -354,15 +372,7 @@ class FaceService:
             if settings.LIVENESS_ENABLED:
                 is_live, liveness_score = self.liveness_detector.detect_liveness(image)
                 if not is_live:
-                    self._log_audit(
-                        db, company_id=company_id, actor_id=user_id,
-                        action_category="face_verification", action_name="verify",
-                        resource_type="face_image", resource_id=None,
-                        status="failed",
-                        details={"device_id": device_id, "liveness_score": liveness_score},
-                        ip_address=ip_address, user_agent=user_agent,
-                        error_message="liveness_failed"
-                    )
+                    logger.warning("Verification failed: liveness check failed")
                     return VerifyResponse(
                         status="failed", verified=False,
                         message="Liveness check failed", liveness_score=liveness_score
@@ -483,19 +493,10 @@ class FaceService:
 
         except Exception as e:
             logger.error(f"Verify error: {e}")
-            self._log_audit(
-                db, company_id=company_id, actor_id=user_id,
-                action_category="face_verification", action_name="verify",
-                resource_type="face_image", resource_id=None,
-                status="failed",
-                details={"device_id": device_id},
-                error_message=str(e)
-            )
             return VerifyResponse(status="failed", verified=False, message=str(e))
         finally:
             db.close()
 
-    # TODO: chưa check các phần bên dưới
     # ---------------- Update Profile ----------------
     async def update_profile(
         self,
@@ -552,12 +553,21 @@ class FaceService:
                 self.index_manager.save_index()
 
             self._log_audit(
-                db, company_id=company_id, actor_id=profile.user_id,
-                action_category="face_profile", action_name="update",
-                resource_type="face_profile", resource_id=str(profile_id),
-                status="success",
-                details={"is_primary": profile.is_primary, "quality_score": profile.quality_score}
+                company_id=company_id,
+                actor_id=uuid4(),
+                action_category="face_profile",
+                action_name="update_profile",
+                resource_type="face_profile",
+                resource_id=str(profile_id),
+                status="updated",
+                details={
+                    "make_primary": make_primary,
+                    "metadata_updated": bool(metadata),
+                },
+                ip_address=None,
+                user_agent=None
             )
+            
             return {"status": "ok", "message": "Profile updated successfully"}
         except Exception as e:
             logger.error(f"Update profile error: {e}")
@@ -571,6 +581,7 @@ class FaceService:
         self,
         profile_id: UUID,
         company_id: UUID,
+        metadata: Optional[Dict] = None,
         hard_delete: bool = False
     ) -> Dict:
         db = self.SessionLocal()
@@ -594,13 +605,22 @@ class FaceService:
 
             db.commit()
             self.index_manager.save_index()
-
+            actor_id = uuid4()
+            # Audit log could be added here
             self._log_audit(
-                db, company_id=company_id, actor_id=profile.user_id,
-                action_category="face_profile", action_name="delete",
-                resource_type="face_profile", resource_id=str(profile_id),
-                status="success",
-                details={"hard_delete": hard_delete}
+                company_id=company_id,
+                actor_id=actor_id,
+                action_category="face_profile",
+                action_name="delete_profile",
+                resource_type="face_profile",
+                resource_id=str(profile_id),
+                status="hard_deleted" if hard_delete else "soft_deleted",
+                details={
+                    "hard_delete": hard_delete,
+                    "session_user": metadata or {}  
+                },
+                ip_address=None,
+                user_agent=None
             )
             return {"status": "ok", "message": msg}
         except Exception as e:
@@ -611,7 +631,7 @@ class FaceService:
             db.close()
 
     # ---------------- Retrieval ----------------
-    async def get_user_profiles(self, user_id: UUID, company_id: UUID) -> List[FaceProfileResponse]:
+    async def get_user_profiles(self, user_id: UUID, company_id: Optional[UUID]) -> List[FaceProfileResponse]:
         db = self.SessionLocal()
         try:
             profiles = db.query(FaceProfile).filter(
@@ -683,6 +703,62 @@ class FaceService:
         finally:
             db.close()
 
+    # ---------------- Cleanup Profiles For Company ----------------
+    async def cleanup_profiles_for_company(self, company_id: UUID, metadata: Optional[Dict]) -> Dict:
+        db = self.SessionLocal()
+        try:
+            # Get profile IDs first
+            profile_ids = db.query(FaceProfile.profile_id).filter(
+                FaceProfile.company_id == company_id,
+                FaceProfile.deleted_at.isnot(None)
+            ).all()
+            
+            profile_ids = [str(p[0]) for p in profile_ids]
+            count = len(profile_ids)
+            
+            if count == 0:
+                return {"status": "ok", "message": "No profiles to cleanup", "profiles_cleaned": 0}
+            
+            # Batch remove from index
+            for pid in profile_ids:
+                try:
+                    self.index_manager.remove_embedding(pid, str(company_id))
+                except Exception as e:
+                    logger.warning(f"Index removal failed for {pid}: {e}")
+            
+            # Batch delete from DB
+            deleted_count = db.query(FaceProfile).filter(
+                FaceProfile.company_id == company_id,
+                FaceProfile.deleted_at.isnot(None)
+            ).delete(synchronize_session=False)
+            
+            db.commit()
+            self.index_manager.save_index()
+            self._log_audit(
+                company_id=company_id,
+                actor_id=uuid4(),
+                action_category="face_profile",
+                action_name="cleanup_profiles_for_company",
+                resource_type="face_profile",
+                resource_id=None,
+                status="cleaned",
+                details={
+                    "profiles_cleaned": deleted_count,
+                    "session_user": metadata or {}
+                },
+                ip_address=None,
+                user_agent=None
+            )
+            logger.info(f"Cleaned up {deleted_count} profiles for company {company_id}")
+            return {"status": "ok", "message": f"Cleaned {deleted_count} profiles", "profiles_cleaned": deleted_count}
+            
+        except Exception as e:
+            logger.error(f"Cleanup error: {e}")
+            db.rollback()
+            return {"status": "failed", "message": str(e), "profiles_cleaned": 0}
+        finally:
+            db.close()
+    
     # ---------------- Cleanup ----------------
     async def cleanup_soft_deleted(self):
         db = self.SessionLocal()

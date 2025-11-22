@@ -7,6 +7,13 @@ from datetime import datetime
 from uuid import UUID
 import base64
 
+class SessionUser(BaseModel):
+    """Model representing authenticated user from JWT"""
+    user_id: UUID = Field(..., description="User ID")
+    role: int = Field(..., description="User role level")
+    company_id: UUID = Field(..., description="Company ID")
+    session_id: UUID = Field(..., description="Session ID")
+    exprires_at: datetime = Field(..., description="Token expiration time")
 
 class EnrollRequest(BaseModel):
     """Request model for face enrollment"""
