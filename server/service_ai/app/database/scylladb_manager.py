@@ -25,6 +25,18 @@ class ScyllaDBManager:
         self._connect_with_retry()
 
     # ------------------------------------------------------------------
+    # Connection Check
+    # ------------------------------------------------------------------
+    def check_connection(self):
+        """Kiểm tra kết nối đến ScyllaDB bằng cách thực hiện truy vấn đơn giản."""
+        try:
+            self.session.execute("SELECT now() FROM system.local")
+            logger.info("ScyllaDB connection check passed")
+        except Exception as e:
+            logger.error(f"ScyllaDB connection check failed: {e}")
+            raise
+        
+    # ------------------------------------------------------------------
     # Connection & Setup
     # ------------------------------------------------------------------
     def _connect_with_retry(self, retries: int = 3, delay: float = 2.0):
@@ -52,7 +64,8 @@ class ScyllaDBManager:
                 username=settings.SCYLLADB_USERNAME,
                 password=settings.SCYLLADB_PASSWORD
             ),
-            protocol_version=4
+            protocol_version=4,
+            load_balancing_policy=None, # TODO: customize and config it
         )
         self.session = self.cluster.connect()
         self._create_keyspace()

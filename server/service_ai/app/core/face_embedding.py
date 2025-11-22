@@ -6,7 +6,7 @@ import numpy as np
 from typing import Optional
 
 from app.core.config import settings
-from app.services.face_detector import FaceDetector
+from app.core.face_detector import FaceDetector
 
 logger = logging.getLogger(__name__)
 

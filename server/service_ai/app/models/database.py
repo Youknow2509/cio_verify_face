@@ -55,7 +55,6 @@ class FaceProfile(Base):
     user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     
     # Embedding data - using pgvector's vector type for efficient similarity search
-    # Falls back to ARRAY(Float) if pgvector is not available
     embedding = Column(Vector(512), nullable=False)
     embedding_version = Column(String(50), nullable=False, index=True)
     

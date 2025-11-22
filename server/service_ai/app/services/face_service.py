@@ -1,10 +1,3 @@
-"""
-FaceService sử dụng ScyllaDBManager đã tối ưu:
-- Ghi audit theo schema mới (audit_logs)
-- Ghi log enrollment (face_enrollment_logs)
-- Giữ các luồng enroll/verify/update/delete như bản nâng cấp trước
-"""
-
 import logging
 import base64
 import numpy as np
@@ -13,36 +6,44 @@ import ast
 import cv2
 from typing import Optional, List, Dict
 from uuid import UUID, uuid4
-from datetime import datetime, timedelta
+from datetime import datetime, time, timedelta
 from sqlalchemy import create_engine, and_, text
 from sqlalchemy.orm import sessionmaker, Session
-
+# Core modules
 from app.core.config import settings
-from app.services.face_detector import FaceDetector
-from app.services.face_embedding import FaceEmbedding
-from app.services.pgvector_manager import PgVectorManager
-from app.services.liveness_detector import LivenessDetector
-from app.services.scylladb_manager import ScyllaDBManager
-from app.services.minio_manager import MinIOManager
-from app.utils.image_optimizer import ImageOptimizer
+from app.core.face_detector import FaceDetector
+from app.core.face_embedding import FaceEmbedding
+from app.core.liveness_detector import LivenessDetector
+# Database managers
+from app.database.pgvector_manager import PgVectorManager
+from app.database.scylladb_manager import ScyllaDBManager
+from app.database.minio_manager import MinIOManager
+# Grpc client
+from app.grpc.client.attendance_client import get_client as get_grpc_attendance_client
+from app.grpc.client.attendance_client import AttendanceClient as _AttendanceClient
+# Models and Schemas
+from app.models.attendance_batching_models import RawAttendanceRecord
 from app.models.database import Base, FaceProfile
 from app.models.schemas import (
     EnrollResponse, VerifyResponse, VerifyMatch,
     FaceProfileResponse, ReindexResponse
 )
-from app.services.attendance_client import get_client as get_attendance_client
+# Utilities
+from app.services.attendance_batching_service import AttendanceBatchingService
+from app.utils.image_optimizer import ImageOptimizer
+from app.utils.database import get_face_profile_partition_name
 
 logger = logging.getLogger(__name__)
 
 
 class FaceService:
-    def __init__(self):
+    def __init__(self, batching_service: Optional[AttendanceBatchingService] = None):
         logger.info("Initializing FaceService ...")
         self.detector = FaceDetector()
         self.embedding_gen = FaceEmbedding(self.detector)
         self.index_manager = PgVectorManager()
         self.liveness_detector = LivenessDetector()
-
+        self.batching_service = batching_service
         try:
             self.scylladb = ScyllaDBManager()
         except Exception:
@@ -56,7 +57,7 @@ class FaceService:
             self.minio = None
 
         try:
-            self.attendance_client = get_attendance_client(
+            self.attendance_client = get_grpc_attendance_client(
                 target=getattr(settings, 'GRPC_ATTENDANCE_URL', None),
                 timeout=getattr(settings, 'GRPC_ATTENDANCE_TIMEOUT', 5.0)
             )
@@ -73,11 +74,11 @@ class FaceService:
 
     # ---------------- Helpers ----------------
     def _year_month(self, dt: Optional[datetime] = None) -> str:
-        dt = dt or datetime.utcnow()
-        return dt.strftime("%Y%m")
+        """Trả về 'YYYY-MM' từ một datetime."""
+        return dt.strftime("%Y-%m") if dt else datetime.utcnow().strftime("%Y-%m")
 
     def _ensure_company_partition(self, db: Session, company_id: UUID) -> bool:
-        partition_name = f"face_profiles_p_{str(company_id).replace('-', '')}"
+        partition_name = get_face_profile_partition_name(company_id)
         exists = db.execute(
             text("SELECT relname FROM pg_class WHERE relname = :n"),
             {"n": partition_name}
@@ -144,7 +145,6 @@ class FaceService:
     # ---------------- Logging ----------------
     def _log_audit(
         self,
-        db: Session,
         *,
         company_id: Optional[UUID],
         actor_id: Optional[UUID],
@@ -159,7 +159,6 @@ class FaceService:
         error_message: Optional[str] = None
     ):
         created_at = datetime.utcnow()
-        year_month = self._year_month(created_at)
         if error_message:
             details = details or {}
             details["error_message"] = error_message
@@ -168,10 +167,8 @@ class FaceService:
         # Scylla preferred
         if self.scylladb and company_id:
             try:
-                self.scylladb.store_audit_action(
+                self.scylladb.add_audit_log(
                     company_id=company_id,
-                    year_month=year_month,
-                    created_at=created_at,
                     actor_id=actor_id,
                     action_category=action_category,
                     action_name=action_name,
@@ -180,39 +177,14 @@ class FaceService:
                     details={str(k): str(v) for k, v in details.items()},
                     ip_address=ip_address or "",
                     user_agent=user_agent or "",
-                    status=status
+                    status=status,
+                    created_at=created_at,
                 )
                 return
             except Exception as e:
                 logger.warning(f"Scylla audit failed -> fallback: {e}")
-
-    def _log_face_enrollment(
-        self,
-        *,
-        company_id: UUID,
-        employee_id: UUID,
-        action_type: str,
-        status: str,
-        image_url: Optional[str],
-        failure_reason: Optional[str],
-        metadata: Optional[Dict]
-    ):
-        if not self.scylladb:
-            return
-        try:
-            self.scylladb.store_face_enrollment_log(
-                company_id=company_id,
-                year_month=self._year_month(),
-                created_at=datetime.utcnow(),
-                employee_id=employee_id,
-                action_type=action_type,
-                status=status,
-                image_url=image_url or "",
-                failure_reason=failure_reason or "",
-                metadata={str(k): str(v) for k, v in (metadata or {}).items()}
-            )
-        except Exception as e:
-            logger.warning(f"Scylla enrollment log failed: {e}")
+        else:
+            logger.warning("ScyllaDB not configured; using fallback audit logging.")
 
     # ---------------- Enrollment ----------------
     async def enroll_face(
@@ -226,6 +198,7 @@ class FaceService:
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None
     ) -> EnrollResponse:
+        # Get postgres session
         db = self.SessionLocal()
         try:
             if not self._ensure_company_partition(db, company_id):
@@ -235,85 +208,30 @@ class FaceService:
                 return EnrollResponse(status="failed", message="Vector partition failed")
 
             image = self._decode_image(image_base64)
+            # Check image decode
             if image is None:
-                self._log_audit(
-                    db, company_id=company_id, actor_id=user_id,
-                    action_category="face_enrollment", action_name="enroll",
-                    resource_type="face_profile", resource_id=None,
-                    status="failed",
-                    details={"device_id": device_id},
-                    ip_address=ip_address, user_agent=user_agent,
-                    error_message="invalid_image"
-                )
-                self._log_face_enrollment(
-                    company_id=company_id, employee_id=user_id,
-                    action_type="enroll", status="failed",
-                    image_url=None, failure_reason="invalid_image",
-                    metadata=metadata
-                )
+                logger.warning("Enroll failed: invalid image format")
                 return EnrollResponse(status="failed", message="Invalid image format")
-
+            # Check image have face is real
             if settings.LIVENESS_ENABLED:
                 is_live, liveness_score = self.liveness_detector.detect_liveness(image)
                 if not is_live:
-                    self._log_audit(
-                        db, company_id=company_id, actor_id=user_id,
-                        action_category="face_enrollment", action_name="enroll",
-                        resource_type="face_profile", resource_id=None,
-                        status="failed",
-                        details={"device_id": device_id, "liveness_score": liveness_score},
-                        ip_address=ip_address, user_agent=user_agent,
-                        error_message="liveness_failed"
-                    )
-                    self._log_face_enrollment(
-                        company_id=company_id, employee_id=user_id,
-                        action_type="enroll", status="failed",
-                        image_url=None, failure_reason="liveness_failed",
-                        metadata=metadata
-                    )
-                    return EnrollResponse(status="failed", message="Liveness check failed")
-
+                    logger.warning(f"Enroll failed: liveness check failed (score={liveness_score:.3f})")
+                    return EnrollResponse(status="failed", message=f"Liveness check failed with score {liveness_score:.3f}")
+            # Get embedding and quality
             embedding, quality, _ = self.embedding_gen.get_embedding_with_quality(image)
             if embedding is None:
-                self._log_audit(
-                    db, company_id=company_id, actor_id=user_id,
-                    action_category="face_enrollment", action_name="enroll",
-                    resource_type="face_profile", resource_id=None,
-                    status="failed",
-                    details={"device_id": device_id},
-                    ip_address=ip_address, user_agent=user_agent,
-                    error_message="no_face"
-                )
-                self._log_face_enrollment(
-                    company_id=company_id, employee_id=user_id,
-                    action_type="enroll", status="failed",
-                    image_url=None, failure_reason="no_face",
-                    metadata=metadata
-                )
+                logger.warning("Enroll failed: no face detected in image")
                 return EnrollResponse(status="failed", message="No face detected in image")
-
-            if quality < 0.3:
-                self._log_audit(
-                    db, company_id=company_id, actor_id=user_id,
-                    action_category="face_enrollment", action_name="enroll",
-                    resource_type="face_profile", resource_id=None,
-                    status="failed",
-                    details={"device_id": device_id, "quality_score": quality},
-                    ip_address=ip_address, user_agent=user_agent,
-                    error_message="low_quality"
-                )
-                self._log_face_enrollment(
-                    company_id=company_id, employee_id=user_id,
-                    action_type="enroll", status="failed",
-                    image_url=None, failure_reason="low_quality",
-                    metadata={"quality": quality}
-                )
+            # Check quality threshold
+            if quality < settings.VERIFY_THRESHOLD:
+                logger.warning(f"Enroll failed: image quality too low ({quality:.2f})")
                 return EnrollResponse(
                     status="failed",
                     message=f"Image quality too low ({quality:.2f})",
                     quality_score=quality
                 )
-
+            # Check duplicate enrollment face for another user
             matches = self.index_manager.search(str(company_id), embedding, k=5)
             if matches:
                 best = matches[0]
@@ -330,12 +248,6 @@ class FaceService:
                         },
                         ip_address=ip_address, user_agent=user_agent
                     )
-                    self._log_face_enrollment(
-                        company_id=company_id, employee_id=user_id,
-                        action_type="enroll", status="duplicate",
-                        image_url=None, failure_reason="duplicate",
-                        metadata={"matched_user": best["user_id"], "similarity": best["similarity"]}
-                    )
                     return EnrollResponse(
                         status="duplicate",
                         message="Face already enrolled for another user",
@@ -344,7 +256,7 @@ class FaceService:
                             "similarity": best["similarity"]
                         }]
                     )
-
+            # Create new face profile for add to database
             profile = FaceProfile(
                 user_id=user_id,
                 company_id=company_id,
@@ -358,7 +270,7 @@ class FaceService:
             )
             db.add(profile)
             db.flush()
-
+            # Create image path and save to Database object
             image_path = None
             if self.minio and settings.IMAGE_STORE_ENROLLMENTS:
                 try:
@@ -368,7 +280,7 @@ class FaceService:
                         profile.enroll_image_path = image_path
                 except Exception as e:
                     logger.error(f"MinIO enrollment store failed: {e}")
-
+            # Set face image profile as primary if needed
             if make_primary:
                 db.query(FaceProfile).filter(
                     and_(
@@ -378,7 +290,7 @@ class FaceService:
                         FaceProfile.deleted_at.is_(None)
                     )
                 ).update({"is_primary": False})
-
+            # Commit to get profile ID
             try:
                 self.index_manager.add_embedding(
                     str(profile.profile_id),
@@ -403,28 +315,7 @@ class FaceService:
                 details={"device_id": device_id, "quality_score": quality, "image_path": image_path or ""},
                 ip_address=ip_address, user_agent=user_agent
             )
-            self._log_face_enrollment(
-                company_id=company_id, employee_id=user_id,
-                action_type="enroll", status="success",
-                image_url=image_path, failure_reason=None,
-                metadata={"quality": quality}
-            )
-
-            if self.scylladb:
-                try:
-                    self.scylladb.save_enrollment_state(
-                        profile_id=profile.profile_id,
-                        company_id=company_id,
-                        user_id=user_id,
-                        device_id=device_id,
-                        status="ok",
-                        quality_score=quality,
-                        metadata=metadata,
-                        image_path=image_path
-                    )
-                except Exception as e:
-                    logger.warning(f"save_enrollment_state failed: {e}")
-
+            logger.info(f"Face enrollment successful for user {user_id} with profile ID {profile.profile_id}")
             return EnrollResponse(
                 status="ok",
                 profile_id=profile.profile_id,
@@ -435,14 +326,6 @@ class FaceService:
         except Exception as e:
             logger.error(f"Enroll error: {e}")
             db.rollback()
-            self._log_audit(
-                db, company_id=company_id, actor_id=user_id,
-                action_category="face_enrollment", action_name="enroll",
-                resource_type="face_profile", resource_id=None,
-                status="failed",
-                details={"device_id": device_id},
-                error_message=str(e)
-            )
             return EnrollResponse(status="failed", message=str(e))
         finally:
             db.close()
@@ -456,7 +339,7 @@ class FaceService:
         device_id: Optional[str] = None,
         search_mode: str = "1:N",
         top_k: int = 5,
-        record_attendance: bool = False,
+        record_attendance: bool = True,
         location_coordinates: Optional[str] = None,
         ip_address: Optional[str] = None,
         user_agent: Optional[str] = None
@@ -466,7 +349,7 @@ class FaceService:
             image = self._decode_image(image_base64)
             if image is None:
                 return VerifyResponse(status="failed", verified=False, message="Invalid image format")
-
+            # Liveness check
             liveness_score = None
             if settings.LIVENESS_ENABLED:
                 is_live, liveness_score = self.liveness_detector.detect_liveness(image)
@@ -484,46 +367,43 @@ class FaceService:
                         status="failed", verified=False,
                         message="Liveness check failed", liveness_score=liveness_score
                     )
-
+            # Get embedding from image
             embedding = self.embedding_gen.get_embedding(image)
             if embedding is None:
                 return VerifyResponse(status="failed", verified=False, message="No face detected")
-
+            # Search for matches
             matches = self.index_manager.search(str(company_id), embedding, k=top_k)
             if not matches:
-                self._log_audit(
-                    db, company_id=company_id, actor_id=user_id,
-                    action_category="face_verification", action_name="verify",
-                    resource_type="face_image", resource_id=None,
-                    status="no_match",
-                    details={"device_id": device_id},
-                    ip_address=ip_address, user_agent=user_agent
+                logger.warning(
+                    f"No matching face found during verification. "
+                    f"company_id={company_id}, user_id={user_id}, device_id={device_id}"
+                    f"actice_name=verify, 'device_id': {device_id}, 'ip_address': {ip_address}, 'user_agent': {user_agent}"
+                    f"'liveness_score': {liveness_score}, 'type_search': {search_mode}"
                 )
+
                 return VerifyResponse(
                     status="no_match", verified=False,
                     message="No matching face found", liveness_score=liveness_score
                 )
-
+            # If 1:1 mode, filter by user_id
             if search_mode == "1:1" and user_id:
                 matches = [m for m in matches if m["user_id"] == str(user_id)]
                 if not matches:
-                    self._log_audit(
-                        db, company_id=company_id, actor_id=user_id,
-                        action_category="face_verification", action_name="verify",
-                        resource_type="face_image", resource_id=None,
-                        status="no_match",
-                        details={"device_id": device_id},
-                        ip_address=ip_address, user_agent=user_agent
+                    logger.warning(
+                        f"No matching face found during verification in 1:1 mode. "
+                        f"company_id={company_id}, user_id={user_id}, device_id={device_id}"
+                        f"actice_name=verify, 'device_id': {device_id}, 'ip_address': {ip_address}, 'user_agent': {user_agent}"
+                        f"'liveness_score': {liveness_score}, 'type_search': {search_mode}"
                     )
+
                     return VerifyResponse(
                         status="no_match", verified=False,
                         message="Face does not match user",
                         liveness_score=liveness_score
                     )
-
+            # Get best match and determine verification result
             best = matches[0]
             verified = best["similarity"] >= settings.VERIFY_THRESHOLD
-
             match_objs = [
                 VerifyMatch(
                     user_id=UUID(m["user_id"]),
@@ -534,25 +414,17 @@ class FaceService:
                 )
                 for m in matches
             ]
-
             status = "match" if verified else "no_match"
             matched_user_id = UUID(best["user_id"]) if verified else None
             matched_profile_id = UUID(best["profile_id"]) if verified else None
-
-            self._log_audit(
-                db, company_id=company_id, actor_id=matched_user_id,
-                action_category="face_verification", action_name="verify",
-                resource_type="face_profile" if verified else "face_image",
-                resource_id=str(matched_profile_id) if matched_profile_id else None,
-                status=status,
-                details={
-                    "device_id": device_id,
-                    "similarity_score": best["similarity"],
-                    "liveness_score": liveness_score if liveness_score is not None else ""
-                },
-                ip_address=ip_address, user_agent=user_agent
+            logger.info(
+                f"Verification result: status={status}, "
+                f"company_id={company_id}, user_id={user_id}, device_id={device_id}, "
+                f"matched_user_id={matched_user_id}, matched_profile_id={matched_profile_id}, "
+                f"similarity={best['similarity']:.4f}, liveness_score={liveness_score}"
             )
-
+            
+            # Store verification image if needed
             image_path = None
             verification_id = uuid4()
             should_store = False
@@ -569,56 +441,37 @@ class FaceService:
                     )
                 except Exception as e:
                     logger.error(f"MinIO verify image failed: {e}")
-
-            logger.info(f"Verification result: verified={verified}, user_id={matched_user_id}, similarity={best['similarity']:.4f}, attendance_client={self.attendance_client is not None}")  # TODO: remove it
+                    
+            # Add record to attendance system 
             if verified and record_attendance and self.attendance_client and matched_user_id:
-                logger.info("Recording attendance via gRPC...")
                 try:
-                    from app.grpc_generated import attendance_pb2
-                    session_info = attendance_pb2.ServiceSessionInfo(
-                        service_name=settings.SERVICE_NAME,
-                        service_id=settings.SERVICE_ID,
-                        client_ip=ip_address or "",
-                        client_agent=user_agent or ""
-                    )
-                    # TODO: handler worker batch send attendance records
-                    batch_req_input = attendance_pb2.ServiceAddBatchAttendanceInput(
-                        company_id=str(company_id),
-                        employee_id=str(matched_user_id),
-                        device_id=device_id or "",
-                        record_time=int(datetime.utcnow().timestamp()),
-                        verification_method="face",
-                        verification_score=float(best["similarity"]),
-                        face_image_url=image_path or "",
-                        location_coordinates=location_coordinates or "",
-                        session=session_info
-                    )
-                    self.attendance_client.service_add_batch_attendance(
-                        [batch_req_input]
-                    )
+                    batching = self.batching_service
+                    
+                    if batching:
+                        logger.info(
+                            "Recording attendance via gRPC client..."
+                            f" company_id={company_id}, employee_id={matched_user_id}, "
+                            f"verification_score={best['similarity']:.4f}"
+                        )
+                        record = RawAttendanceRecord(
+                            company_id=company_id,
+                            employee_id=matched_user_id,
+                            record_time=int(datetime.utcnow().timestamp()),  # Unix timestamp
+                            device_id=device_id,
+                            verification_method="face",
+                            verification_score=best["similarity"],
+                            face_image_url=image_path,
+                            location_coordinates=location_coordinates
+                        )
+                        ok = batching.enqueue_record(record)
+                        if not ok:
+                            logger.error("Failed to enqueue attendance record.")
+                    else:
+                        logger.error("Attendance batching service not available in app state.")
+                    
                 except Exception as e:
-                    logger.warning(f"Attendance rpc failed: {e}")
-            else:
-                logger.info("Attendance gRPC client not configured; skipping attendance record.")
-            #  TODO: clean it
-            # if self.scylladb:
-            #     try:
-            #         self.scylladb.save_verification_state(
-            #             verification_id=verification_id,
-            #             company_id=company_id,
-            #             user_id=matched_user_id,
-            #             profile_id=matched_profile_id,
-            #             device_id=device_id,
-            #             status=status,
-            #             verified=verified,
-            #             similarity_score=best["similarity"],
-            #             liveness_score=liveness_score,
-            #             metadata={},
-            #             image_path=image_path
-            #         )
-            #     except Exception as e:
-            #         logger.warning(f"save_verification_state failed: {e}")
-
+                    logger.error(f"Attendance record failed: {e}")
+            
             return VerifyResponse(
                 status=status,
                 verified=verified,
@@ -642,6 +495,7 @@ class FaceService:
         finally:
             db.close()
 
+    # TODO: chưa check các phần bên dưới
     # ---------------- Update Profile ----------------
     async def update_profile(
         self,

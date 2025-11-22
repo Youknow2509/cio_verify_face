@@ -12,22 +12,19 @@ from typing import Optional
 
 import grpc
 
-from ..grpc_generated import auth_pb2, auth_pb2_grpc
+from app.grpc_generated import auth_pb2, auth_pb2_grpc
 from app.core.config import settings
+from google.protobuf import empty_pb2
 
 _LOGGER = logging.getLogger(__name__)
 
 
 class AuthClient:
     """Simple gRPC client for the `auth.AuthService`.
-
-    The client uses `GRPC_CLIENT_URL` environment variable if no
-    `target` is provided. The value should be in the form
-    `host:port` (e.g. `localhost:50051`).
     """
 
     def __init__(self, target: Optional[str] = None, *, timeout: float = 5.0):
-        self._target = target or settings.GRPC_CLIENT_URL
+        self._target = target or getattr(settings, 'GRPC_AUTH_URL', 'localhost:50051')
         self._timeout = timeout
         self._channel = grpc.insecure_channel(self._target)
         self._stub = auth_pb2_grpc.AuthServiceStub(self._channel)
@@ -38,6 +35,15 @@ class AuthClient:
         except Exception:
             _LOGGER.exception("Error closing auth client channel")
 
+    def check_connection(self) -> None:
+        """Awaitable health check."""
+        req = empty_pb2.Empty()
+        try:
+            self._stub.HealthCheck(req, timeout=self._timeout)
+        except grpc.RpcError as exc:
+            _LOGGER.error("HealthCheck rpc failed: %s", exc)
+            raise
+    
     def create_user_token(self, user_id: str, roles: int) -> Optional[auth_pb2.CreateUserTokenResponse]:
         req = auth_pb2.CreateUserTokenRequest(user_id=user_id, roles=roles)
         try:

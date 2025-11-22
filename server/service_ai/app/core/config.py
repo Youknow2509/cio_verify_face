@@ -13,6 +13,7 @@ class Settings(BaseSettings):
     ENVIRONMENT: str = "development"
     SERVICE_NAME: str = "service_ai"
     SERVICE_ID: str = "service_ai_001"
+    SERVICE_WORKERS: int = 4
     
     # Service
     SERVICE_NAME: str = "service_ai"
@@ -23,17 +24,30 @@ class Settings(BaseSettings):
     # Compute mode (cpu or gpu)
     COMPUTE_MODE: str = "cpu"
     
-    # GRPC client auth settings
-    GRPC_CLIENT_URL: str = "localhost:50051"
-    GRPC_CLIENT_TLS: bool = False
-    GRPC_CLIENT_CERT_PATH: Optional[str] = None
-    GRPC_CLIENT_KEY_PATH: Optional[str] = None
+    # GRPC client configuration
+    GRPC_CLIENT_KEEPALIVE_TIME_MS: int = 120000
+    GRPC_CLIENT_KEEPALIVE_TIMEOUT_MS: int = 20000
+    GRPC_CLIENT_KEEPALIVE_PERMIT_WITHOUT_CALLS: int = 0
+    GRPC_CLIENT_HTTP2_MAX_PINGS_WITHOUT_DATA: int = 1
+    GRPC_CLIENT_HTTP2_MIN_TIME_BETWEEN_PINGS_MS: int = 60000
+    GRPC_CLIENT_HTTP2_MIN_PING_INTERVAL_WITHOUT_DATA_MS: int = 60000
+    
+    # GRPC auth client settings
+    GRPC_AUTH_URL: str = "localhost:50051"
+    GRPC_AUTH_TLS: bool = False
+    GRPC_AUTH_CERT_PATH: Optional[str] = None
+    GRPC_AUTH_KEY_PATH: Optional[str] = None
     
     # GRPC attendance client settings
     GRPC_ATTENDANCE_URL: str = "localhost:50052"
     GRPC_ATTENDANCE_TLS: bool = False
     GRPC_ATTENDANCE_CERT_PATH: Optional[str] = None
     GRPC_ATTENDANCE_KEY_PATH: Optional[str] = None
+    
+    # Attendance batching settings
+    ATTENDANCE_BATCH_MAX_SIZE: Optional[int] = 10
+    ATTENDANCE_BATCH_FLUSH_INTERVAL: Optional[float] = 3.0
+    ATTENDANCE_BATCH_MAX_PENDING: Optional[int] = 100
     
     # Database
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/cio_attendance_db"

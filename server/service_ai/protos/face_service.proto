@@ -1,9 +1,12 @@
 syntax = "proto3";
 
 package face_verification;
+import "google/protobuf/empty.proto";
 
 // Face verification service
 service FaceVerification {
+  // Health check for the service
+  rpc HealthCheck(google.protobuf.Empty) returns (google.protobuf.Empty);
   // Enroll a face with single image
   rpc EnrollFace(EnrollRequest) returns (EnrollResponse);
   

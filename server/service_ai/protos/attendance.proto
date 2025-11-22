@@ -1,9 +1,11 @@
 syntax = "proto3";
 package attendance;
+import "google/protobuf/empty.proto";
 option go_package = "github.com/youknow2509/cio_verify_face/server/service_attendance/proto/pb";
 
 // Attendance service for inter-service communication
 service AttendanceService {
+    rpc HealthCheck(google.protobuf.Empty) returns (google.protobuf.Empty);
     rpc AddAttendance(AddAttendanceInput) returns (AddAttendanceOutput);
 	rpc GetAttendanceRecords(GetAttendanceRecordsInput) returns (GetAttendanceRecordsOutput);
 	rpc GetAttendanceRecordsEmployee(GetAttendanceRecordsEmployeeInput) returns (GetAttendanceRecordsOutput);

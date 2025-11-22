@@ -8,6 +8,7 @@ from datetime import datetime
 from sqlalchemy import create_engine, text, and_
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import QueuePool
+from app.utils.database import get_face_profile_partition_name
 
 from app.core.config import settings
 
@@ -34,7 +35,16 @@ class PgVectorManager:
         self.index_version = settings.VECTOR_DB_INDEX_VERSION
         self._initialize_pgvector()
         logger.info("PgVectorManager initialized successfully")
-        
+    
+    def check_connection(self):
+        """Check connection to PostgreSQL database"""
+        try:
+            with self.engine.connect() as conn:
+                conn.execute(text("SELECT 1"))
+            logger.info("PostgreSQL connection successful")
+        except Exception as e:
+            logger.error(f"PostgreSQL connection failed: {e}")
+            raise
     
     def _initialize_pgvector(self):
         """Initialize pgvector extension if not already enabled"""
@@ -64,8 +74,7 @@ class PgVectorManager:
         """
         db = self.SessionLocal()
         try:
-            # Sanitize company_id for table name (replace hyphens with underscores)
-            partition_name = f"face_profiles_p_{company_id.replace('-', '')}"
+            partition_name = get_face_profile_partition_name(company_id)
             
             # Check if partition already exists
             check_query = text("""
