@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"time"
 
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/application/service"
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/domain/logger"
@@ -12,6 +13,7 @@ import (
 	pb "github.com/youknow2509/cio_verify_face/server/service_auth/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 	"google.golang.org/grpc/reflection"
 )
 
@@ -55,7 +57,18 @@ func initServerGrpc() error {
 		}
 		opts = []grpc.ServerOption{grpc.Creds(creds)}
 	}
-
+	// Set keepalive parameters
+	opts = append(opts,
+		grpc.KeepaliveParams(keepalive.ServerParameters{
+			Time:    time.Duration(config.KeepaliveTimeMs) * time.Millisecond,
+			Timeout: time.Duration(config.KeepaliveTimeoutMs) * time.Millisecond,
+		}),
+		grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+			MinTime:             time.Duration(config.Http2MinTimeBetweenPingsMs) * time.Millisecond,
+			PermitWithoutStream: config.KeepalivePermitWithoutCalls,
+		}),
+	)
+	// Create gRPC server
 	grpcServer := grpc.NewServer(opts...)
 
 	// Get services

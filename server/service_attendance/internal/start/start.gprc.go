@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"time"
 
 	global "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/global"
 	interfaceGrpc "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/interfaces/grpc"
 	pb "github.com/youknow2509/cio_verify_face/server/service_attendance/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 )
 
 var (
@@ -56,6 +58,18 @@ func initServerGrpc() error {
 		}
 		opts = []grpc.ServerOption{grpc.Creds(creds)}
 	}
+	// Server Parameters
+	kaParams := grpc.KeepaliveParams(keepalive.ServerParameters{
+		Time:    time.Duration(config.KeepaliveTimeMs) * time.Millisecond,
+		Timeout: time.Duration(config.KeepaliveTimeoutMs) * time.Millisecond,
+	})
+	opts = append(opts, kaParams)
+	// Enforcement Policy
+	kaEnforcement := grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+		MinTime:             time.Duration(config.Http2MinTimeBetweenPingsMs) * time.Millisecond,
+		PermitWithoutStream: config.KeepalivePermitWithoutCalls,
+	})
+	opts = append(opts, kaEnforcement)
 
 	grpcServer := grpc.NewServer(opts...)
 
@@ -88,6 +102,19 @@ func initClientGrpc() error {
 	} else {
 		opts = append(opts, grpc.WithInsecure())
 	}
+	// Keepalive parameters
+	kaParams := grpc.WithKeepaliveParams(keepalive.ClientParameters{
+		Time:                time.Duration(config.KeepaliveTimeMs) * time.Millisecond,
+		Timeout:             time.Duration(config.KeepaliveTimeoutMs) * time.Millisecond,
+		PermitWithoutStream: config.KeepalivePermitWithoutCalls,
+	})
+	opts = append(opts, kaParams)
+	// HTTP/2 Ping Policy
+	http2PingPolicy := grpc.WithDefaultCallOptions(
+		grpc.MaxCallRecvMsgSize(config.Http2MaxPingsWithoutData),
+	)
+	opts = append(opts, http2PingPolicy)
+	// create connection
 	conn, err := grpc.Dial(config.GrpcAddr, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to connect to gRPC server: %w", err)

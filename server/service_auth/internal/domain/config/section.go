@@ -64,6 +64,10 @@ type GrpcSetting struct {
 		CertFile string `mapstructure:"cert_file"`
 		KeyFile  string `mapstructure:"key_file"`
 	}
+	KeepaliveTimeMs                 int  `mapstructure:"keepalive_time_ms"`
+	KeepaliveTimeoutMs              int  `mapstructure:"keepalive_timeout_ms"`
+	Http2MinTimeBetweenPingsMs      int  `mapstructure:"http2_min_time_between_pings_ms"`
+	KeepalivePermitWithoutCalls     bool `mapstructure:"keepalive_permit_without_calls"`
 }
 
 // WsSetting

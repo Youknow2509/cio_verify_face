@@ -15,6 +15,12 @@ worker_attendance:
 service_auth:
     enabled: true
     grpc_addr: 'localhost:50051' # service_auth gRPC address
+    keepalive_time_ms: 120000
+    keepalive_timeout_ms: 20000
+    keepalive_permit_without_calls: true
+    http2_max_pings_without_data: 1
+    http2_min_time_between_pings_ms: 60000
+    http2_min_ping_interval_without_data_ms: 60000
     tls:
         enabled: false
         cert_file: ''
@@ -24,6 +30,10 @@ grpc:
     network: 'tcp'
     host: '0.0.0.0'
     port: 50051
+    keepalive_time_ms: 120000
+    keepalive_timeout_ms: 20000
+    http2_min_time_between_pings_ms: 60000
+    keepalive_permit_without_calls: true
     tls:
         enabled: false
         cert_file: ''
