@@ -6,6 +6,36 @@ import (
 	"github.com/google/uuid"
 )
 
+// For Delete daily attendance summary
+type DeleteDailyAttendanceSummaryModel struct {
+	Session        *SessionReq     `json:"session"`
+	ServiceSession *ServiceSession `json:"service_session,omitempty"`
+	//
+	CompanyID    uuid.UUID `json:"company_id"`
+	WorkDate     time.Time `json:"work_date"`
+	SummaryMonth string    `json:"summary_month"` // Format: YYYY-MM
+}
+
+// For Delete attendance records no shift
+type DeleteAttendanceRecordNoShiftModel struct {
+	Session        *SessionReq     `json:"session"`
+	ServiceSession *ServiceSession `json:"service_session,omitempty"`
+	//
+	CompanyID uuid.UUID `json:"company_id"`
+	YearMonth string    `json:"year_month"` // Format: YYYY-MM
+}
+
+// For Delete attendace records
+type DeleteAttendanceModel struct {
+	Session        *SessionReq     `json:"session"`
+	ServiceSession *ServiceSession `json:"service_session,omitempty"`
+	//
+	CompanyID  uuid.UUID `json:"company_id"`
+	YearMonth  string    `json:"year_month"` // Format: YYYY-MM
+	Time       time.Time `json:"time,omitempty"`
+	EmployeeId uuid.UUID `json:"employee_id,omitempty"`
+}
+
 // ShiftTimeEmployee
 type ShiftTimeEmployee struct {
 	ShiftID               uuid.UUID  `json:"shift_id"`
@@ -25,14 +55,14 @@ type GetDailyAttendanceSummaryModel struct {
 	CompanyID    uuid.UUID `json:"company_id"`
 	SummaryMonth string    `json:"summary_month"` // Format: YYYY-MM
 	WorkDate     time.Time `json:"work_date"`
-	PageSize     int       `json:"page_size" omitempty`
-	PageStage    []byte    `json:"page_stage" omitempty`
+	PageSize     int       `json:"page_size,omitempty"`
+	PageStage    []byte    `json:"page_stage,omitempty"`
 }
 
 type GetDailyAttendanceSummaryResultModel struct {
 	Records       []DailySummariesCompanyInfo `json:"records"`
-	PageStageNext string                      `json:"page_stage_next" omitempty`
-	PageSize      int                         `json:"page_size" omitempty`
+	PageStageNext string                      `json:"page_stage_next,omitempty"`
+	PageSize      int                         `json:"page_size,omitempty"`
 }
 
 type DailySummariesCompanyInfo struct {
@@ -54,8 +84,8 @@ type DailySummariesCompanyInfo struct {
 // For GetDailyAttendanceSummaryEmployee
 type GetDailyAttendanceSummaryEmployeeResultModel struct {
 	Records       []DailySummariesEmployeeInfo `json:"records"`
-	PageStageNext string                       `json:"page_stage_next" omitempty`
-	PageSize      int                          `json:"page_size" omitempty`
+	PageStageNext string                       `json:"page_stage_next,omitempty"`
+	PageSize      int                          `json:"page_size,omitempty"`
 }
 
 type DailySummariesEmployeeInfo struct {
@@ -86,8 +116,8 @@ type GetDailyAttendanceSummaryEmployeeModel struct {
 
 type GetAttendanceRecordsCompanyResultModel struct {
 	Records       []AttendanceRecordInfo `json:"records"`
-	PageStageNext string                 `json:"page_stage_next" omitempty`
-	PageSize      int                    `json:"page_size" omitempty`
+	PageStageNext string                 `json:"page_stage_next,omitempty"`
+	PageSize      int                    `json:"page_size,omitempty"`
 }
 
 type AttendanceRecordInfo struct {
@@ -111,9 +141,9 @@ type GetAttendanceRecordsEmployeeModel struct {
 	//
 	CompanyID  uuid.UUID `json:"company_id"`
 	YearMonth  string    `json:"year_month" ` // Format: YYYY-MM
-	EmployeeID uuid.UUID `json:"employee_id""`
-	PageSize   int       `json:"page_size"`
-	PageStage  []byte    `json:"page_stage"`
+	EmployeeID uuid.UUID `json:"employee_id"`
+	PageSize   int       `json:"page_size,omitempty"`
+	PageStage  []byte    `json:"page_stage,omitempty"`
 	//
 	Session *SessionReq `json:"session"`
 }
@@ -141,7 +171,7 @@ type AddAttendanceModel struct {
 	LocationCoordinates string    `json:"location_coordinates"`
 	// Session information
 	Session        *SessionReq     `json:"session"`
-	ServiceSession *ServiceSession `json:"service_session" omitempty`
+	ServiceSession *ServiceSession `json:"service_session,omitempty"`
 }
 
 type ServiceSession struct {

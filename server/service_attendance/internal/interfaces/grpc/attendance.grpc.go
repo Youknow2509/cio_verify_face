@@ -12,6 +12,7 @@ import (
 	pb "github.com/youknow2509/cio_verify_face/server/service_attendance/proto"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 )
 
 type AttendanceGRPCServer struct {
@@ -24,6 +25,106 @@ func NewAttendanceGRPCServer() *AttendanceGRPCServer {
 	return &AttendanceGRPCServer{
 		attendanceService: attendanceService,
 	}
+}
+
+func (s *AttendanceGRPCServer) DeleteAttendanceRecords(ctx context.Context, req *pb.DeleteAttendanceRecordsInput) (*emptypb.Empty, error) {
+	// Parse request to application model
+	var sessionUser applicationModel.SessionReq
+	var sessionService applicationModel.ServiceSession
+	if req.GetSession().GetSessionId() != "" {
+		sessionUser = applicationModel.SessionReq{
+			SessionId:   uuid.MustParse(req.Session.GetSessionId()),
+			UserId:      uuid.MustParse(req.Session.GetUserId()),
+			CompanyId:   uuid.MustParse(req.Session.GetCompanyId()),
+			ClientIp:    req.Session.GetClientIp(),
+			ClientAgent: req.Session.GetClientAgent(),
+		}
+	}
+	if req.GetServiceSession().GetServiceId() != "" {
+		sessionService = applicationModel.ServiceSession{
+			ServiceName: req.GetServiceSession().GetServiceName(),
+			ServiceId:   req.GetServiceSession().GetServiceId(),
+			ClientIp:    req.GetServiceSession().GetClientIp(),
+			ClientAgent: req.GetServiceSession().GetClientAgent(),
+		}
+	}
+	reqDelAttendanceEmployee := &applicationModel.DeleteAttendanceModel{
+		Session:        &sessionUser,
+		ServiceSession: &sessionService,
+		//
+		CompanyID: uuid.MustParse(req.GetCompanyId()),
+		YearMonth: req.GetSummaryMonth(),
+	}
+	reqDelAttendanceRecordNoShift := &applicationModel.DeleteAttendanceRecordNoShiftModel{
+		Session:        &sessionUser,
+		ServiceSession: &sessionService,
+		//
+		CompanyID: uuid.MustParse(req.GetCompanyId()),
+		YearMonth: req.GetSummaryMonth(),
+	}
+	// Handle del AttendanceRecords
+	if err := s.attendanceService.DeleteAttendanceNoShift(
+		ctx,
+		reqDelAttendanceRecordNoShift,
+	); err != nil {
+		if err.ErrorSystem != nil {
+			return nil, status.Errorf(codes.Code(500), "System is busy, please try again later")
+		}
+		return nil, status.Errorf(codes.Code(400), "%s", err.ErrorClient)
+	}
+	// Handle del AttendanceEmployee
+	if err := s.attendanceService.DeleteAttendanceRecord(
+		ctx,
+		reqDelAttendanceEmployee,
+	); err != nil {
+		if err.ErrorSystem != nil {
+			return nil, status.Errorf(codes.Code(500), "System is busy, please try again later")
+		}
+		return nil, status.Errorf(codes.Code(400), "%s", err.ErrorClient)
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (s *AttendanceGRPCServer) DeleteDailyAttendanceSummary(ctx context.Context, req *pb.DeleteAttendanceRecordsInput) (*emptypb.Empty, error) {
+	// Parse request to application model
+	var sessionUser applicationModel.SessionReq
+	var sessionService applicationModel.ServiceSession
+	if req.GetSession().GetSessionId() != "" {
+		sessionUser = applicationModel.SessionReq{
+			SessionId:   uuid.MustParse(req.Session.GetSessionId()),
+			UserId:      uuid.MustParse(req.Session.GetUserId()),
+			CompanyId:   uuid.MustParse(req.Session.GetCompanyId()),
+			ClientIp:    req.Session.GetClientIp(),
+			ClientAgent: req.Session.GetClientAgent(),
+		}
+	}
+	if req.GetServiceSession().GetServiceId() != "" {
+		sessionService = applicationModel.ServiceSession{
+			ServiceName: req.GetServiceSession().GetServiceName(),
+			ServiceId:   req.GetServiceSession().GetServiceId(),
+			ClientIp:    req.GetServiceSession().GetClientIp(),
+			ClientAgent: req.GetServiceSession().GetClientAgent(),
+		}
+	}
+	repDeleteDailyAttendanceSummary := &applicationModel.DeleteDailyAttendanceSummaryModel{
+		Session:        &sessionUser,
+		ServiceSession: &sessionService,
+		//
+		CompanyID: uuid.MustParse(req.GetCompanyId()),
+		SummaryMonth: req.GetSummaryMonth(),
+	}
+	// 
+	if err := s.attendanceService.DeleteDailyAttendanceSummary(ctx,repDeleteDailyAttendanceSummary); err != nil {
+		if err.ErrorSystem != nil {
+			return nil, status.Errorf(codes.Code(500), "System is busy, please try again later")
+		}
+		return nil, status.Errorf(codes.Code(400), "%s", err.ErrorClient)
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (s *AttendanceGRPCServer) HealthCheck(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, nil
 }
 
 func (s *AttendanceGRPCServer) AddAttendance(ctx context.Context, req *pb.AddAttendanceInput) (*pb.AddAttendanceOutput, error) {

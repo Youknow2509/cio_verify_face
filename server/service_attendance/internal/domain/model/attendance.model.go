@@ -9,6 +9,37 @@ import (
 // ============================================
 // Attendance Record Model
 // ============================================
+type DeleteAttendanceRecordNoShiftInput struct {
+	CompanyID uuid.UUID `json:"company_id"`
+	YearMonth string    `json:"year_month"`
+	Time      time.Time `json:"time"`
+}
+
+type GetAttendanceRecordNoShiftInput struct {
+	CompanyID uuid.UUID `json:"company_id"`
+	YearMonth string    `json:"year_month"`
+	PageSize  int       `json:"page_size,omitempty"`
+	PageStage []byte    `json:"page_stage,omitempty"`
+}
+
+type AttendanceRecordNoShiftOutput struct {
+	Records       []AttendanceRecordInfo `json:"records"`
+	PageStageNext []byte                 `json:"page_stage_next,omitempty"`
+	PageSize      int                    `json:"page_size,omitempty"`
+}
+
+type AddAttendanceRecordNoShiftInput struct {
+	CompanyID           uuid.UUID `json:"company_id"`
+	YearMonth           string    `json:"year_month"`
+	RecordTime          time.Time `json:"record_time"`
+	EmployeeID          uuid.UUID `json:"employee_id"`
+	DeviceID            uuid.UUID `json:"device_id"`
+	VerificationMethod  string    `json:"verification_method"`
+	VerificationScore   float64   `json:"verification_score"`
+	FaceImageURL        string    `json:"face_image_url"`
+	LocationCoordinates string    `json:"location_coordinates"`
+}
+
 type GetFirstCheckInInput struct {
 	CompanyID      uuid.UUID `json:"company_id"`
 	EmployeeID     uuid.UUID `json:"employee_id"`
@@ -44,8 +75,8 @@ type GetListTimeShiftEmployeeInput struct {
 
 type DailySummariesEmployeeOutput struct {
 	Records       []DailySummariesEmployeeInfo `json:"records"`
-	PageStageNext []byte                       `json:"page_stage_next" omitempty`
-	PageSize      int                          `json:"page_size" omitempty`
+	PageStageNext []byte                       `json:"page_stage_next,omitempty"`
+	PageSize      int                          `json:"page_size,omitempty"`
 }
 
 type DailySummariesEmployeeInfo struct {
@@ -66,8 +97,8 @@ type DailySummariesEmployeeInfo struct {
 
 type DailySummariesCompanyOutput struct {
 	Records       []DailySummariesCompanyInfo `json:"records"`
-	PageStageNext []byte                      `json:"page_stage_next" omitempty`
-	PageSize      int                         `json:"page_size" omitempty`
+	PageStageNext []byte                      `json:"page_stage_next,omitempty"`
+	PageSize      int                         `json:"page_size,omitempty"`
 }
 
 type DailySummariesCompanyInfo struct {
@@ -91,8 +122,8 @@ type GetDailySummariesCompanyForEmployeeInput struct {
 	CompanyID    uuid.UUID `json:"company_id"`
 	EmployeeID   uuid.UUID `json:"employee_id"`
 	SummaryMonth string    `json:"summary_month"`
-	PageSize     int       `json:"page_size" omitempty`
-	PageStage    []byte    `json:"page_stage" omitempty`
+	PageSize     int       `json:"page_size,omitempty"`
+	PageStage    []byte    `json:"page_stage,omitempty"`
 }
 
 type GetDailySummariesCompanyInput struct {
@@ -100,8 +131,8 @@ type GetDailySummariesCompanyInput struct {
 	CompanyID    uuid.UUID `json:"company_id"`
 	SummaryMonth string    `json:"summary_month"`
 	WorkDate     time.Time `json:"work_date"`
-	PageSize     int       `json:"page_size" omitempty`
-	PageStage    []byte    `json:"page_stage" omitempty`
+	PageSize     int       `json:"page_size,omitempty"`
+	PageStage    []byte    `json:"page_stage,omitempty"`
 }
 
 type UpdateDailySummariesEmployeeInput struct {
@@ -117,7 +148,6 @@ type DeleteDailySummariesInput struct {
 	CompanyID    uuid.UUID `json:"company_id"`
 	SummaryMonth string    `json:"summary_month"`
 	WorkDate     time.Time `json:"work_date"`
-	EmployeeID   uuid.UUID `json:"employee_id"`
 }
 
 type DeleteDailySummariesEmployeeInput struct {
@@ -138,14 +168,14 @@ type GetAttendanceRecordCompanyForEmployeeInput struct {
 	CompanyID  uuid.UUID `json:"company_id"`
 	YearMonth  string    `json:"year_month"`
 	EmployeeID uuid.UUID `json:"employee_id"`
-	PageSize   int       `json:"page_size" omitempty`
-	PageStage  []byte    `json:"page_stage" omitempty`
+	PageSize   int       `json:"page_size,omitempty"`
+	PageStage  []byte    `json:"page_stage,omitempty"`
 }
 
 type AttendanceRecordOutput struct {
 	Records       []AttendanceRecordInfo `json:"records"`
-	PageStageNext []byte                 `json:"page_stage_next" omitempty`
-	PageSize      int                    `json:"page_size" omitempty`
+	PageStageNext []byte                 `json:"page_stage_next,omitempty"`
+	PageSize      int                    `json:"page_size,omitempty"`
 }
 
 type AttendanceRecordInfo struct {
@@ -154,21 +184,21 @@ type AttendanceRecordInfo struct {
 	RecordTime          time.Time         `json:"record_time"`
 	EmployeeID          uuid.UUID         `json:"employee_id"`
 	DeviceID            uuid.UUID         `json:"device_id"`
-	RecordType          int               `json:"record_type"`
+	RecordType          int               `json:"record_type,omitempty"`
 	VerificationMethod  string            `json:"verification_method"`
 	VerificationScore   float64           `json:"verification_score"`
 	FaceImageURL        string            `json:"face_image_url"`
 	LocationCoordinates string            `json:"location_coordinates"`
-	Metadata            map[string]string `json:"metadata"`
-	SyncStatus          string            `json:"sync_status"`
+	Metadata            map[string]string `json:"metadata,omitempty"`
+	SyncStatus          string            `json:"sync_status,omitempty"`
 	CreatedAt           time.Time         `json:"created_at"`
 }
 
 type GetAttendanceRecordCompanyInput struct {
 	CompanyID uuid.UUID `json:"company_id"`
 	YearMonth string    `json:"year_month"`
-	PageSize  int       `json:"page_size" omitempty`
-	PageStage []byte    `json:"page_stage" omitempty`
+	PageSize  int       `json:"page_size,omitempty"`
+	PageStage []byte    `json:"page_stage,omitempty"`
 }
 
 type AddDailySummariesInput struct {

@@ -1,16 +1,32 @@
 syntax = "proto3";
 package attendance;
+import "google/protobuf/empty.proto";
 option go_package = "github.com/youknow2509/cio_verify_face/server/service_attendance/proto/pb";
 
 // Attendance service for inter-service communication
 service AttendanceService {
+    // System methods
+    rpc HealthCheck(google.protobuf.Empty) returns (google.protobuf.Empty);
+    // Methods Add attendance record
     rpc AddAttendance(AddAttendanceInput) returns (AddAttendanceOutput);
+    rpc AddBatchAttendance(stream AddAttendanceInput) returns (AddAttendanceOutput);
+    rpc ServiceAddBatchAttendance(stream ServiceAddBatchAttendanceInput) returns (AddAttendanceOutput);
+    // Methods Get attendance records
 	rpc GetAttendanceRecords(GetAttendanceRecordsInput) returns (GetAttendanceRecordsOutput);
 	rpc GetAttendanceRecordsEmployee(GetAttendanceRecordsEmployeeInput) returns (GetAttendanceRecordsOutput);
 	rpc GetDailyAttendanceSummary(GetDailyAttendanceSummaryInput) returns (GetDailyAttendanceSummaryOutput);
 	rpc GetDailyAttendanceSummaryEmployee(GetDailyAttendanceSummaryEmployeeInput) returns (GetDailyAttendanceSummaryOutput);
-    rpc AddBatchAttendance(stream AddAttendanceInput) returns (AddAttendanceOutput);
-    rpc ServiceAddBatchAttendance(stream ServiceAddBatchAttendanceInput) returns (AddAttendanceOutput);
+    // Methods Delete attendance records
+    rpc DeleteAttendanceRecords(DeleteAttendanceRecordsInput) returns (google.protobuf.Empty);
+    rpc DeleteDailyAttendanceSummary(DeleteAttendanceRecordsInput) returns (google.protobuf.Empty);
+}
+
+// For deleting attendance records
+message DeleteAttendanceRecordsInput {
+    string company_id = 1;
+    string summary_month = 2;
+    SessionInfo session = 3;
+    ServiceSessionInfo service_session = 4;
 }
 
 // For service adding batch attendance records

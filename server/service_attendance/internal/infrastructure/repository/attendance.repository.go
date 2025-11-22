@@ -1,5 +1,95 @@
 package repository
 
+/**
+ * Table attendance_records:
+ *	CREATE TABLE IF NOT EXISTS attendance_records (
+ *  	company_id UUID,
+ *  	year_month TEXT,
+ *  	record_time TIMESTAMP,
+ *  	employee_id UUID,
+ *  	device_id UUID,
+ *  	record_type INT,
+ *  	verification_method TEXT,
+ *  	verification_score float,
+ *  	face_image_url TEXT,
+ *  	location_coordinates TEXT,
+ *  	metadata MAP<TEXT, TEXT>,
+ *  	sync_status TEXT,
+ *  	created_at TIMESTAMP,
+ *  	PRIMARY KEY ((company_id, year_month), record_time, employee_id)
+ *  ) WITH CLUSTERING ORDER BY (record_time DESC);
+ *
+ * Table attendance_records_by_user:
+ *	CREATE TABLE IF NOT EXISTS attendance_records_by_user (
+ *	   company_id UUID,
+ *	   employee_id UUID,
+ *	   year_month TEXT,
+ *	   record_time TIMESTAMP,
+ *	   device_id UUID,
+ *	   record_type INT,
+ *	   verification_method TEXT,
+ *	   verification_score float,
+ *	   face_image_url TEXT,
+ *	   location_coordinates TEXT,
+ *	   metadata MAP<TEXT, TEXT>,
+ *	   sync_status TEXT,
+ *	   created_at TIMESTAMP,
+ *	   PRIMARY KEY ((company_id, employee_id, year_month), record_time)
+ * ) WITH CLUSTERING ORDER BY (record_time DESC);
+ *
+ * Table daily_summaries:
+ * 	CREATE TABLE IF NOT EXISTS daily_summaries (
+ *		company_id UUID,
+ *		summary_month TEXT,
+ *		work_date DATE,
+ *		employee_id UUID,
+ *		shift_id UUID,
+ *		actual_check_in TIMESTAMP,
+ *		actual_check_out TIMESTAMP,
+ *		attendance_status INT,
+ *		late_minutes INT,
+ *		early_leave_minutes INT,
+ *		total_work_minutes INT,
+ *		notes TEXT,
+ *		updated_at TIMESTAMP,
+ *   	PRIMARY KEY ((company_id, summary_month), work_date, employee_id)
+ *	) WITH CLUSTERING ORDER BY (work_date DESC, employee_id ASC);
+ *
+ * Table daily_summaries_by_user:
+ *	CREATE TABLE IF NOT EXISTS daily_summaries_by_user (
+ *		company_id UUID,
+ *		employee_id UUID,
+ *		summary_month TEXT,
+ *		work_date DATE,
+ *		shift_id UUID,
+ *		actual_check_in TIMESTAMP,
+ *		actual_check_out TIMESTAMP,
+ *		attendance_status INT,
+ *		late_minutes INT,
+ *		early_leave_minutes INT,
+ *		total_work_minutes INT,
+ *		notes TEXT,
+ *		updated_at TIMESTAMP,
+ *		PRIMARY KEY ((company_id, employee_id, summary_month), work_date)
+ * ) WITH CLUSTERING ORDER BY (work_date DESC);
+ *
+ * Table attendance_records_no_shift:
+ *	CREATE TABLE IF NOT EXISTS attendance_records_no_shift (
+ *		company_id UUID,
+ *		year_month TEXT,
+ *		record_time TIMESTAMP,
+ *		employee_id UUID,
+ *		device_id UUID,
+ *		verification_method TEXT,
+ *		verification_score float,
+ *		face_image_url TEXT,
+ *		location_coordinates TEXT,
+ *		created_at TIMESTAMP,
+ *		PRIMARY KEY ((company_id, year_month), record_time)
+ * ) WITH CLUSTERING ORDER BY (record_time DESC);
+ *
+ */
+
 import (
 	"context"
 	"errors"
@@ -17,6 +107,168 @@ import (
 // ============================================
 type AttendanceRepository struct {
 	dbSession *gocql.Session
+}
+
+// DeleteAttendanceRecordAllYearMonth implements repository.IAttendanceRepository.
+func (a *AttendanceRepository) DeleteAttendanceRecordAllYearMonth(ctx context.Context, input *model.DeleteAttendanceRecordInput) error {
+	var errorsList []error
+	yearMonth := input.YearMonth
+	// Get add employee_id in attendance_records with (company_id + year_month)
+	sql_raw_get_employee_ids := `
+		SELECT employee_id FROM attendance_records
+		WHERE company_id = ? AND year_month = ?;
+	`
+	iter := a.dbSession.Query(sql_raw_get_employee_ids,
+		marshalUuid(input.CompanyID),
+		yearMonth,
+	).WithContext(ctx).Iter()
+	var gocqlUUIDEmployeeID gocql.UUID
+	var employeeIDs map[uuid.UUID]struct{} = make(map[uuid.UUID]struct{})
+	for iter.Scan(&gocqlUUIDEmployeeID) {
+		employeeIDs[uuid.UUID(gocqlUUIDEmployeeID)] = struct{}{}
+	}
+	if err := iter.Close(); err != nil {
+		errorsList = append(errorsList, err)
+	}
+	// Delete all attendance_records with company_id + year_month
+	sql_raw_delete_attendance_records := `
+		DELETE FROM attendance_records
+		WHERE company_id = ? AND year_month = ?;
+	`
+	err := a.dbSession.Query(sql_raw_delete_attendance_records,
+		marshalUuid(input.CompanyID),
+		yearMonth,
+	).WithContext(ctx).Exec()
+	if err != nil {
+		errorsList = append(errorsList, err)
+	}
+	// Delete all attendance_records_by_user with company_id + employee_id + year_month
+	sql_raw_delete_attendance_records_by_user := `
+		DELETE FROM attendance_records_by_user
+		WHERE company_id = ? AND employee_id = ?
+		AND year_month = ?;
+	`
+	for empID := range employeeIDs {
+		err := a.dbSession.Query(sql_raw_delete_attendance_records_by_user,
+			marshalUuid(input.CompanyID),
+			marshalUuid(empID),
+			yearMonth,
+		).WithContext(ctx).Exec()
+		if err != nil {
+			errorsList = append(errorsList, err)
+		}
+	}
+	if len(errorsList) > 0 {
+		return errors.New("one or more errors occurred while deleting attendance records")
+	}
+	return nil
+}
+
+// DeleteAttendanceRecordNoShift implements repository.IAttendanceRepository.
+func (a *AttendanceRepository) DeleteAttendanceRecordNoShift(ctx context.Context, input *model.DeleteAttendanceRecordNoShiftInput) error {
+	sql_raw := `DELETE FROM attendance_records_no_shift
+		WHERE company_id = ? AND year_month = ?;
+	`
+	yearMonth := input.Time.Format("2006-01")
+	return a.dbSession.Query(sql_raw,
+		marshalUuid(input.CompanyID),
+		yearMonth,
+	).WithContext(ctx).Exec()
+}
+
+// AddAttendanceRecordNoShift implements repository.IAttendanceRepository.
+func (a *AttendanceRepository) AddAttendanceRecordNoShift(ctx context.Context, input *model.AddAttendanceRecordNoShiftInput) error {
+	sql_raw := `INSERT INTO attendance_records_no_shift (
+		company_id, year_month, record_time, employee_id,
+		device_id, verification_method, verification_score,
+		face_image_url, location_coordinates, created_at
+	) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+	`
+	yearMonth := input.RecordTime.Format("2006-01")
+	createdAt := time.Now()
+	err := a.dbSession.Query(sql_raw,
+		marshalUuid(input.CompanyID),
+		yearMonth,
+		input.RecordTime,
+		marshalUuid(input.EmployeeID),
+		marshalUuid(input.DeviceID),
+		input.VerificationMethod,
+		marshalFloat64ToFloat32(input.VerificationScore),
+		input.FaceImageURL,
+		input.LocationCoordinates,
+		createdAt,
+	).WithContext(ctx).Exec()
+	return err
+}
+
+// DeleteAttendanceRecordNoShiftBeforeTimestamp implements repository.IAttendanceRepository.
+func (a *AttendanceRepository) DeleteAttendanceRecordNoShiftBeforeTimestamp(ctx context.Context, input *model.DeleteAttendanceRecordNoShiftInput) error {
+	sql_raw := `DELETE FROM attendance_records_no_shift
+		WHERE company_id = ? AND year_month = ?
+		AND record_time <= ?;
+	`
+	yearMonth := input.Time.Format("2006-01")
+	return a.dbSession.Query(sql_raw,
+		marshalUuid(input.CompanyID),
+		yearMonth,
+		input.Time,
+	).WithContext(ctx).Exec()
+}
+
+// GetAttendanceRecordNoShift implements repository.IAttendanceRepository.
+func (a *AttendanceRepository) GetAttendanceRecordNoShift(ctx context.Context, input *model.GetAttendanceRecordNoShiftInput) (*model.AttendanceRecordNoShiftOutput, error) {
+	sql_raw := `SELECT * FROM attendance_records_no_shift;`
+	var iter *gocql.Iter
+	output := &model.AttendanceRecordNoShiftOutput{}
+	if input.PageSize > 0 && input.PageStage != nil {
+		query := a.dbSession.Query(sql_raw,
+			marshalUuid(input.CompanyID),
+			input.YearMonth,
+		).WithContext(ctx).PageSize(input.PageSize).PageState(input.PageStage)
+		iter = query.Iter()
+		output.PageStageNext = iter.PageState()
+	} else {
+		iter = a.dbSession.Query(sql_raw,
+			marshalUuid(input.CompanyID),
+			input.YearMonth,
+		).WithContext(ctx).Iter()
+		output.PageStageNext = nil
+	}
+	var listRecords []model.AttendanceRecordInfo
+	for {
+		var r model.AttendanceRecordInfo
+		gocqlUUIDCompanyID := gocql.UUID{}
+		gocqlUUIDEmployeeID := gocql.UUID{}
+		gocqlUUIDDeviceID := gocql.UUID{}
+		gocqlFloatVerificationScore := float32(0)
+		if !iter.Scan(
+			&gocqlUUIDCompanyID,
+			&r.YearMonth,
+			&r.RecordTime,
+			&gocqlUUIDEmployeeID,
+			&gocqlUUIDDeviceID,
+			&r.VerificationMethod,
+			&gocqlFloatVerificationScore,
+			&r.FaceImageURL,
+			&r.LocationCoordinates,
+			&r.CreatedAt,
+		) {
+			break
+		}
+		// Unmarshal
+		r.CompanyID = uuid.UUID(gocqlUUIDCompanyID)
+		r.EmployeeID = uuid.UUID(gocqlUUIDEmployeeID)
+		r.DeviceID = uuid.UUID(gocqlUUIDDeviceID)
+		r.VerificationScore = float64(gocqlFloatVerificationScore)
+		//
+		listRecords = append(listRecords, r)
+	}
+	if err := iter.Close(); err != nil {
+		return nil, err
+	}
+	output.Records = listRecords
+	output.PageSize = len(listRecords)
+	return output, nil
 }
 
 // GetFirstCheckIn implements repository.IAttendanceRepository.
@@ -169,16 +421,16 @@ func minTime(time1, time2 time.Time) time.Time {
 // DeleteDailySummariesCompany implements repository.IAttendanceRepository.
 func (a *AttendanceRepository) DeleteDailySummariesCompany(ctx context.Context, input *model.DeleteDailySummariesInput) error {
 	// 1. Get All Records
-	summaryMonth := input.WorkDate.Format("2006-01")
-
+	if input.SummaryMonth == "" || len(input.SummaryMonth) != 7 {
+		return errors.New("summary_month is required")
+	}
 	fetchSql := `
 		SELECT work_date, employee_id FROM daily_summaries
-		WHERE company_id = ? AND summary_month = ? AND work_date = ?;
+		WHERE company_id = ? AND summary_month = ?;
 	`
 	iter := a.dbSession.Query(fetchSql,
 		marshalUuid(input.CompanyID),
-		summaryMonth,
-		input.WorkDate,
+		input.SummaryMonth,
 	).WithContext(ctx).Iter()
 	var workDate time.Time
 	var gocqlUUIDEmployeeID gocql.UUID
@@ -192,11 +444,25 @@ func (a *AttendanceRepository) DeleteDailySummariesCompany(ctx context.Context, 
 	if len(employeeIDs) == 0 {
 		return nil // không có gì để xoá
 	}
-	// 2. Delete Records by Batch
-	const batchSize = 50
-	deleteCompanySQL := `
+	// 2. Delete records in daily_summaries
+	sql_raw_delete_daily_summaries := `
 		DELETE FROM daily_summaries
-		WHERE company_id = ? AND summary_month = ? AND work_date = ? AND employee_id = ?;`
+		WHERE company_id = ? AND summary_month = ?;
+	`
+	err := a.dbSession.Query(sql_raw_delete_daily_summaries,
+		marshalUuid(input.CompanyID),
+		input.SummaryMonth,
+	).WithContext(ctx).Exec()
+	if err != nil {
+		return err
+	}
+
+	// 3. Delete Records by Batch in daily_summaries_by_user
+	const batchSize = 50
+	sql_raw_delete_daily_summaries_by_user := `
+		DELETE FROM daily_summaries_by_user
+		WHERE company_id = ? AND employee_id = ?
+			AND summary_month = ?;`
 	for i := 0; i < len(employeeIDs); i += batchSize {
 		end := i + batchSize
 		if end > len(employeeIDs) {
@@ -204,11 +470,10 @@ func (a *AttendanceRepository) DeleteDailySummariesCompany(ctx context.Context, 
 		}
 		batch := a.dbSession.NewBatch(gocql.LoggedBatch)
 		for _, empID := range employeeIDs[i:end] {
-			batch.Query(deleteCompanySQL,
+			batch.Query(sql_raw_delete_daily_summaries_by_user,
 				marshalUuid(input.CompanyID),
-				summaryMonth,
-				input.WorkDate,
 				empID,
+				input.SummaryMonth,
 			)
 		}
 		if err := a.dbSession.ExecuteBatch(batch); err != nil {

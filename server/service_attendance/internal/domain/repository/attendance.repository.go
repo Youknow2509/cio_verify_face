@@ -14,17 +14,22 @@ type IAttendanceRepository interface {
 	// Add Attendance Record
 	AddAttendanceRecord(ctx context.Context, input *model.AddAttendanceRecordInput) error
 	AddDailySummaries(ctx context.Context, input *model.AddDailySummariesInput) error
+	AddAttendanceRecordNoShift(ctx context.Context, input *model.AddAttendanceRecordNoShiftInput) error
 	// Get
+	GetAttendanceRecordNoShift(ctx context.Context, input *model.GetAttendanceRecordNoShiftInput) (*model.AttendanceRecordNoShiftOutput, error)
 	GetFirstCheckIn(ctx context.Context, input *model.GetFirstCheckInInput) (*model.GetFirstCheckInOutput, error)
 	GetAttendanceRecordCompany(ctx context.Context, input *model.GetAttendanceRecordCompanyInput) (*model.AttendanceRecordOutput, error)
 	GetAttendanceRecordCompanyForEmployee(ctx context.Context, input *model.GetAttendanceRecordCompanyForEmployeeInput) (*model.AttendanceRecordOutput, error)
 	GetDailySummarieCompany(ctx context.Context, input *model.GetDailySummariesCompanyInput) (*model.DailySummariesCompanyOutput, error)
 	GetDailySummarieCompanyForEmployee(ctx context.Context, input *model.GetDailySummariesCompanyForEmployeeInput) (*model.DailySummariesEmployeeOutput, error)
 	// Delete
+	DeleteAttendanceRecordNoShift(ctx context.Context, input *model.DeleteAttendanceRecordNoShiftInput) error
+	DeleteAttendanceRecordNoShiftBeforeTimestamp(ctx context.Context, input *model.DeleteAttendanceRecordNoShiftInput) error
 	DeleteAttendanceRecordBeforeTimestamp(ctx context.Context, input *model.DeleteAttendanceRecordInput) error
 	DeleteDailySummariesCompanyBeforeDate(ctx context.Context, input *model.DeleteDailySummariesInput) error
 	DeleteDailySummariesEmployeeBeforeDate(ctx context.Context, input *model.DeleteDailySummariesEmployeeInput) error
 	DeleteAttendanceRecord(ctx context.Context, input *model.DeleteAttendanceRecordInput) error
+	DeleteAttendanceRecordAllYearMonth(ctx context.Context, input *model.DeleteAttendanceRecordInput) error
 	DeleteDailySummariesCompany(ctx context.Context, input *model.DeleteDailySummariesInput) error
 	DeleteDailySummariesEmployee(ctx context.Context, input *model.DeleteDailySummariesEmployeeInput) error
 	// Update

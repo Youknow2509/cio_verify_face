@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -19,13 +20,16 @@ import (
 const _ = grpc.SupportPackageIsVersion8
 
 const (
+	AttendanceService_HealthCheck_FullMethodName                       = "/attendance.AttendanceService/HealthCheck"
 	AttendanceService_AddAttendance_FullMethodName                     = "/attendance.AttendanceService/AddAttendance"
+	AttendanceService_AddBatchAttendance_FullMethodName                = "/attendance.AttendanceService/AddBatchAttendance"
+	AttendanceService_ServiceAddBatchAttendance_FullMethodName         = "/attendance.AttendanceService/ServiceAddBatchAttendance"
 	AttendanceService_GetAttendanceRecords_FullMethodName              = "/attendance.AttendanceService/GetAttendanceRecords"
 	AttendanceService_GetAttendanceRecordsEmployee_FullMethodName      = "/attendance.AttendanceService/GetAttendanceRecordsEmployee"
 	AttendanceService_GetDailyAttendanceSummary_FullMethodName         = "/attendance.AttendanceService/GetDailyAttendanceSummary"
 	AttendanceService_GetDailyAttendanceSummaryEmployee_FullMethodName = "/attendance.AttendanceService/GetDailyAttendanceSummaryEmployee"
-	AttendanceService_AddBatchAttendance_FullMethodName                = "/attendance.AttendanceService/AddBatchAttendance"
-	AttendanceService_ServiceAddBatchAttendance_FullMethodName         = "/attendance.AttendanceService/ServiceAddBatchAttendance"
+	AttendanceService_DeleteAttendanceRecords_FullMethodName           = "/attendance.AttendanceService/DeleteAttendanceRecords"
+	AttendanceService_DeleteDailyAttendanceSummary_FullMethodName      = "/attendance.AttendanceService/DeleteDailyAttendanceSummary"
 )
 
 // AttendanceServiceClient is the client API for AttendanceService service.
@@ -34,13 +38,20 @@ const (
 //
 // Attendance service for inter-service communication
 type AttendanceServiceClient interface {
+	// System methods
+	HealthCheck(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Methods Add attendance record
 	AddAttendance(ctx context.Context, in *AddAttendanceInput, opts ...grpc.CallOption) (*AddAttendanceOutput, error)
+	AddBatchAttendance(ctx context.Context, opts ...grpc.CallOption) (AttendanceService_AddBatchAttendanceClient, error)
+	ServiceAddBatchAttendance(ctx context.Context, opts ...grpc.CallOption) (AttendanceService_ServiceAddBatchAttendanceClient, error)
+	// Methods Get attendance records
 	GetAttendanceRecords(ctx context.Context, in *GetAttendanceRecordsInput, opts ...grpc.CallOption) (*GetAttendanceRecordsOutput, error)
 	GetAttendanceRecordsEmployee(ctx context.Context, in *GetAttendanceRecordsEmployeeInput, opts ...grpc.CallOption) (*GetAttendanceRecordsOutput, error)
 	GetDailyAttendanceSummary(ctx context.Context, in *GetDailyAttendanceSummaryInput, opts ...grpc.CallOption) (*GetDailyAttendanceSummaryOutput, error)
 	GetDailyAttendanceSummaryEmployee(ctx context.Context, in *GetDailyAttendanceSummaryEmployeeInput, opts ...grpc.CallOption) (*GetDailyAttendanceSummaryOutput, error)
-	AddBatchAttendance(ctx context.Context, opts ...grpc.CallOption) (AttendanceService_AddBatchAttendanceClient, error)
-	ServiceAddBatchAttendance(ctx context.Context, opts ...grpc.CallOption) (AttendanceService_ServiceAddBatchAttendanceClient, error)
+	// Methods Delete attendance records
+	DeleteAttendanceRecords(ctx context.Context, in *DeleteAttendanceRecordsInput, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	DeleteDailyAttendanceSummary(ctx context.Context, in *DeleteAttendanceRecordsInput, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type attendanceServiceClient struct {
@@ -51,50 +62,20 @@ func NewAttendanceServiceClient(cc grpc.ClientConnInterface) AttendanceServiceCl
 	return &attendanceServiceClient{cc}
 }
 
+func (c *attendanceServiceClient) HealthCheck(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, AttendanceService_HealthCheck_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *attendanceServiceClient) AddAttendance(ctx context.Context, in *AddAttendanceInput, opts ...grpc.CallOption) (*AddAttendanceOutput, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(AddAttendanceOutput)
 	err := c.cc.Invoke(ctx, AttendanceService_AddAttendance_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *attendanceServiceClient) GetAttendanceRecords(ctx context.Context, in *GetAttendanceRecordsInput, opts ...grpc.CallOption) (*GetAttendanceRecordsOutput, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetAttendanceRecordsOutput)
-	err := c.cc.Invoke(ctx, AttendanceService_GetAttendanceRecords_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *attendanceServiceClient) GetAttendanceRecordsEmployee(ctx context.Context, in *GetAttendanceRecordsEmployeeInput, opts ...grpc.CallOption) (*GetAttendanceRecordsOutput, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetAttendanceRecordsOutput)
-	err := c.cc.Invoke(ctx, AttendanceService_GetAttendanceRecordsEmployee_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *attendanceServiceClient) GetDailyAttendanceSummary(ctx context.Context, in *GetDailyAttendanceSummaryInput, opts ...grpc.CallOption) (*GetDailyAttendanceSummaryOutput, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetDailyAttendanceSummaryOutput)
-	err := c.cc.Invoke(ctx, AttendanceService_GetDailyAttendanceSummary_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *attendanceServiceClient) GetDailyAttendanceSummaryEmployee(ctx context.Context, in *GetDailyAttendanceSummaryEmployeeInput, opts ...grpc.CallOption) (*GetDailyAttendanceSummaryOutput, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(GetDailyAttendanceSummaryOutput)
-	err := c.cc.Invoke(ctx, AttendanceService_GetDailyAttendanceSummaryEmployee_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -171,19 +152,86 @@ func (x *attendanceServiceServiceAddBatchAttendanceClient) CloseAndRecv() (*AddA
 	return m, nil
 }
 
+func (c *attendanceServiceClient) GetAttendanceRecords(ctx context.Context, in *GetAttendanceRecordsInput, opts ...grpc.CallOption) (*GetAttendanceRecordsOutput, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAttendanceRecordsOutput)
+	err := c.cc.Invoke(ctx, AttendanceService_GetAttendanceRecords_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *attendanceServiceClient) GetAttendanceRecordsEmployee(ctx context.Context, in *GetAttendanceRecordsEmployeeInput, opts ...grpc.CallOption) (*GetAttendanceRecordsOutput, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAttendanceRecordsOutput)
+	err := c.cc.Invoke(ctx, AttendanceService_GetAttendanceRecordsEmployee_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *attendanceServiceClient) GetDailyAttendanceSummary(ctx context.Context, in *GetDailyAttendanceSummaryInput, opts ...grpc.CallOption) (*GetDailyAttendanceSummaryOutput, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDailyAttendanceSummaryOutput)
+	err := c.cc.Invoke(ctx, AttendanceService_GetDailyAttendanceSummary_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *attendanceServiceClient) GetDailyAttendanceSummaryEmployee(ctx context.Context, in *GetDailyAttendanceSummaryEmployeeInput, opts ...grpc.CallOption) (*GetDailyAttendanceSummaryOutput, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDailyAttendanceSummaryOutput)
+	err := c.cc.Invoke(ctx, AttendanceService_GetDailyAttendanceSummaryEmployee_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *attendanceServiceClient) DeleteAttendanceRecords(ctx context.Context, in *DeleteAttendanceRecordsInput, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, AttendanceService_DeleteAttendanceRecords_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *attendanceServiceClient) DeleteDailyAttendanceSummary(ctx context.Context, in *DeleteAttendanceRecordsInput, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, AttendanceService_DeleteDailyAttendanceSummary_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AttendanceServiceServer is the server API for AttendanceService service.
 // All implementations must embed UnimplementedAttendanceServiceServer
 // for forward compatibility
 //
 // Attendance service for inter-service communication
 type AttendanceServiceServer interface {
+	// System methods
+	HealthCheck(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
+	// Methods Add attendance record
 	AddAttendance(context.Context, *AddAttendanceInput) (*AddAttendanceOutput, error)
+	AddBatchAttendance(AttendanceService_AddBatchAttendanceServer) error
+	ServiceAddBatchAttendance(AttendanceService_ServiceAddBatchAttendanceServer) error
+	// Methods Get attendance records
 	GetAttendanceRecords(context.Context, *GetAttendanceRecordsInput) (*GetAttendanceRecordsOutput, error)
 	GetAttendanceRecordsEmployee(context.Context, *GetAttendanceRecordsEmployeeInput) (*GetAttendanceRecordsOutput, error)
 	GetDailyAttendanceSummary(context.Context, *GetDailyAttendanceSummaryInput) (*GetDailyAttendanceSummaryOutput, error)
 	GetDailyAttendanceSummaryEmployee(context.Context, *GetDailyAttendanceSummaryEmployeeInput) (*GetDailyAttendanceSummaryOutput, error)
-	AddBatchAttendance(AttendanceService_AddBatchAttendanceServer) error
-	ServiceAddBatchAttendance(AttendanceService_ServiceAddBatchAttendanceServer) error
+	// Methods Delete attendance records
+	DeleteAttendanceRecords(context.Context, *DeleteAttendanceRecordsInput) (*emptypb.Empty, error)
+	DeleteDailyAttendanceSummary(context.Context, *DeleteAttendanceRecordsInput) (*emptypb.Empty, error)
 	mustEmbedUnimplementedAttendanceServiceServer()
 }
 
@@ -191,8 +239,17 @@ type AttendanceServiceServer interface {
 type UnimplementedAttendanceServiceServer struct {
 }
 
+func (UnimplementedAttendanceServiceServer) HealthCheck(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method HealthCheck not implemented")
+}
 func (UnimplementedAttendanceServiceServer) AddAttendance(context.Context, *AddAttendanceInput) (*AddAttendanceOutput, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddAttendance not implemented")
+}
+func (UnimplementedAttendanceServiceServer) AddBatchAttendance(AttendanceService_AddBatchAttendanceServer) error {
+	return status.Errorf(codes.Unimplemented, "method AddBatchAttendance not implemented")
+}
+func (UnimplementedAttendanceServiceServer) ServiceAddBatchAttendance(AttendanceService_ServiceAddBatchAttendanceServer) error {
+	return status.Errorf(codes.Unimplemented, "method ServiceAddBatchAttendance not implemented")
 }
 func (UnimplementedAttendanceServiceServer) GetAttendanceRecords(context.Context, *GetAttendanceRecordsInput) (*GetAttendanceRecordsOutput, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAttendanceRecords not implemented")
@@ -206,11 +263,11 @@ func (UnimplementedAttendanceServiceServer) GetDailyAttendanceSummary(context.Co
 func (UnimplementedAttendanceServiceServer) GetDailyAttendanceSummaryEmployee(context.Context, *GetDailyAttendanceSummaryEmployeeInput) (*GetDailyAttendanceSummaryOutput, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetDailyAttendanceSummaryEmployee not implemented")
 }
-func (UnimplementedAttendanceServiceServer) AddBatchAttendance(AttendanceService_AddBatchAttendanceServer) error {
-	return status.Errorf(codes.Unimplemented, "method AddBatchAttendance not implemented")
+func (UnimplementedAttendanceServiceServer) DeleteAttendanceRecords(context.Context, *DeleteAttendanceRecordsInput) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteAttendanceRecords not implemented")
 }
-func (UnimplementedAttendanceServiceServer) ServiceAddBatchAttendance(AttendanceService_ServiceAddBatchAttendanceServer) error {
-	return status.Errorf(codes.Unimplemented, "method ServiceAddBatchAttendance not implemented")
+func (UnimplementedAttendanceServiceServer) DeleteDailyAttendanceSummary(context.Context, *DeleteAttendanceRecordsInput) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method DeleteDailyAttendanceSummary not implemented")
 }
 func (UnimplementedAttendanceServiceServer) mustEmbedUnimplementedAttendanceServiceServer() {}
 
@@ -223,6 +280,24 @@ type UnsafeAttendanceServiceServer interface {
 
 func RegisterAttendanceServiceServer(s grpc.ServiceRegistrar, srv AttendanceServiceServer) {
 	s.RegisterService(&AttendanceService_ServiceDesc, srv)
+}
+
+func _AttendanceService_HealthCheck_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AttendanceServiceServer).HealthCheck(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttendanceService_HealthCheck_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttendanceServiceServer).HealthCheck(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 func _AttendanceService_AddAttendance_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -241,6 +316,58 @@ func _AttendanceService_AddAttendance_Handler(srv interface{}, ctx context.Conte
 		return srv.(AttendanceServiceServer).AddAttendance(ctx, req.(*AddAttendanceInput))
 	}
 	return interceptor(ctx, in, info, handler)
+}
+
+func _AttendanceService_AddBatchAttendance_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(AttendanceServiceServer).AddBatchAttendance(&attendanceServiceAddBatchAttendanceServer{ServerStream: stream})
+}
+
+type AttendanceService_AddBatchAttendanceServer interface {
+	SendAndClose(*AddAttendanceOutput) error
+	Recv() (*AddAttendanceInput, error)
+	grpc.ServerStream
+}
+
+type attendanceServiceAddBatchAttendanceServer struct {
+	grpc.ServerStream
+}
+
+func (x *attendanceServiceAddBatchAttendanceServer) SendAndClose(m *AddAttendanceOutput) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *attendanceServiceAddBatchAttendanceServer) Recv() (*AddAttendanceInput, error) {
+	m := new(AddAttendanceInput)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func _AttendanceService_ServiceAddBatchAttendance_Handler(srv interface{}, stream grpc.ServerStream) error {
+	return srv.(AttendanceServiceServer).ServiceAddBatchAttendance(&attendanceServiceServiceAddBatchAttendanceServer{ServerStream: stream})
+}
+
+type AttendanceService_ServiceAddBatchAttendanceServer interface {
+	SendAndClose(*AddAttendanceOutput) error
+	Recv() (*ServiceAddBatchAttendanceInput, error)
+	grpc.ServerStream
+}
+
+type attendanceServiceServiceAddBatchAttendanceServer struct {
+	grpc.ServerStream
+}
+
+func (x *attendanceServiceServiceAddBatchAttendanceServer) SendAndClose(m *AddAttendanceOutput) error {
+	return x.ServerStream.SendMsg(m)
+}
+
+func (x *attendanceServiceServiceAddBatchAttendanceServer) Recv() (*ServiceAddBatchAttendanceInput, error) {
+	m := new(ServiceAddBatchAttendanceInput)
+	if err := x.ServerStream.RecvMsg(m); err != nil {
+		return nil, err
+	}
+	return m, nil
 }
 
 func _AttendanceService_GetAttendanceRecords_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
@@ -315,56 +442,40 @@ func _AttendanceService_GetDailyAttendanceSummaryEmployee_Handler(srv interface{
 	return interceptor(ctx, in, info, handler)
 }
 
-func _AttendanceService_AddBatchAttendance_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(AttendanceServiceServer).AddBatchAttendance(&attendanceServiceAddBatchAttendanceServer{ServerStream: stream})
-}
-
-type AttendanceService_AddBatchAttendanceServer interface {
-	SendAndClose(*AddAttendanceOutput) error
-	Recv() (*AddAttendanceInput, error)
-	grpc.ServerStream
-}
-
-type attendanceServiceAddBatchAttendanceServer struct {
-	grpc.ServerStream
-}
-
-func (x *attendanceServiceAddBatchAttendanceServer) SendAndClose(m *AddAttendanceOutput) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *attendanceServiceAddBatchAttendanceServer) Recv() (*AddAttendanceInput, error) {
-	m := new(AddAttendanceInput)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
+func _AttendanceService_DeleteAttendanceRecords_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteAttendanceRecordsInput)
+	if err := dec(in); err != nil {
 		return nil, err
 	}
-	return m, nil
+	if interceptor == nil {
+		return srv.(AttendanceServiceServer).DeleteAttendanceRecords(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttendanceService_DeleteAttendanceRecords_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttendanceServiceServer).DeleteAttendanceRecords(ctx, req.(*DeleteAttendanceRecordsInput))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
-func _AttendanceService_ServiceAddBatchAttendance_Handler(srv interface{}, stream grpc.ServerStream) error {
-	return srv.(AttendanceServiceServer).ServiceAddBatchAttendance(&attendanceServiceServiceAddBatchAttendanceServer{ServerStream: stream})
-}
-
-type AttendanceService_ServiceAddBatchAttendanceServer interface {
-	SendAndClose(*AddAttendanceOutput) error
-	Recv() (*ServiceAddBatchAttendanceInput, error)
-	grpc.ServerStream
-}
-
-type attendanceServiceServiceAddBatchAttendanceServer struct {
-	grpc.ServerStream
-}
-
-func (x *attendanceServiceServiceAddBatchAttendanceServer) SendAndClose(m *AddAttendanceOutput) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func (x *attendanceServiceServiceAddBatchAttendanceServer) Recv() (*ServiceAddBatchAttendanceInput, error) {
-	m := new(ServiceAddBatchAttendanceInput)
-	if err := x.ServerStream.RecvMsg(m); err != nil {
+func _AttendanceService_DeleteDailyAttendanceSummary_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteAttendanceRecordsInput)
+	if err := dec(in); err != nil {
 		return nil, err
 	}
-	return m, nil
+	if interceptor == nil {
+		return srv.(AttendanceServiceServer).DeleteDailyAttendanceSummary(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AttendanceService_DeleteDailyAttendanceSummary_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AttendanceServiceServer).DeleteDailyAttendanceSummary(ctx, req.(*DeleteAttendanceRecordsInput))
+	}
+	return interceptor(ctx, in, info, handler)
 }
 
 // AttendanceService_ServiceDesc is the grpc.ServiceDesc for AttendanceService service.
@@ -374,6 +485,10 @@ var AttendanceService_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "attendance.AttendanceService",
 	HandlerType: (*AttendanceServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "HealthCheck",
+			Handler:    _AttendanceService_HealthCheck_Handler,
+		},
 		{
 			MethodName: "AddAttendance",
 			Handler:    _AttendanceService_AddAttendance_Handler,
@@ -393,6 +508,14 @@ var AttendanceService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetDailyAttendanceSummaryEmployee",
 			Handler:    _AttendanceService_GetDailyAttendanceSummaryEmployee_Handler,
+		},
+		{
+			MethodName: "DeleteAttendanceRecords",
+			Handler:    _AttendanceService_DeleteAttendanceRecords_Handler,
+		},
+		{
+			MethodName: "DeleteDailyAttendanceSummary",
+			Handler:    _AttendanceService_DeleteDailyAttendanceSummary_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

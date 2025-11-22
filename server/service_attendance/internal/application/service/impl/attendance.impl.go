@@ -31,6 +31,153 @@ type AttendanceService struct {
 	distributedCache domainCache.IDistributedCache
 }
 
+// DeleteDailyAttendanceSummary implements service.IAttendanceService.
+func (a *AttendanceService) DeleteDailyAttendanceSummary(ctx context.Context, req *model.DeleteDailyAttendanceSummaryModel) *errors.Error {
+	// 1. Check permission
+	_, errSession := checkPermissionForManagerAdminService(
+		ctx,
+		req.Session,
+		req.ServiceSession,
+		req.CompanyID,
+	)
+	if errSession != nil {
+		a.logger.Warn("Permission Denied", "session", req.Session, "service_session", req.ServiceSession)
+		return errSession
+	}
+	if req.SummaryMonth == "" || len(req.SummaryMonth) != 7 {
+		return &errors.Error{
+			ErrorClient: "InvalidSummaryMonth",
+		}
+	}
+	// 2. Delete daily attendance summary
+	if err := a.attendanceRepo.DeleteDailySummariesCompany(
+		ctx,
+		&domainModel.DeleteDailySummariesInput{
+			CompanyID:    req.CompanyID,
+			SummaryMonth: req.SummaryMonth,
+		},
+	); err != nil {
+		a.logger.Error("Failed to delete daily attendance summary", "summary_month", req.SummaryMonth, "error", err)
+		return &errors.Error{
+			ErrorSystem: err,
+			ErrorClient: "InternalError",
+		}
+	}
+	return nil
+}
+
+// DeleteAttendanceNoShift implements service.IAttendanceService.
+func (a *AttendanceService) DeleteAttendanceNoShift(ctx context.Context, req *model.DeleteAttendanceRecordNoShiftModel) *errors.Error {
+	// 1. Check permission
+	_, errSession := checkPermissionForManagerAdminService(
+		ctx,
+		req.Session,
+		req.ServiceSession,
+		req.CompanyID,
+	)
+	if errSession != nil {
+		a.logger.Warn("Permission Denied", "session", req.Session, "service_session", req.ServiceSession)
+		return errSession
+	}
+	// 2. Delete attendance record no shift
+	if err := a.attendanceRepo.DeleteAttendanceRecordNoShift(
+		ctx,
+		&domainModel.DeleteAttendanceRecordNoShiftInput{
+			CompanyID: req.CompanyID,
+			YearMonth: req.YearMonth,
+		},
+	); err != nil {
+		a.logger.Error("Failed to delete attendance record no shift", "year_month", req.YearMonth, "error", err)
+		return &errors.Error{
+			ErrorSystem: err,
+			ErrorClient: "InternalError",
+		}
+	}
+	return nil
+}
+
+// DeleteAttendanceEmployee implements service.IAttendanceService.
+func (a *AttendanceService) DeleteAttendanceRecord(ctx context.Context, req *model.DeleteAttendanceModel) *errors.Error {
+	// 1. Check permission
+	_, errSession := checkPermissionForManagerAdminService(
+		ctx,
+		req.Session,
+		req.ServiceSession,
+		req.CompanyID,
+	)
+	if errSession != nil {
+		a.logger.Warn("Permission Denied", "session", req.Session, "service_session", req.ServiceSession)
+		return errSession
+	}
+	if req.EmployeeId == uuid.Nil {
+		return &errors.Error{
+			ErrorClient: "InvalidEmployeeID",
+		}
+	}
+	if req.YearMonth == "" || len(req.YearMonth) != 7 {
+		return &errors.Error{
+			ErrorClient: "InvalidYearMonth",
+		}
+	}
+	// 2. Delete attendance record
+	if err := a.attendanceRepo.DeleteAttendanceRecordAllYearMonth(
+		ctx,
+		&domainModel.DeleteAttendanceRecordInput{
+			CompanyID:  req.CompanyID,
+			YearMonth:  req.YearMonth,
+		},
+	); err != nil {
+		a.logger.Error("Failed to delete attendance record", "error", err)
+		return &errors.Error{
+			ErrorSystem: err,
+			ErrorClient: "InternalError",
+		}
+	}
+	return nil
+}
+
+// DeleteAttendanceEmployeeBeforeTime implements service.IAttendanceService.
+func (a *AttendanceService) DeleteAttendanceEmployeeBeforeTime(ctx context.Context, req *model.DeleteAttendanceModel) *errors.Error {
+	// 1. Check permission
+	_, errSession := checkPermissionForManagerAdminService(
+		ctx,
+		req.Session,
+		req.ServiceSession,
+		req.CompanyID,
+	)
+	if errSession != nil {
+		a.logger.Warn("Permission Denied", "session", req.Session, "service_session", req.ServiceSession)
+		return errSession
+	}
+	if req.EmployeeId == uuid.Nil {
+		return &errors.Error{
+			ErrorClient: "InvalidEmployeeID",
+		}
+	}
+	if req.Time.IsZero() || req.Time.Unix() < 0 {
+		return &errors.Error{
+			ErrorClient: "InvalidTime",
+		}
+	}
+	// 2. Delete attendance record
+	if err := a.attendanceRepo.DeleteAttendanceRecordBeforeTimestamp(
+		ctx,
+		&domainModel.DeleteAttendanceRecordInput{
+			CompanyID:  req.CompanyID,
+			EmployeeID: req.EmployeeId,
+			RecordTime: req.Time,
+			YearMonth:  req.Time.Format("2006-01"),
+		},
+	); err != nil {
+		a.logger.Error("Failed to delete attendance record before time", "time", req.Time, "error", err)
+		return &errors.Error{
+			ErrorSystem: err,
+			ErrorClient: "InternalError",
+		}
+	}
+	return nil
+}
+
 // GetAttendanceRecordsEmployeeForConpany implements service.IAttendanceService.
 func (a *AttendanceService) GetAttendanceRecordsEmployeeForConpany(ctx context.Context, req *model.GetAttendanceRecordsEmployeeModel) (*model.GetAttendanceRecordsCompanyResultModel, *errors.Error) {
 	// 1. Check permission
@@ -462,9 +609,22 @@ func (a *AttendanceService) AddAttendance(ctx context.Context, req *model.AddAtt
 	)
 	if !foundValidShift {
 		a.logger.Warn("No valid shift found for employee", "employee_id", req.EmployeeID, "record_time", req.RecordTime)
-		return &errors.Error{
-			ErrorClient: "NoValidShiftFound",
+		// Add attendance record with no shift matched
+		inputAddAttendanceRecord := &domainModel.AddAttendanceRecordNoShiftInput{
+			CompanyID:           req.CompanyID,
+			YearMonth:           req.RecordTime.Format("2006-01"),
+			RecordTime:          req.RecordTime,
+			EmployeeID:          req.EmployeeID,
+			DeviceID:            req.DeviceID,
+			VerificationMethod:  req.VerificationMethod,
+			VerificationScore:   req.VerificationScore,
+			FaceImageURL:        req.FaceImageURL,
+			LocationCoordinates: req.LocationCoordinates,
 		}
+		if err := a.attendanceRepo.AddAttendanceRecordNoShift(ctx, inputAddAttendanceRecord); err != nil {
+			a.logger.Error("Failed to add attendance record no shift", "error", err)
+		}
+		return nil
 	}
 
 	// 4. Add attendance record

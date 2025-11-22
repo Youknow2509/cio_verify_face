@@ -293,14 +293,12 @@ func TestDeleteDailySummariesCompanyBeforDate(t *testing.T) {
 	}
 	ctx := context.Background()
 	company_id := uuid.MustParse("cd185bee-a7fb-4f84-8466-9425896d696b")
-	employee_id := uuid.MustParse("114c41b3-9bcd-46f9-b626-6d2177d736e7")
 	work_date, _ := time.Parse("2006-01-02", "2025-12-19")
 	work_date = work_date.Add(1 * 24 * time.Hour) // Delete all summaries before this date
 	err = serviceSession.DeleteDailySummariesCompanyBeforeDate(ctx, &domainModel.DeleteDailySummariesInput{
 		CompanyID:    company_id,
 		SummaryMonth: "2025-01",
 		WorkDate:     work_date,
-		EmployeeID:   employee_id,
 	})
 	if err != nil {
 		t.Fatalf("DeleteDailySummariesBeforDate failed: %v", err)
