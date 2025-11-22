@@ -329,54 +329,59 @@ END $$;
 -- Create a default partition for face_profiles if it doesn't exist
 -- This is a fallback for any company_id that doesn't have a specific partition
 DO $$
-BEGIN
-    IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'face_profiles_default' AND relkind = 'r') THEN
-        CREATE TABLE face_profiles_default PARTITION OF face_profiles DEFAULT;
-        RAISE NOTICE 'Created default partition for face_profiles.';
-    END IF;
-END $$;
-
--- Create partitions for each company and insert face profiles
-DO $$
 DECLARE
     fpt_id UUID;
     acme_id UUID;
     user_id_var UUID;
     random_embedding vector(512);
+    partition_name TEXT;
 BEGIN
+    -- Get company IDs
     SELECT company_id INTO fpt_id FROM companies WHERE name = 'FPT Software';
     SELECT company_id INTO acme_id FROM companies WHERE name = 'Acme Tech';
 
-    -- Create partition for FPT
-    IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'face_profiles_fpt' AND relkind = 'r') THEN
-        EXECUTE format('CREATE TABLE face_profiles_fpt PARTITION OF face_profiles FOR VALUES IN (%L)', fpt_id);
+    -- ===== Create partition for FPT =====
+    partition_name := 'face_profiles_p_' || replace(fpt_id::text, '-', '');
+    IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = partition_name AND relkind = 'r') THEN
+        EXECUTE format(
+            'CREATE TABLE %I PARTITION OF face_profiles FOR VALUES IN (%L)',
+            partition_name,
+            fpt_id
+        );
     END IF;
 
-    -- Create partition for Acme
-    IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = 'face_profiles_acme' AND relkind = 'r') THEN
-        EXECUTE format('CREATE TABLE face_profiles_acme PARTITION OF face_profiles FOR VALUES IN (%L)', acme_id);
+    -- ===== Create partition for Acme =====
+    partition_name := 'face_profiles_p_' || replace(acme_id::text, '-', '');
+    IF NOT EXISTS (SELECT 1 FROM pg_class WHERE relname = partition_name AND relkind = 'r') THEN
+        EXECUTE format(
+            'CREATE TABLE %I PARTITION OF face_profiles FOR VALUES IN (%L)',
+            partition_name,
+            acme_id
+        );
     END IF;
 
-    -- Insert face profile for FPT employee
+    -- ===== Insert face profile for FPT employee =====
     SELECT user_id INTO user_id_var FROM users WHERE email = 'employee1.fpt@example.com';
-    -- Generate a random vector for demonstration
-    SELECT array_agg(random()) FROM generate_series(1, 512) INTO random_embedding;
     IF user_id_var IS NOT NULL THEN
+        -- Generate random vector
+        SELECT ARRAY(SELECT random() FROM generate_series(1,512))::vector(512) INTO random_embedding;
         INSERT INTO face_profiles (profile_id, user_id, company_id, embedding, embedding_version, is_primary, quality_score, indexed)
         VALUES (gen_random_uuid(), user_id_var, fpt_id, random_embedding, 'v1.0', true, 0.95, true)
         ON CONFLICT (profile_id, company_id) DO NOTHING;
     END IF;
 
-    -- Insert face profile for Acme employee
+    -- ===== Insert face profile for Acme employee =====
     SELECT user_id INTO user_id_var FROM users WHERE email = 'alice.acme@example.com';
-    SELECT array_agg(random()) FROM generate_series(1, 512) INTO random_embedding;
     IF user_id_var IS NOT NULL THEN
+        -- Generate random vector
+        SELECT ARRAY(SELECT random() FROM generate_series(1,512))::vector(512) INTO random_embedding;
         INSERT INTO face_profiles (profile_id, user_id, company_id, embedding, embedding_version, is_primary, quality_score, indexed)
         VALUES (gen_random_uuid(), user_id_var, acme_id, random_embedding, 'v1.0', true, 0.98, true)
         ON CONFLICT (profile_id, company_id) DO NOTHING;
     END IF;
 
 END $$;
+
 
 -- +goose StatementEnd
 
