@@ -130,12 +130,15 @@ func (a *AuthGRPCHandler) ParseDeviceToken(ctx context.Context, req *pb.ParseDev
 		return nil, status.Errorf(codes.InvalidArgument, "invalid request: %v", err)
 	}
 
-	valid, deviceID, err := tok.CheckTokenDevice(ctx, in)
+	output, err := tok.ParseTokenDevice(ctx, in)
 	if err != nil {
 		return nil, status.Errorf(codes.Unauthenticated, "parse device token failed: %v", err)
 	}
+	if output == nil {
+		return nil, status.Errorf(codes.Unauthenticated, "invalid device token")
+	}
 
-	resp, err := toPbParseDeviceTokenResponse(valid, deviceID)
+	resp, err := toPbParseDeviceTokenResponse(output)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "response mapping failed: %v", err)
 	}
@@ -194,19 +197,21 @@ func toPbParseUserTokenResponse(out *model.ParseTokenUserOutput) (*pb.ParseUserT
 	}, nil
 }
 
-func toModelCheckDeviceTokenInput(req *pb.ParseDeviceTokenRequest) (model.CheckTokenDeviceInput, error) {
-	deviceUuid, err := uuidUtils.ParseUUID(req.GetDeviceId())
+func toModelCheckDeviceTokenInput(req *pb.ParseDeviceTokenRequest) (model.ParseTokenDeviceInput, error) {
+	_, err := uuidUtils.ParseUUID(req.GetDeviceId())
 	if err != nil {
-		return model.CheckTokenDeviceInput{}, errors.New("invalid device ID format")
+		return model.ParseTokenDeviceInput{}, errors.New("invalid device ID format")
 	}
-	return model.CheckTokenDeviceInput{
-		Token:    req.GetToken(),
-		DeviceId: deviceUuid,
+	return model.ParseTokenDeviceInput{
+		Token: req.GetToken(),
 	}, nil
 }
 
-func toPbParseDeviceTokenResponse(valid bool, deviceID string) (*pb.ParseDeviceTokenResponse, error) {
+func toPbParseDeviceTokenResponse(input *model.ParseTokenDeviceOutput) (*pb.ParseDeviceTokenResponse, error) {
 	return &pb.ParseDeviceTokenResponse{
-		DeviceId: deviceID,
+		DeviceId:  input.DeviceId,
+		TokenId:   input.TokenId,
+		CompanyId: input.CompanyId,
+		ExpiresAt: input.Expires.Unix(),
 	}, nil
 }

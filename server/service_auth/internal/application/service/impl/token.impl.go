@@ -2,6 +2,7 @@ package impl
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"net/netip"
 	"time"
@@ -19,13 +20,73 @@ import (
 	sharedCache "github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/cache"
 	sharedCrypto "github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/crypto"
 	sharedRandom "github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/random"
-	
 )
 
 /**
  * Token service implementations
  */
 type TokenService struct {
+}
+
+func (t *TokenService) ParseTokenDevice(ctx context.Context, input model.ParseTokenDeviceInput) (*model.ParseTokenDeviceOutput, error) {
+	// 1. Check token status token in cache
+	cacheLocal, _ := domainCache.GetLocalCache()
+	if cacheLocal == nil {
+		global.Logger.Error("local cache not initialized")
+		return nil, errors.New("internal error")
+	}
+	key := sharedCache.GetKeyStatusTokenUser(sharedCrypto.GetHash(input.Token))
+	cached, err := cacheLocal.Get(ctx, key)
+	if err != nil {
+		global.Logger.Error("failed to get token status from cache", "error", err.Error(), "key", key)
+		return nil, err
+	}
+	if cached != "" {
+		var cachedRes model.ParseTokenDeviceOutput
+		if err := json.Unmarshal([]byte(cached), &cachedRes); err != nil {
+			global.Logger.Error("failed to unmarshal token status from cache", "error", err.Error(), "key", key)
+			return nil, err
+		}
+		return &cachedRes, nil
+	}
+	// 2. Validate token validate
+	tokenService := domainToken.GetTokenService()
+	tokenData, tokenErr := tokenService.ParseDeviceToken(ctx, input.Token)
+	if tokenErr != nil {
+		switch tokenErr.Code {
+		case domainError.TokenErrorNotFoundCode:
+			global.Logger.Warn("device token not found", "token", input.Token)
+			return nil, nil
+		case domainError.TokenMalformedErrorCode:
+			global.Logger.Warn("device token malformed", "token", input.Token)
+			return nil, nil
+		case domainError.TokenSignatureInvalidErrCode:
+			global.Logger.Warn("device token signature invalid", "token", input.Token)
+			return nil, nil
+		case domainError.TokenExpiredErrorCode:
+			global.Logger.Warn("device token expired", "token", input.Token)
+			return nil, nil
+		case domainError.TokenValidationErrorCode:
+			global.Logger.Warn("device token validation error", "token", input.Token)
+			return nil, nil
+		}
+	}
+	// 3. Cache token status
+	output := &model.ParseTokenDeviceOutput{
+		TokenId:   tokenData.TokenId,
+		DeviceId:  tokenData.DeviceId,
+		CompanyId: tokenData.CompanyId,
+		Expires:   tokenData.ExpiresAt,
+	}
+	valBytes, err := json.Marshal(output)
+	if err != nil {
+		global.Logger.Error("failed to marshal token status for cache", "error", err.Error(), "key", key)
+		return nil, err
+	}
+	if err := cacheLocal.SetTTL(ctx, key, string(valBytes), constants.TTL_CACHE_TOKEN); err != nil {
+		global.Logger.Warn("failed to set token status in cache", "error", err.Error(), "key", key)
+	}
+	return output, nil
 }
 
 // BlockTokenDevice implements service.ITokenService.
@@ -104,7 +165,6 @@ func (t *TokenService) BlockTokenUserRefresh(ctx context.Context, input model.Bl
 
 // CheckTokenDevice implements service.ITokenService.
 func (t *TokenService) CheckTokenDevice(ctx context.Context, input model.CheckTokenDeviceInput) (bool, string, error) {
-	//
 	db := domainRepo.GetDeviceRepository()
 	ok, _, err := db.CheckTokenDevice(
 		ctx,
@@ -249,11 +309,31 @@ func (t *TokenService) CreateUserToken(ctx context.Context, input model.CreateTo
 
 // ParseTokenUser implements service.ITokenService.
 func (t *TokenService) ParseTokenUser(ctx context.Context, input model.ParseTokenUserInput) (*model.ParseTokenUserOutput, error) {
-	// Check token validate
-	tokenService := domainToken.GetTokenService()
-	tokenResp, err := tokenService.ParseUserToken(ctx, input.Token)
+	// 1. Check token status token in cache
+	cacheLocal, _ := domainCache.GetLocalCache()
+	if cacheLocal == nil {
+		global.Logger.Error("local cache not initialized")
+		return nil, errors.New("internal error")
+	}
+	key := sharedCache.GetKeyStatusTokenUser(sharedCrypto.GetHash(input.Token))
+	cached, err := cacheLocal.Get(ctx, key)
 	if err != nil {
-		switch err.Code {
+		global.Logger.Error("failed to get token status from cache", "error", err.Error(), "key", key)
+		return nil, err
+	}
+	if cached != "" {
+		var cachedRes model.ParseTokenUserOutput
+		if err := json.Unmarshal([]byte(cached), &cachedRes); err != nil {
+			global.Logger.Error("failed to unmarshal token status from cache", "error", err.Error(), "key", key)
+			return nil, err
+		}
+		return &cachedRes, nil
+	}
+	// 2. Validate token validate
+	tokenService := domainToken.GetTokenService()
+	tokenResp, tokenErr := tokenService.ParseUserToken(ctx, input.Token)
+	if tokenErr != nil {
+		switch tokenErr.Code {
 		case domainError.TokenErrorNotFoundCode:
 			global.Logger.Warn("token not found", "token", input.Token)
 			return nil, errors.New("token not found")
@@ -270,17 +350,27 @@ func (t *TokenService) ParseTokenUser(ctx context.Context, input model.ParseToke
 			global.Logger.Warn("token validation error", "token", input.Token)
 			return nil, errors.New("token validation error")
 		default:
-			global.Logger.Error("unknown token error", "error", err.Message, "token", input.Token)
+			global.Logger.Error("unknown token error", "error", tokenErr.Message, "token", input.Token)
 			return nil, errors.New("unknown token error")
 		}
 	}
-
-	return &model.ParseTokenUserOutput{
+	// 3. Cache token status
+	output := &model.ParseTokenUserOutput{
 		UserId:    tokenResp.UserId,
 		TokenId:   tokenResp.TokenId,
 		Role:      tokenResp.Role,
 		CompanyId: tokenResp.CompanyId,
-	}, nil
+	}
+	valBytes, err := json.Marshal(output)
+	if err != nil {
+		global.Logger.Error("failed to marshal token status for cache", "error", err.Error(), "key", key)
+		return nil, err
+	}
+	if err := cacheLocal.SetTTL(ctx, key, string(valBytes), constants.TTL_CACHE_TOKEN); err != nil {
+		global.Logger.Error("failed to set token status in cache", "error", err.Error(), "key", key)
+		return nil, err
+	}
+	return output, nil
 }
 
 // RefreshTokenUser implements service.ITokenService.

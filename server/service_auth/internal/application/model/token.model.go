@@ -79,6 +79,7 @@ type ParseTokenDeviceOutput struct {
 	DeviceId  string    `json:"device_id"`
 	Expires   time.Time `json:"expires"`
 	CompanyId string    `json:"company_id"`
+	TokenId   string    `json:"token_id"`
 }
 
 // Refresh user token

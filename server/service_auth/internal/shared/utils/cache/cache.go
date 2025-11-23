@@ -7,6 +7,17 @@ import "fmt"
 //	Define key cache
 //
 // =================================
+
+// Key get status token device
+func GetKeyStatusTokenDevice(tokenHash string) string {
+	return fmt.Sprintf("device:token:status:%s", tokenHash)
+}
+
+// Key get status token user
+func GetKeyStatusTokenUser(tokenHash string) string {
+	return fmt.Sprintf("user:token:status:%s", tokenHash)
+}
+
 // Key user register OTP value
 func GetKeyUserRegisterOTP(mailHash string) string {
 	return fmt.Sprintf("user:register:otp:%s", mailHash)

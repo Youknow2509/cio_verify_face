@@ -71,4 +71,7 @@ message ParseDeviceTokenRequest {
 
 message ParseDeviceTokenResponse {
     string device_id = 1;
+    string token_id = 2;
+    string company_id = 3;
+    int64 expires_at = 4;
 }
