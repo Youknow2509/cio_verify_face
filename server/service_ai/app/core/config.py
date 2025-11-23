@@ -2,7 +2,7 @@
 Configuration settings for the service
 """
 from pydantic_settings import BaseSettings
-from typing import Optional
+from typing import List, Optional
 import os
 
 
@@ -52,8 +52,31 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/cio_attendance_db"
     
-    # Redis
-    REDIS_URL: str = "redis://localhost:6379/0"
+    # Redis Configuration
+    REDIS_TYPE: int = 1  # 1: standalone, 2: sentinel, 3: cluster
+    REDIS_USE_TLS: bool = False
+    REDIS_CERT_PATH: str = "./config/redis/cert.pem"
+    REDIS_KEY_PATH: str = "./config/redis/key.pem"
+    REDIS_PASSWORD: str = "root1234"
+    REDIS_DB: int = 0
+    
+    # Redis Standalone
+    REDIS_HOST: str = "127.0.0.1"
+    REDIS_PORT: int = 6379
+    
+    # Redis Sentinel
+    REDIS_MASTER_NAME: str = "mymaster"
+    REDIS_SENTINEL_ADDRS: List[str] = ["127.0.0.1:26379", "127.0.0.1:26380", "127.0.0.1:26381"]
+    
+    # Redis Cluster
+    REDIS_CLUSTER_ADDRS: List[str] = ["127.0.0.1:26379", "127.0.0.1:26380", "127.0.0.1:26381"]
+    REDIS_ROUTE_BY_LATENCY: bool = True
+    REDIS_ROUTE_RANDOMLY: bool = False
+    
+    # Redis Pool Configuration
+    REDIS_POOL_SIZE: int = 10
+    REDIS_MIN_IDLE_CONNS: int = 2
+    REDIS_MAX_RETRIES: int = 3
     
     # ScyllaDB - for authentication state tracking
     SCYLLADB_HOSTS: str = "localhost"

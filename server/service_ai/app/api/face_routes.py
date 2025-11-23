@@ -16,6 +16,7 @@ from app.models.schemas import (
     ReindexRequest, ReindexResponse
 )
 from app.services.face_service import FaceService
+from app.services.user_service import UserService
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +25,10 @@ router = APIRouter()
 def get_face_service(request: Request) -> FaceService:
     """Dependency to get face service instance"""
     return request.app.state.face_service
+
+async def get_user_service(request: Request):
+    """Dependency to get user service instance"""
+    return request.app.state.user_service
 
 @router.put("/profile/{profile_id}/upload", summary="Update face profile")
 async def update_profile_upload(
@@ -128,7 +133,9 @@ async def delete_profile(
 async def get_user_profiles(
     user_id: UUID,
     company_id: UUID,
-    face_service: FaceService = Depends(get_face_service),
+    page_number: int = 1,
+    page_size: int = 20,
+    user_service: UserService = Depends(get_user_service),
     token_payload: SessionUser = Depends(JWTBearer()),
 ):
     """
@@ -142,10 +149,16 @@ async def get_user_profiles(
     # Check permissions
     if is_manager_or_admin(company_id=company_id, token_payload=token_payload) is False:
         raise HTTPException(status_code=403, detail="Insufficient permissions to view profiles for this company")
-    # TODO: Check user_id in company_id
+    if not await user_service.check_user_exist_in_company(user_id=user_id, company_id=company_id):
+        raise HTTPException(status_code=404, detail="User not found in the specified company")  
     # Fetch profiles
     try:
-        profiles = await face_service.get_user_profiles(user_id, company_id)
+        profiles = await user_service.get_profile_face_user(
+            user_id=user_id, 
+            company_id=company_id,
+            page_size=page_size,
+            page_number=page_number
+        )
         return profiles
     except Exception as e:
         logger.error(f"Error in get_user_profiles endpoint: {e}")
@@ -160,6 +173,7 @@ async def enroll_face_upload(
     device_id: Optional[str] = Form(None, description="Device ID"),
     make_primary: bool = Form(False, description="Set as primary profile"),
     face_service: FaceService = Depends(get_face_service),
+    user_service: UserService = Depends(get_user_service),
     token_payload: SessionUser = Depends(JWTBearer()),
 ):
     """
@@ -180,7 +194,9 @@ async def enroll_face_upload(
     # Check permissions
     if is_manager_or_admin(company_id=company_id, token_payload=token_payload) is False:
         raise HTTPException(status_code=403, detail="Insufficient permissions to enroll face for this company")
-    # TODO: Check user_id in company_id
+    # Check user existence
+    if user_service.check_user_exist_in_company(user_id=user_id, company_id=company_id) is False:
+        raise HTTPException(status_code=404, detail="User not found in the specified company")
     # Handle file upload 
     try:
         # Read image file

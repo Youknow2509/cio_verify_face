@@ -34,42 +34,42 @@ logger = logging.getLogger(__name__)
 # ---- Infrastructure checks ----
 def check_infrastructure():
     logger.info("Checking infrastructure connections...")
-    # Postgres
+    # Init Redis Cache
+    from app.database.redis_manager import RedisManager
+    redis_cache = RedisManager()
+    if redis_cache.check_connection() is False:
+        logger.warning("Redis cache is disabled due to connection failure")
+        exit(1)
+    # Init PGManager
+    from app.database.pg_manager import PGManager
+    pg_manager = PGManager()
+    if pg_manager.check_connection() is False:
+        logger.error("PostgreSQL database connection failed during startup")
+        exit(1)
+    # Init PgVectorManager
     from app.database.pgvector_manager import PgVectorManager
-    try:
-        PgVectorManager().check_connection()
-        logger.info("Postgres connection OK")
-    except Exception as e:
-        logger.error("Postgres connection failed: %s", e)
-        sys.exit(1)
-
-    # ScyllaDB
+    pgvector_manager = PgVectorManager()
+    if pgvector_manager.check_connection() is False:
+        logger.error("PgVector database connection failed during startup")
+        exit(1)
+    # Init ScyllaManager
     from app.database.scylladb_manager import ScyllaDBManager
-    try:
-        ScyllaDBManager().check_connection()
-        logger.info("ScyllaDB connection OK")
-    except Exception as e:
-        logger.error("ScyllaDB connection failed: %s", e)
-        sys.exit(1)
-
-    # Auth service
+    scylla_manager = ScyllaDBManager()
+    if scylla_manager.check_connection() is False:
+        logger.error("ScyllaDB connection failed during startup")
+        exit(1)
+    # Init attendance_client grpc
+    from app.grpc.client.attendance_client import AttendanceClient
+    attendance_client = AttendanceClient()
+    if attendance_client.check_connection() is False:
+        logger.error("Attendance gRPC client connection failed during startup")
+        exit(1)
+    # Init auth_client grpc
     from app.grpc.client.auth_client import AuthClient
     auth_client = AuthClient()
-    try:
-        auth_client.check_connection()
-        logger.info("Auth service connection OK")
-    except Exception as e:
-        logger.error("Auth service connection failed: %s", e)
-        sys.exit(1)
-
-    # Attendance service
-    attendance_client = AttendanceClient()
-    try:
-        attendance_client.check_connection()
-        logger.info("Attendance service connection OK")
-    except Exception as e:
-        logger.error("Attendance service connection failed: %s", e)
-        sys.exit(1)
+    if auth_client.check_connection() is False:
+        logger.error("Auth gRPC client connection failed during startup")
+        exit(1)
     
     logger.info("Initializing Face Service with batching support...")
     logger.info("All infrastructure healthy.")

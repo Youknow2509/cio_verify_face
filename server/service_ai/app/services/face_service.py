@@ -651,6 +651,7 @@ class FaceService:
                     deleted_at=p.deleted_at,
                     metadata=p.meta_data,
                     quality_score=p.quality_score
+                    
                 )
                 for p in profiles
             ]

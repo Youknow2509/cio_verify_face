@@ -68,13 +68,46 @@ async def root():
 @app.on_event("startup")
 async def startup_event():
     logger.info("Starting up the Face Verification Service...")
+    # Init Redis Cache
+    from app.database.redis_manager import RedisManager
+    redis_cache = RedisManager()
+    if redis_cache.check_connection() is False:
+        logger.warning("Redis cache is disabled due to connection failure")
+        exit(1)
+    app.state.distributed_cache = redis_cache
+    # Init PGManager
+    from app.database.pg_manager import PGManager
+    pg_manager = PGManager()
+    if pg_manager.check_connection() is False:
+        logger.error("PostgreSQL database connection failed during startup")
+        exit(1)
+    app.state.pg_manager = pg_manager
+    # Init PgVectorManager
+    from app.database.pgvector_manager import PgVectorManager
+    pgvector_manager = PgVectorManager()
+    if pgvector_manager.check_connection() is False:
+        logger.error("PgVector database connection failed during startup")
+        exit(1)
+    app.state.pgvector_manager = pgvector_manager
+    # Init ScyllaManager
+    from app.database.scylladb_manager import ScyllaDBManager
+    scylla_manager = ScyllaDBManager()
+    if scylla_manager.check_connection() is False:
+        logger.error("ScyllaDB connection failed during startup")
+        exit(1)
     # Init attendance_client grpc
     from app.grpc.client.attendance_client import AttendanceClient
     attendance_client = AttendanceClient()
+    if attendance_client.check_connection() is False:
+        logger.error("Attendance gRPC client connection failed during startup")
+        exit(1)
     app.state.attendance_client = attendance_client
     # Init auth_client grpc
     from app.grpc.client.auth_client import AuthClient
     auth_client = AuthClient()
+    if auth_client.check_connection() is False:
+        logger.error("Auth gRPC client connection failed during startup")
+        exit(1)
     app.state.auth_client = auth_client
     # Initialize batching service
     service_session = build_service_session()
@@ -97,6 +130,13 @@ async def startup_event():
     from app.services.face_service import FaceService
     face_service = FaceService(batching_service=attendance_batching_service)
     app.state.face_service = face_service
+    # Init UserService
+    from app.services.user_service import UserService
+    user_service = UserService(
+        redis_client=redis_cache,
+        postgres_client=pg_manager,
+    )
+    app.state.user_service = user_service
     
 @app.on_event("shutdown")
 async def shutdown_event():
