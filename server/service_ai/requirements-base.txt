@@ -35,9 +35,9 @@ cryptography==41.0.7
 python-multipart==0.0.6
 
 # gRPC
-grpcio==1.60.0
-grpcio-tools==1.60.0
-grpcio-reflection==1.60.0
+grpcio==1.76.0
+grpcio-tools==1.76.0
+grpcio-reflection==1.76.0
 
 # Utilities
 python-dotenv==1.0.0

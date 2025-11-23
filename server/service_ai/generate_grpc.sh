@@ -8,7 +8,7 @@ cd "$SCRIPT_DIR"
 mkdir -p app/grpc_generated
 
 # Generate Python gRPC code
-python -m grpc_tools.protoc \
+/Users/vinh/code/github.com/youknow2509/cio_verify_face/server/service_ai/.venv/bin/python -m grpc_tools.protoc \
     -I./protos \
     --python_out=./app/grpc_generated \
     --grpc_python_out=./app/grpc_generated \

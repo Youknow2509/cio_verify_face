@@ -1,6 +1,7 @@
 """
 gRPC server implementation for face verification service
 """
+import base64
 import grpc
 from concurrent import futures
 import logging
@@ -9,198 +10,69 @@ import numpy as np
 from io import BytesIO
 from PIL import Image
 import cv2
+from grpc_reflection.v1alpha import reflection
 
 from app.grpc_generated import face_service_pb2, face_service_pb2_grpc
 from app.services.face_service import FaceService
+from app.services.user_service import UserService
 from app.core.config import settings
 from uuid import UUID
+from google.protobuf.timestamp_pb2 import Timestamp
+from google.protobuf.struct_pb2 import Struct
 
 logger = logging.getLogger(__name__)
 
-
-class FaceVerificationServicer(face_service_pb2_grpc.FaceVerificationServicer):
-    """gRPC servicer for face verification"""
-    
-    def __init__(self, face_service: FaceService):
+class FaceVerificationServiceImpl(face_service_pb2_grpc.FaceVerificationServiceServicer):
+    def __init__(self, face_service: FaceService, user_service: UserService):
         self.face_service = face_service
-    
-    def _bytes_to_image(self, image_bytes: bytes) -> np.ndarray:
-        """Convert image bytes to numpy array"""
+        self.user_service = user_service
+
+    async def EnrollFace(self, request: face_service_pb2.EnrollRequest, context):
+        logger.info(f"gRPC EnrollFace request received for user_id: {request.user_id}")
         try:
-            image = Image.open(BytesIO(image_bytes))
-            image_array = np.array(image)
-            # Convert RGB to BGR for OpenCV
-            if len(image_array.shape) == 3 and image_array.shape[2] == 3:
-                image_array = cv2.cvtColor(image_array, cv2.COLOR_RGB2BGR)
-            return image_array
-        except Exception as e:
-            logger.error(f"Error converting bytes to image: {e}")
-            raise
-    
-    def _image_to_base64(self, image: np.ndarray) -> str:
-        """Convert numpy array to base64 string"""
-        import base64
-        # Convert BGR to RGB
-        if len(image.shape) == 3 and image.shape[2] == 3:
-            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-        # Encode as JPEG
-        _, buffer = cv2.imencode('.jpg', image)
-        return base64.b64encode(buffer).decode('utf-8')
-    
-    async def EnrollFace(self, request, context):
-        """Enroll a face"""
-        try:
-            # Convert image bytes to numpy array
-            image = self._bytes_to_image(request.image_data)
-            image_base64 = self._image_to_base64(image)
-            
-            # Call face service
+            user_id, company_id = UUID(request.user_id), UUID(request.company_id)
+            if not await self.user_service.check_user_exist_in_company(user_id, company_id):
+                context.set_details("User not found in the specified company")
+                context.set_code(grpc.StatusCode.NOT_FOUND)
+                return face_service_pb2.EnrollResponse(status="failed", message="User not found")
+
+            image_base64 = base64.b64encode(request.image_data).decode('utf-8')
             result = await self.face_service.enroll_face(
-                user_id=UUID(request.user_id),
-                company_id=UUID(request.company_id),
+                user_id=user_id,
+                company_id=company_id,
                 image_base64=image_base64,
                 device_id=request.device_id if request.HasField('device_id') else None,
                 make_primary=request.make_primary,
-                metadata=dict(request.metadata) if request.metadata else {}
+                metadata={"upload_type": "binary", "filename": request.filename}
             )
+            logger.info(f"gRPC EnrollFace successful for user_id: {request.user_id}")
             
-            # Build response
+            # Manually construct the response
             response = face_service_pb2.EnrollResponse(
-                status=result.status,
-                message=result.message or ""
+                status=result.get("status"),
+                message=result.get("message")
             )
-            
-            if result.profile_id:
-                response.profile_id = str(result.profile_id)
-            
-            if result.quality_score is not None:
-                response.quality_score = result.quality_score
-            
-            if result.duplicate_profiles:
-                for dup in result.duplicate_profiles:
-                    response.duplicate_profiles.append(
-                        face_service_pb2.DuplicateProfile(
-                            user_id=dup['user_id'],
-                            similarity=dup['similarity']
-                        )
+            if result.get("profile_id"):
+                response.profile_id = str(result.get("profile_id"))
+            if result.get("quality_score"):
+                response.quality_score = result.get("quality_score")
+            if result.get("duplicate_profiles"):
+                for dp in result.get("duplicate_profiles"):
+                    response.duplicate_profiles.add(
+                        profile_id=str(dp.get("profile_id")),
+                        similarity=dp.get("similarity")
                     )
-            
             return response
-            
         except Exception as e:
-            logger.error(f"Error in EnrollFace: {e}")
-            context.set_code(grpc.StatusCode.INTERNAL)
+            logger.error(f"Error in EnrollFace gRPC call: {e}", exc_info=True)
             context.set_details(str(e))
-            return face_service_pb2.EnrollResponse()
-    
-    async def EnrollFaceStream(self, request_iterator, context):
-        """Enroll a face with streaming (optimized for bandwidth)"""
-        try:
-            metadata = None
-            image_chunks = []
-            total_received = 0
-            
-            # Process streaming requests
-            async for request in request_iterator:
-                if request.HasField('metadata'):
-                    # First message contains metadata
-                    metadata = request.metadata
-                    logger.info(f"Received enrollment metadata for user {metadata.user_id}, "
-                              f"expected size: {metadata.total_size} bytes")
-                    
-                elif request.HasField('image_chunk'):
-                    # Subsequent messages contain image chunks
-                    chunk = request.image_chunk
-                    image_chunks.append(chunk)
-                    total_received += len(chunk)
-                    
-                    # Optional: Log progress
-                    if metadata and metadata.total_size > 0:
-                        progress = (total_received / metadata.total_size) * 100
-                        if progress % 25 < 1:  # Log at 25%, 50%, 75%, 100%
-                            logger.info(f"Received {progress:.1f}% of image data")
-            
-            # Validate metadata received
-            if not metadata:
-                context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-                context.set_details("Missing metadata in stream")
-                return face_service_pb2.EnrollResponse()
-            
-            # Validate image chunks received
-            if not image_chunks:
-                context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-                context.set_details("No image data received")
-                return face_service_pb2.EnrollResponse()
-            
-            # Reconstruct complete image from chunks
-            image_data = b''.join(image_chunks)
-            logger.info(f"Reconstructed image: {len(image_data)} bytes "
-                       f"(expected: {metadata.total_size} bytes)")
-            
-            # Verify size matches (with some tolerance for compression)
-            if metadata.total_size > 0:
-                size_diff = abs(len(image_data) - metadata.total_size)
-                if size_diff > 1024:  # Allow 1KB tolerance
-                    logger.warning(f"Image size mismatch: received {len(image_data)}, "
-                                 f"expected {metadata.total_size}")
-            
-            # Convert image bytes to numpy array
-            image = self._bytes_to_image(image_data)
-            image_base64 = self._image_to_base64(image)
-            
-            # Prepare metadata dict
-            enroll_metadata = dict(metadata.metadata) if metadata.metadata else {}
-            enroll_metadata['image_format'] = metadata.image_format
-            enroll_metadata['streaming'] = 'true'
-            
-            # Call face service
-            result = await self.face_service.enroll_face(
-                user_id=UUID(metadata.user_id),
-                company_id=UUID(metadata.company_id),
-                image_base64=image_base64,
-                device_id=metadata.device_id if metadata.HasField('device_id') else None,
-                make_primary=metadata.make_primary,
-                metadata=enroll_metadata
-            )
-            
-            # Build response
-            response = face_service_pb2.EnrollResponse(
-                status=result.status,
-                message=result.message or ""
-            )
-            
-            if result.profile_id:
-                response.profile_id = str(result.profile_id)
-            
-            if result.quality_score is not None:
-                response.quality_score = result.quality_score
-            
-            if result.duplicate_profiles:
-                for dup in result.duplicate_profiles:
-                    response.duplicate_profiles.append(
-                        face_service_pb2.DuplicateProfile(
-                            user_id=dup['user_id'],
-                            similarity=dup['similarity']
-                        )
-                    )
-            
-            logger.info(f"Successfully enrolled face via streaming for user {metadata.user_id}")
-            return response
-            
-        except Exception as e:
-            logger.error(f"Error in EnrollFaceStream: {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(str(e))
             return face_service_pb2.EnrollResponse()
-    
-    async def VerifyFace(self, request, context):
-        """Verify a face with single image"""
+
+    async def VerifyFace(self, request: face_service_pb2.VerifyRequest, context):
+        logger.info(f"gRPC VerifyFace request received for company_id: {request.company_id}, mode: {request.search_mode}")
         try:
-            # Convert image bytes to numpy array
-            image = self._bytes_to_image(request.image_data)
-            image_base64 = self._image_to_base64(image)
-            
-            # Call face service
+            image_base64 = base64.b64encode(request.image_data).decode('utf-8')
             result = await self.face_service.verify_face(
                 image_base64=image_base64,
                 company_id=UUID(request.company_id),
@@ -209,589 +81,314 @@ class FaceVerificationServicer(face_service_pb2_grpc.FaceVerificationServicer):
                 search_mode=request.search_mode,
                 top_k=request.top_k
             )
-            
-            # Build response
+            logger.info(f"gRPC VerifyFace successful for company_id: {request.company_id}")
+
+            # Manual construction of VerifyResponse
             response = face_service_pb2.VerifyResponse(
-                status=result.status,
-                verified=result.verified,
-                message=result.message or ""
+                status=result.get("status"),
+                verified=result.get("verified", False)
             )
-            
-            if result.liveness_score is not None:
-                response.liveness_score = result.liveness_score
-            
-            # Add matches
-            for match in result.matches:
-                response.matches.append(
-                    face_service_pb2.Match(
-                        user_id=str(match.user_id),
-                        profile_id=str(match.profile_id),
-                        similarity=match.similarity,
-                        confidence=match.confidence,
-                        is_primary=match.is_primary
+            if result.get("message"):
+                response.message = result.get("message")
+            if result.get("liveness_score"):
+                response.liveness_score = result.get("liveness_score")
+
+            if result.get("matches"):
+                for match_data in result.get("matches"):
+                    response.matches.add(
+                        user_id=str(match_data.get("user_id")),
+                        profile_id=str(match_data.get("profile_id")),
+                        similarity=match_data.get("similarity"),
+                        confidence=match_data.get("confidence"),
+                        is_primary=match_data.get("is_primary")
                     )
-                )
             
-            # Add best match
-            if result.best_match:
-                response.best_match.CopyFrom(
-                    face_service_pb2.Match(
-                        user_id=str(result.best_match.user_id),
-                        profile_id=str(result.best_match.profile_id),
-                        similarity=result.best_match.similarity,
-                        confidence=result.best_match.confidence,
-                        is_primary=result.best_match.is_primary
-                    )
-                )
-            
+            if result.get("best_match"):
+                best_match_data = result.get("best_match")
+                response.best_match.user_id = str(best_match_data.get("user_id"))
+                response.best_match.profile_id = str(best_match_data.get("profile_id"))
+                response.best_match.similarity = best_match_data.get("similarity")
+                response.best_match.confidence = best_match_data.get("confidence")
+                response.best_match.is_primary = best_match_data.get("is_primary")
+
             return response
-            
         except Exception as e:
-            logger.error(f"Error in VerifyFace: {e}")
-            context.set_code(grpc.StatusCode.INTERNAL)
+            logger.error(f"Error in VerifyFace gRPC call: {e}", exc_info=True)
             context.set_details(str(e))
+            context.set_code(grpc.StatusCode.INTERNAL)
             return face_service_pb2.VerifyResponse()
-    
-    async def VerifyFaceStream(self, request_iterator, context):
-        """Verify a face with streaming (optimized for bandwidth)"""
+
+    async def UpdateProfile(self, request: face_service_pb2.UpdateProfileRequest, context):
+        logger.info(f"gRPC UpdateProfile request received for profile_id: {request.profile_id}")
         try:
-            metadata = None
-            image_chunks = []
-            total_received = 0
+            profile_id, company_id = UUID(request.profile_id), UUID(request.company_id)
             
-            # Process streaming requests
-            async for request in request_iterator:
-                if request.HasField('metadata'):
-                    # First message contains metadata
-                    metadata = request.metadata
-                    logger.info(f"Received verification metadata for company {metadata.company_id}, "
-                              f"expected size: {metadata.total_size} bytes")
-                    
-                elif request.HasField('image_chunk'):
-                    # Subsequent messages contain image chunks
-                    chunk = request.image_chunk
-                    image_chunks.append(chunk)
-                    total_received += len(chunk)
-                    
-                    # Optional: Log progress
-                    if metadata and metadata.total_size > 0:
-                        progress = (total_received / metadata.total_size) * 100
-                        if progress % 25 < 1:
-                            logger.info(f"Received {progress:.1f}% of image data")
-            
-            # Validate metadata received
-            if not metadata:
-                context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-                context.set_details("Missing metadata in stream")
-                return face_service_pb2.VerifyResponse()
-            
-            # Validate image chunks received
-            if not image_chunks:
-                context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-                context.set_details("No image data received")
-                return face_service_pb2.VerifyResponse()
-            
-            # Reconstruct complete image from chunks
-            image_data = b''.join(image_chunks)
-            logger.info(f"Reconstructed image: {len(image_data)} bytes")
-            
-            # Convert image bytes to numpy array
-            image = self._bytes_to_image(image_data)
-            image_base64 = self._image_to_base64(image)
-            
-            # Call face service
-            result = await self.face_service.verify_face(
-                image_base64=image_base64,
-                company_id=UUID(metadata.company_id),
-                user_id=UUID(metadata.user_id) if metadata.HasField('user_id') else None,
-                device_id=metadata.device_id if metadata.HasField('device_id') else None,
-                search_mode=metadata.search_mode,
-                top_k=metadata.top_k
-            )
-            
-            # Build response
-            response = face_service_pb2.VerifyResponse(
-                status=result.status,
-                verified=result.verified,
-                message=result.message or ""
-            )
-            
-            if result.liveness_score is not None:
-                response.liveness_score = result.liveness_score
-            
-            # Add matches
-            for match in result.matches:
-                response.matches.append(
-                    face_service_pb2.Match(
-                        user_id=str(match.user_id),
-                        profile_id=str(match.profile_id),
-                        similarity=match.similarity,
-                        confidence=match.confidence,
-                        is_primary=match.is_primary
-                    )
-                )
-            
-            # Add best match
-            if result.best_match:
-                response.best_match.CopyFrom(
-                    face_service_pb2.Match(
-                        user_id=str(result.best_match.user_id),
-                        profile_id=str(result.best_match.profile_id),
-                        similarity=result.best_match.similarity,
-                        confidence=result.best_match.confidence,
-                        is_primary=result.best_match.is_primary
-                    )
-                )
-            
-            logger.info(f"Successfully verified face via streaming")
-            return response
-            
-        except Exception as e:
-            logger.error(f"Error in VerifyFaceStream: {e}")
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(str(e))
-            return face_service_pb2.VerifyResponse()
-    
-    async def VerifyFaceMultiFrame(self, request, context):
-        """Verify face with multiple frames (3-5 frames for robustness)"""
-        try:
-            if not request.frames or len(request.frames) < 3:
-                context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-                context.set_details("At least 3 frames required")
-                return face_service_pb2.VerifyResponse()
-            
-            # Process each frame and get verification results
-            all_results = []
-            for frame_bytes in request.frames[:5]:  # Limit to 5 frames
-                image = self._bytes_to_image(frame_bytes)
-                image_base64 = self._image_to_base64(image)
-                
-                result = await self.face_service.verify_face(
-                    image_base64=image_base64,
-                    company_id=UUID(request.company_id),
-                    user_id=UUID(request.user_id) if request.HasField('user_id') else None,
-                    device_id=request.device_id if request.HasField('device_id') else None,
-                    search_mode=request.search_mode,
-                    top_k=request.top_k
-                )
-                
-                if result.verified:
-                    all_results.append(result)
-            
-            # If no frames verified, return no match
-            if not all_results:
-                return face_service_pb2.VerifyResponse(
-                    status="no_match",
-                    verified=False,
-                    message="No frames could be verified"
-                )
-            
-            # Aggregate results - use majority voting and average confidence
-            # Count matches per user
-            user_votes = {}
-            user_confidences = {}
-            
-            for result in all_results:
-                if result.best_match:
-                    user_id = str(result.best_match.user_id)
-                    if user_id not in user_votes:
-                        user_votes[user_id] = 0
-                        user_confidences[user_id] = []
-                    
-                    user_votes[user_id] += 1
-                    user_confidences[user_id].append(result.best_match.confidence)
-            
-            # Get user with most votes
-            if user_votes:
-                best_user = max(user_votes.items(), key=lambda x: (x[1], np.mean(user_confidences[x[0]])))
-                best_user_id = best_user[0]
-                
-                # Get average confidence for best user
-                avg_confidence = np.mean(user_confidences[best_user_id])
-                
-                # Find the best match from results
-                best_result = None
-                for result in all_results:
-                    if result.best_match and str(result.best_match.user_id) == best_user_id:
-                        best_result = result
-                        break
-                
-                if best_result:
-                    # Build response with aggregated confidence
-                    response = face_service_pb2.VerifyResponse(
-                        status="match",
-                        verified=True,
-                        message=f"Verified with {user_votes[best_user_id]} out of {len(request.frames)} frames"
-                    )
-                    
-                    # Add best match with averaged confidence
-                    response.best_match.CopyFrom(
-                        face_service_pb2.Match(
-                            user_id=str(best_result.best_match.user_id),
-                            profile_id=str(best_result.best_match.profile_id),
-                            similarity=best_result.best_match.similarity,
-                            confidence=float(avg_confidence),
-                            is_primary=best_result.best_match.is_primary
-                        )
-                    )
-                    
-                    # Add all unique matches
-                    seen_users = set()
-                    for result in all_results:
-                        for match in result.matches:
-                            user_id = str(match.user_id)
-                            if user_id not in seen_users:
-                                seen_users.add(user_id)
-                                response.matches.append(
-                                    face_service_pb2.Match(
-                                        user_id=user_id,
-                                        profile_id=str(match.profile_id),
-                                        similarity=match.similarity,
-                                        confidence=match.confidence,
-                                        is_primary=match.is_primary
-                                    )
-                                )
-                    
-                    return response
-            
-            # Fallback to no match
-            return face_service_pb2.VerifyResponse(
-                status="no_match",
-                verified=False,
-                message="Could not verify face across multiple frames"
-            )
-            
-        except Exception as e:
-            logger.error(f"Error in VerifyFaceMultiFrame: {e}")
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(str(e))
-            return face_service_pb2.VerifyResponse()
-    
-    async def VerifyFaceMultiFrameStream(self, request_iterator, context):
-        """Verify face with multiple frames using streaming (optimized for bandwidth)"""
-        try:
-            metadata = None
-            frames = []  # List of complete frames
-            current_frame_chunks = []  # Chunks for current frame
-            current_frame_info = None
-            
-            # Process streaming requests
-            async for request in request_iterator:
-                if request.HasField('metadata'):
-                    # First message contains metadata
-                    metadata = request.metadata
-                    logger.info(f"Received multi-frame verification metadata, "
-                              f"frame count: {metadata.frame_count}")
-                    
-                elif request.HasField('frame_delimiter'):
-                    # Save previous frame if exists
-                    if current_frame_chunks:
-                        frame_data = b''.join(current_frame_chunks)
-                        frames.append(frame_data)
-                        logger.info(f"Completed frame {len(frames)}: {len(frame_data)} bytes")
-                        current_frame_chunks = []
-                    
-                    # Start new frame
-                    current_frame_info = request.frame_delimiter
-                    
-                elif request.HasField('frame_chunk'):
-                    # Add chunk to current frame
-                    current_frame_chunks.append(request.frame_chunk)
-            
-            # Save last frame
-            if current_frame_chunks:
-                frame_data = b''.join(current_frame_chunks)
-                frames.append(frame_data)
-                logger.info(f"Completed final frame {len(frames)}: {len(frame_data)} bytes")
-            
-            # Validate metadata received
-            if not metadata:
-                context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-                context.set_details("Missing metadata in stream")
-                return face_service_pb2.VerifyResponse()
-            
-            # Validate frames
-            if not frames or len(frames) < 3:
-                context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-                context.set_details(f"At least 3 frames required, received {len(frames)}")
-                return face_service_pb2.VerifyResponse()
-            
-            # Process each frame and get verification results
-            all_results = []
-            for i, frame_data in enumerate(frames[:5]):  # Limit to 5 frames
-                image = self._bytes_to_image(frame_data)
-                image_base64 = self._image_to_base64(image)
-                
-                result = await self.face_service.verify_face(
-                    image_base64=image_base64,
-                    company_id=UUID(metadata.company_id),
-                    user_id=UUID(metadata.user_id) if metadata.HasField('user_id') else None,
-                    device_id=metadata.device_id if metadata.HasField('device_id') else None,
-                    search_mode=metadata.search_mode,
-                    top_k=metadata.top_k
-                )
-                
-                if result.verified:
-                    all_results.append(result)
-                    logger.info(f"Frame {i+1} verified successfully")
-            
-            # If no frames verified, return no match
-            if not all_results:
-                return face_service_pb2.VerifyResponse(
-                    status="no_match",
-                    verified=False,
-                    message="No frames could be verified"
-                )
-            
-            # Aggregate results - use majority voting and average confidence
-            user_votes = {}
-            user_confidences = {}
-            
-            for result in all_results:
-                if result.best_match:
-                    user_id = str(result.best_match.user_id)
-                    if user_id not in user_votes:
-                        user_votes[user_id] = 0
-                        user_confidences[user_id] = []
-                    
-                    user_votes[user_id] += 1
-                    user_confidences[user_id].append(result.best_match.confidence)
-            
-            # Get user with most votes
-            if user_votes:
-                best_user = max(user_votes.items(), key=lambda x: (x[1], np.mean(user_confidences[x[0]])))
-                best_user_id = best_user[0]
-                avg_confidence = np.mean(user_confidences[best_user_id])
-                
-                # Find the best match from results
-                best_result = None
-                for result in all_results:
-                    if result.best_match and str(result.best_match.user_id) == best_user_id:
-                        best_result = result
-                        break
-                
-                if best_result:
-                    response = face_service_pb2.VerifyResponse(
-                        status="match",
-                        verified=True,
-                        message=f"Verified with {user_votes[best_user_id]} out of {len(frames)} frames (streaming)"
-                    )
-                    
-                    response.best_match.CopyFrom(
-                        face_service_pb2.Match(
-                            user_id=str(best_result.best_match.user_id),
-                            profile_id=str(best_result.best_match.profile_id),
-                            similarity=best_result.best_match.similarity,
-                            confidence=float(avg_confidence),
-                            is_primary=best_result.best_match.is_primary
-                        )
-                    )
-                    
-                    # Add all unique matches
-                    seen_users = set()
-                    for result in all_results:
-                        for match in result.matches:
-                            user_id = str(match.user_id)
-                            if user_id not in seen_users:
-                                seen_users.add(user_id)
-                                response.matches.append(
-                                    face_service_pb2.Match(
-                                        user_id=user_id,
-                                        profile_id=str(match.profile_id),
-                                        similarity=match.similarity,
-                                        confidence=match.confidence,
-                                        is_primary=match.is_primary
-                                    )
-                                )
-                    
-                    logger.info(f"Successfully verified multi-frame via streaming")
-                    return response
-            
-            return face_service_pb2.VerifyResponse(
-                status="no_match",
-                verified=False,
-                message="Could not verify face across multiple frames"
-            )
-            
-        except Exception as e:
-            logger.error(f"Error in VerifyFaceMultiFrameStream: {e}")
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(str(e))
-            return face_service_pb2.VerifyResponse()
-    
-    async def GetUserProfiles(self, request, context):
-        """Get all face profiles for a user"""
-        try:
-            profiles = await self.face_service.get_user_profiles(
-                UUID(request.user_id),
-                UUID(request.company_id)
-            )
-            
-            response = face_service_pb2.GetProfilesResponse()
-            for profile in profiles:
-                response.profiles.append(
-                    face_service_pb2.FaceProfile(
-                        profile_id=str(profile.profile_id),
-                        user_id=str(profile.user_id),
-                        company_id=str(profile.company_id),
-                        embedding_version=profile.embedding_version,
-                        is_primary=profile.is_primary,
-                        created_at=profile.created_at.isoformat(),
-                        updated_at=profile.updated_at.isoformat(),
-                        deleted_at=profile.deleted_at.isoformat() if profile.deleted_at else "",
-                        metadata={k: str(v) for k, v in profile.meta_data.items()},
-                        quality_score=profile.quality_score if profile.quality_score else 0.0
-                    )
-                )
-            
-            return response
-            
-        except Exception as e:
-            logger.error(f"Error in GetUserProfiles: {e}")
-            context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(str(e))
-            return face_service_pb2.GetProfilesResponse()
-    
-    async def UpdateProfile(self, request, context):
-        """Update a face profile"""
-        try:
+            # This check is not logically sound as we don't have user_id here.
+            # The original API also lacks this check.
+            # To implement this properly, we would need to fetch the profile first to get the user_id.
+            # For now, I will skip this check to maintain consistency with the HTTP API.
+
             image_base64 = None
             if request.HasField('image_data'):
-                image = self._bytes_to_image(request.image_data)
-                image_base64 = self._image_to_base64(image)
+                image_base64 = base64.b64encode(request.image_data).decode('utf-8')
             
+            metadata = {}
+            if request.HasField('filename'):
+                metadata["filename"] = request.filename
+
             result = await self.face_service.update_profile(
                 profile_id=UUID(request.profile_id),
                 company_id=UUID(request.company_id),
                 image_base64=image_base64,
                 make_primary=request.make_primary if request.HasField('make_primary') else None,
-                metadata=dict(request.metadata) if request.metadata else None
+                metadata=metadata
             )
-            
-            return face_service_pb2.UpdateProfileResponse(
-                status=result["status"],
-                message=result["message"]
-            )
-            
+            return face_service_pb2.StatusResponse(**result)
         except Exception as e:
-            logger.error(f"Error in UpdateProfile: {e}")
-            context.set_code(grpc.StatusCode.INTERNAL)
+            logger.error(f"Error in UpdateProfile gRPC call: {e}")
             context.set_details(str(e))
-            return face_service_pb2.UpdateProfileResponse()
-    
-    async def UpdateProfileStream(self, request_iterator, context):
-        """Update a face profile with streaming (optimized for bandwidth)"""
-        try:
-            metadata = None
-            image_chunks = []
-            total_received = 0
-            
-            # Process streaming requests
-            async for request in request_iterator:
-                if request.HasField('metadata'):
-                    # First message contains metadata
-                    metadata = request.metadata
-                    logger.info(f"Received update profile metadata for profile {metadata.profile_id}, "
-                              f"has_image: {metadata.has_image}")
-                    
-                elif request.HasField('image_chunk'):
-                    # Subsequent messages contain image chunks
-                    chunk = request.image_chunk
-                    image_chunks.append(chunk)
-                    total_received += len(chunk)
-                    
-                    # Optional: Log progress
-                    if metadata and metadata.has_image and metadata.total_size > 0:
-                        progress = (total_received / metadata.total_size) * 100
-                        if progress % 25 < 1:
-                            logger.info(f"Received {progress:.1f}% of image data")
-            
-            # Validate metadata received
-            if not metadata:
-                context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-                context.set_details("Missing metadata in stream")
-                return face_service_pb2.UpdateProfileResponse()
-            
-            # Process image if provided
-            image_base64 = None
-            if metadata.has_image:
-                if not image_chunks:
-                    context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
-                    context.set_details("No image data received but has_image=true")
-                    return face_service_pb2.UpdateProfileResponse()
-                
-                # Reconstruct complete image from chunks
-                image_data = b''.join(image_chunks)
-                logger.info(f"Reconstructed image: {len(image_data)} bytes")
-                
-                # Convert image bytes to numpy array
-                image = self._bytes_to_image(image_data)
-                image_base64 = self._image_to_base64(image)
-            
-            # Prepare metadata dict
-            update_metadata = dict(metadata.metadata) if metadata.metadata else None
-            if update_metadata and metadata.has_image:
-                update_metadata['image_format'] = metadata.image_format
-                update_metadata['streaming'] = 'true'
-            
-            # Call face service
-            result = await self.face_service.update_profile(
-                profile_id=UUID(metadata.profile_id),
-                company_id=UUID(metadata.company_id),
-                image_base64=image_base64,
-                make_primary=metadata.make_primary if metadata.HasField('make_primary') else None,
-                metadata=update_metadata
-            )
-            
-            logger.info(f"Successfully updated profile via streaming: {metadata.profile_id}")
-            return face_service_pb2.UpdateProfileResponse(
-                status=result["status"],
-                message=result["message"]
-            )
-            
-        except Exception as e:
-            logger.error(f"Error in UpdateProfileStream: {e}")
             context.set_code(grpc.StatusCode.INTERNAL)
-            context.set_details(str(e))
-            return face_service_pb2.UpdateProfileResponse()
-    
-    async def DeleteProfile(self, request, context):
-        """Delete a face profile"""
+            return face_service_pb2.StatusResponse()
+
+    async def DeleteProfile(self, request: face_service_pb2.DeleteProfileRequest, context):
+        logger.info(f"gRPC DeleteProfile request received for profile_id: {request.profile_id}")
         try:
+            profile_id, company_id = UUID(request.profile_id), UUID(request.company_id)
+            
+            # Similar to UpdateProfile, this check is not logically sound without user_id.
+            # Skipping for now to maintain consistency.
+
             result = await self.face_service.delete_profile(
-                profile_id=UUID(request.profile_id),
-                company_id=UUID(request.company_id),
-                hard_delete=request.hard_delete
+                profile_id=profile_id,
+                company_id=company_id,
+                hard_delete=request.hard_delete,
+                metadata={}
             )
-            
-            return face_service_pb2.DeleteProfileResponse(
-                status=result["status"],
-                message=result["message"]
-            )
-            
+            return face_service_pb2.StatusResponse(**result)
         except Exception as e:
-            logger.error(f"Error in DeleteProfile: {e}")
-            context.set_code(grpc.StatusCode.INTERNAL)
+            logger.error(f"Error in DeleteProfile gRPC call: {e}")
             context.set_details(str(e))
-            return face_service_pb2.DeleteProfileResponse()
+            context.set_code(grpc.StatusCode.INTERNAL)
+            return face_service_pb2.StatusResponse()
 
+    async def GetUserProfiles(self, request: face_service_pb2.GetUserProfilesRequest, context):
+        try:
+            profiles = await self.user_service.get_profile_face_user(
+                user_id=UUID(request.user_id),
+                company_id=UUID(request.company_id),
+                page_number=request.page_number,
+                page_size=request.page_size
+            )
+            proto_profiles = []
+            for profile in profiles:
+                created_at_ts = Timestamp()
+                updated_at_ts = Timestamp()
+                created_at_ts.FromDatetime(profile.created_at)
+                updated_at_ts.FromDatetime(profile.updated_at)
 
-async def serve_grpc(face_service: FaceService, port: int = 50051):
-    """Start gRPC server"""
-    server = grpc.aio.server(futures.ThreadPoolExecutor(max_workers=10))
-    face_service_pb2_grpc.add_FaceVerificationServicer_to_server(
-        FaceVerificationServicer(face_service), server
+                metadata_struct = Struct()
+                if profile.metadata:
+                    metadata_struct.update(profile.metadata)
+
+                proto_profile = face_service_pb2.FaceProfileResponse(
+                    profile_id=str(profile.profile_id),
+                    user_id=str(profile.user_id),
+                    company_id=str(profile.company_id),
+                    embedding_version=profile.embedding_version,
+                    is_primary=profile.is_primary,
+                    created_at=created_at_ts,
+                    updated_at=updated_at_ts,
+                    metadata=metadata_struct
+                )
+
+                if profile.deleted_at:
+                    deleted_at_ts = Timestamp()
+                    deleted_at_ts.FromDatetime(profile.deleted_at)
+                    proto_profile.deleted_at.CopyFrom(deleted_at_ts)
+
+                if profile.quality_score is not None:
+                    proto_profile.quality_score = profile.quality_score
+                
+                proto_profiles.append(proto_profile)
+            
+            logger.info(f"gRPC GetUserProfiles successful for user_id: {request.user_id}, found {len(proto_profiles)} profiles.")
+            return face_service_pb2.GetUserProfilesResponse(profiles=proto_profiles)
+        except Exception as e:
+            logger.error(f"Error in GetUserProfiles gRPC call: {e}")
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.INTERNAL)
+            return face_service_pb2.GetUserProfilesResponse()
+        
+    async def CleanupProfiles(self, request: face_service_pb2.CleanupProfilesRequest, context):
+        try:
+            result = await self.face_service.cleanup_profiles_for_company(
+                company_id=UUID(request.company_id),
+                metadata={}
+            )
+            return face_service_pb2.StatusResponse(**result)
+        except Exception as e:
+            logger.error(f"Error in CleanupProfiles gRPC call: {e}")
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.INTERNAL)
+            return face_service_pb2.StatusResponse()
+
+    async def BatchEnrollFace(self, request: face_service_pb2.BatchEnrollRequest, context):
+        responses = []
+        for req in request.requests:
+            try:
+                enroll_response = await self.EnrollFace(req, context)
+                responses.append(enroll_response)
+            except Exception as e:
+                logger.error(f"Error processing batch enroll request: {e}")
+                # Create a failed response for this specific request
+                failed_response = face_service_pb2.EnrollResponse(
+                    status="failed",
+                    message=str(e)
+                )
+                responses.append(failed_response)
+        return face_service_pb2.BatchEnrollResponse(responses=responses)
+
+    async def BatchVerifyFace(self, request: face_service_pb2.BatchVerifyRequest, context):
+        responses = []
+        for req in request.requests:
+            try:
+                verify_response = await self.VerifyFace(req, context)
+                responses.append(verify_response)
+            except Exception as e:
+                logger.error(f"Error processing batch verify request: {e}")
+                failed_response = face_service_pb2.VerifyResponse(
+                    status="failed",
+                    message=str(e)
+                )
+                responses.append(failed_response)
+        return face_service_pb2.BatchVerifyResponse(responses=responses)
+
+    async def BatchDeleteProfile(self, request: face_service_pb2.BatchDeleteProfileRequest, context):
+        responses = []
+        for req in request.requests:
+            try:
+                delete_response = await self.DeleteProfile(req, context)
+                responses.append(delete_response)
+            except Exception as e:
+                logger.error(f"Error processing batch delete request: {e}")
+                failed_response = face_service_pb2.StatusResponse(
+                    status="failed",
+                    message=str(e)
+                )
+                responses.append(failed_response)
+        return face_service_pb2.BatchDeleteProfileResponse(responses=responses)
+
+    async def BatchUpdateProfile(self, request: face_service_pb2.BatchUpdateProfileRequest, context):
+        responses = []
+        for req in request.requests:
+            try:
+                update_response = await self.UpdateProfile(req, context)
+                responses.append(update_response)
+            except Exception as e:
+                logger.error(f"Error processing batch update request: {e}")
+                failed_response = face_service_pb2.StatusResponse(
+                    status="failed",
+                    message=str(e)
+                )
+                responses.append(failed_response)
+        return face_service_pb2.BatchUpdateProfileResponse(responses=responses)
+
+    async def StreamEnrollFace(self, request_iterator, context):
+        info = None
+        image_data = b""
+        async for request in request_iterator:
+            if request.HasField("info"):
+                info = request.info
+            elif request.HasField("chunk_data"):
+                image_data += request.chunk_data
+
+        if not info or not image_data:
+            context.set_details("Missing info or image data in stream.")
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            return face_service_pb2.EnrollResponse()
+
+        try:
+            image_base64 = base64.b64encode(image_data).decode('utf-8')
+            result = await self.face_service.enroll_face(
+                user_id=UUID(info.user_id),
+                company_id=UUID(info.company_id),
+                image_base64=image_base64,
+                device_id=info.device_id if info.HasField('device_id') else None,
+                make_primary=info.make_primary,
+                metadata={"upload_type": "stream", "filename": info.filename}
+            )
+            return face_service_pb2.EnrollResponse(**result)
+        except Exception as e:
+            logger.error(f"Error in StreamEnrollFace gRPC call: {e}")
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.INTERNAL)
+            return face_service_pb2.EnrollResponse()
+
+    async def StreamUpdateProfile(self, request_iterator, context):
+        info = None
+        image_data = b""
+        async for request in request_iterator:
+            if request.HasField("info"):
+                info = request.info
+            elif request.HasField("chunk_data"):
+                image_data += request.chunk_data
+
+        if not info:
+            context.set_details("Missing info in stream.")
+            context.set_code(grpc.StatusCode.INVALID_ARGUMENT)
+            return face_service_pb2.StatusResponse()
+
+        try:
+            image_base64 = None
+            if image_data:
+                image_base64 = base64.b64encode(image_data).decode('utf-8')
+            
+            metadata = {}
+            if info.HasField('filename'):
+                metadata["filename"] = info.filename
+
+            result = await self.face_service.update_profile(
+                profile_id=UUID(info.profile_id),
+                company_id=UUID(info.company_id),
+                image_base64=image_base64,
+                make_primary=info.make_primary if info.HasField('make_primary') else None,
+                metadata=metadata
+            )
+            return face_service_pb2.StatusResponse(**result)
+        except Exception as e:
+            logger.error(f"Error in StreamUpdateProfile gRPC call: {e}")
+            context.set_details(str(e))
+            context.set_code(grpc.StatusCode.INTERNAL)
+            return face_service_pb2.StatusResponse()
+
+async def serve(face_service: FaceService, user_service: UserService):
+    server_options = [
+        ('grpc.keepalive_time_ms', settings.GRPC_SERVER_KEEPALIVE_TIME_MS),
+        ('grpc.keepalive_timeout_ms', settings.GRPC_SERVER_KEEPALIVE_TIMEOUT_MS),
+        ('grpc.http2.min_time_between_pings_ms', settings.GRPC_SERVER_HTTP2_MIN_TIME_BETWEEN_PINGS_MS),
+        ('grpc.keepalive_permit_without_calls', settings.GRPC_SERVER_KEEPALIVE_PERMIT_WITHOUT_CALLS),
+        # Mitigate GOAWAY errors
+        ('grpc.http2.max_pings_without_data', 0),
+        ('grpc.http2.min_ping_interval_without_data_ms', 5000),
+    ]
+    
+    server = grpc.aio.server(
+        futures.ThreadPoolExecutor(max_workers=10),
+        options=server_options
+    )
+    face_service_pb2_grpc.add_FaceVerificationServiceServicer_to_server(
+        FaceVerificationServiceImpl(face_service=face_service, user_service=user_service), server
     )
     
-    # Enable reflection for grpcurl
-    from grpc_reflection.v1alpha import reflection
+    # Enable gRPC Server Reflection
     SERVICE_NAMES = (
-        face_service_pb2.DESCRIPTOR.services_by_name['FaceVerification'].full_name,
+        face_service_pb2.DESCRIPTOR.services_by_name['FaceVerificationService'].full_name,
         reflection.SERVICE_NAME,
     )
     reflection.enable_server_reflection(SERVICE_NAMES, server)
     
-    server.add_insecure_port(f'[::]:{port}')
-    logger.info(f"Starting gRPC server on port {port}...")
+    server.add_insecure_port(f"[::]:{settings.GRPC_PORT}")
+    logger.info(f"gRPC server started on port {settings.GRPC_PORT}")
     await server.start()
     await server.wait_for_termination()
+

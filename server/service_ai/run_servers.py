@@ -13,12 +13,14 @@ from app.grpc_generated import attendance_pb2
 
 # ---- Import & dependency checks ----
 try:
-    from app.grpc.server.grpc_server import serve_grpc
+    from app.grpc.server.grpc_server import serve
     from app.services.face_service import FaceService
+    from app.services.user_service import UserService
     from app.core.config import settings
     from app.core.logging_config import setup_logging
     from app.grpc.client.attendance_client import AttendanceClient 
     from app.services.attendance_batching_service import AttendanceBatchingService
+    from app.main import build_service_session, before_flush, after_flush
 except ImportError as e:
     print(f"\nImport error: {e}")
     sys.exit(1)
@@ -78,10 +80,39 @@ def check_infrastructure():
 # ---- Async gRPC startup ----
 async def start_grpc_server():
     """
-    Chạy gRPC server với FaceService đã khởi tạo.
+    Chạy gRPC server với FaceService và UserService đã khởi tạo.
     """
-    grpc_port = getattr(settings, "GRPC_PORT", 50051)
-    logger.info("Starting gRPC server on port %d", grpc_port)
+    logger.info("Initializing services for gRPC server...")
+
+    # This logic duplicates logic from app/main.py's startup event.
+    # A refactor might be needed to share service instances.
+    from app.database.redis_manager import RedisManager
+    from app.database.pg_manager import PGManager
+    
+    redis_cache = RedisManager()
+    pg_manager = PGManager()
+    
+    attendance_client = AttendanceClient()
+    service_session = build_service_session()
+    batch_size = getattr(settings, "ATTENDANCE_BATCH_MAX_SIZE", 50)
+    flush_interval = getattr(settings, "ATTENDANCE_BATCH_FLUSH_INTERVAL", 3.0)
+    max_pending = getattr(settings, "ATTENDANCE_BATCH_MAX_PENDING", 100)
+    
+    attendance_batching_service = AttendanceBatchingService(
+        client=attendance_client,
+        service_session=service_session,
+        max_batch_size=batch_size,
+        flush_interval=flush_interval,
+        max_pending_records=max_pending,
+        on_before_flush=before_flush,
+        on_after_flush=after_flush,
+        metadata=[("x-origin", "hybrid")],
+    )
+    
+    face_service = FaceService(batching_service=attendance_batching_service)
+    user_service = UserService(redis_client=redis_cache, postgres_client=pg_manager)
+
+    await serve(face_service, user_service)
 
 
 # ---- Main Entrypoint ----
