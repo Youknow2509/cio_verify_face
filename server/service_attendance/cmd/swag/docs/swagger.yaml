@@ -1,52 +1,32 @@
 basePath: /api
 definitions:
-  dto.CheckInRequest:
+  dto.AddAttendanceRequest:
     properties:
+      company_id:
+        type: string
       device_id:
+        type: string
+      employee_id:
         type: string
       face_image_url:
         type: string
-      location:
+      location_coordinates:
         type: string
-      timestamp:
-        type: string
-      user_id:
-        type: string
+      record_time:
+        type: integer
       verification_method:
         type: string
       verification_score:
+        maximum: 1
+        minimum: 0
         type: number
     required:
+    - company_id
     - device_id
+    - employee_id
     - face_image_url
-    - location
-    - timestamp
-    - user_id
-    - verification_method
-    - verification_score
-    type: object
-  dto.CheckOutRequest:
-    properties:
-      device_id:
-        type: string
-      face_image_url:
-        type: string
-      location:
-        type: string
-      timestamp:
-        type: string
-      user_id:
-        type: string
-      verification_method:
-        type: string
-      verification_score:
-        type: number
-    required:
-    - device_id
-    - face_image_url
-    - location
-    - timestamp
-    - user_id
+    - location_coordinates
+    - record_time
     - verification_method
     - verification_score
     type: object
@@ -60,37 +40,70 @@ definitions:
       error:
         type: string
     type: object
+  dto.GetAttendanceRecordsEmployeeRequest:
+    properties:
+      company_id:
+        type: string
+      employee_id:
+        type: string
+      page_size:
+        type: integer
+      page_stage:
+        type: string
+      year_month:
+        description: 'Format: YYYY-MM'
+        type: string
+    required:
+    - company_id
+    - year_month
+    type: object
   dto.GetAttendanceRecordsRequest:
     properties:
       company_id:
         type: string
-      device_id:
-        type: string
-      end_date:
-        type: string
-      page:
-        minimum: 1
-        type: integer
       page_size:
-        maximum: 100
-        minimum: 1
         type: integer
-      start_date:
+      page_stage:
         type: string
+      year_month:
+        description: 'Format: YYYY-MM'
+        type: string
+    required:
+    - company_id
+    - year_month
     type: object
-  dto.GetMyAttendanceRecordsRequest:
+  dto.GetDailyAttendanceSummaryEmployeeRequest:
     properties:
-      end_date:
+      company_id:
         type: string
-      page:
-        minimum: 1
-        type: integer
+      employee_id:
+        type: string
       page_size:
-        maximum: 100
-        minimum: 1
         type: integer
-      start_date:
+      page_stage:
         type: string
+      summary_month:
+        description: 'Format: YYYY-MM'
+        type: string
+    required:
+    - company_id
+    type: object
+  dto.GetDailyAttendanceSummaryRequest:
+    properties:
+      company_id:
+        type: string
+      page_size:
+        type: integer
+      page_stage:
+        type: string
+      summary_month:
+        description: 'Format: YYYY-MM'
+        type: string
+      work_date:
+        description: Unix timestamp in milliseconds
+        type: integer
+    required:
+    - company_id
     type: object
   dto.ResponseData:
     properties:
@@ -120,23 +133,23 @@ info:
   title: Swagger Chat Service Auth REST API
   version: "1.0"
 paths:
-  /v1/attendance/check_in:
+  /v1/attendance:
     post:
       consumes:
       - application/json
-      description: User check-in for attendance
+      description: Add attendance record
       parameters:
-      - description: Bearer token
+      - description: With the bearer started
         in: header
-        name: authorization
+        name: Authorization
         required: true
         type: string
-      - description: Request body check-in
+      - description: Request body add attendance record
         in: body
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.CheckInRequest'
+          $ref: '#/definitions/dto.AddAttendanceRequest'
       produces:
       - application/json
       responses:
@@ -148,85 +161,23 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/dto.ErrResponseData'
-      summary: Check In attendance
-      tags:
-      - Attendance
-  /v1/attendance/check_out:
-    post:
-      consumes:
-      - application/json
-      description: User check-out for attendance
-      parameters:
-      - description: Bearer token
-        in: header
-        name: authorization
-        required: true
-        type: string
-      - description: Request body check-out
-        in: body
-        name: request
-        required: true
-        schema:
-          $ref: '#/definitions/dto.CheckOutRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.ResponseData'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrResponseData'
-      summary: Check Out attendance
-      tags:
-      - Attendance
-  /v1/attendance/history/my:
-    post:
-      consumes:
-      - application/json
-      description: Retrieve the attendance history for the current user
-      parameters:
-      - description: Bearer token
-        in: header
-        name: authorization
-        required: true
-        type: string
-      - description: Request body to get my attendance records
-        in: body
-        name: req
-        required: true
-        schema:
-          $ref: '#/definitions/dto.GetMyAttendanceRecordsRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/dto.ResponseData'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/dto.ErrResponseData'
-      summary: Get My Attendance History
+      summary: Add attendance record
       tags:
       - Attendance
   /v1/attendance/records:
     post:
       consumes:
       - application/json
-      description: Retrieve attendance records for device, day, user, ...
+      description: Get attendance records
       parameters:
-      - description: Bearer token
+      - description: With the bearer started
         in: header
-        name: authorization
+        name: Authorization
         required: true
         type: string
-      - description: Request body to get attendance records
+      - description: Request body get attendance records
         in: body
-        name: req
+        name: request
         required: true
         schema:
           $ref: '#/definitions/dto.GetAttendanceRecordsRequest'
@@ -241,7 +192,100 @@ paths:
           description: Bad Request
           schema:
             $ref: '#/definitions/dto.ErrResponseData'
-      summary: Get Attendance Records
+      summary: Get attendance records
+      tags:
+      - Attendance
+  /v1/attendance/records/employee:
+    post:
+      consumes:
+      - application/json
+      description: Get attendance records for employee
+      parameters:
+      - description: With the bearer started
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Request body get attendance records for employee
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GetAttendanceRecordsEmployeeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Get attendance records for employee
+      tags:
+      - Attendance
+  /v1/attendance/records/employee/summary/daily:
+    post:
+      consumes:
+      - application/json
+      description: Get daily attendance summary for employee
+      parameters:
+      - description: With the bearer started
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Request body get daily attendance summary for employee
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GetDailyAttendanceSummaryEmployeeRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Get daily attendance summary for employee
+      tags:
+      - Attendance
+  /v1/attendance/records/summary/daily:
+    post:
+      consumes:
+      - application/json
+      description: Get daily attendance summary
+      parameters:
+      - description: With the bearer started
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: Request body get daily attendance summary
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.GetDailyAttendanceSummaryRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Get daily attendance summary
       tags:
       - Attendance
 securityDefinitions:

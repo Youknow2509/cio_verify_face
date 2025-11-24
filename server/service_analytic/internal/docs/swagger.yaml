@@ -10,6 +10,360 @@ definitions:
       success:
         type: boolean
     type: object
+  dto.AttendanceRecordResponse:
+    properties:
+      company_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      confidence:
+        example: 0.98
+        type: number
+      created_at:
+        example: "2024-01-15T09:00:00Z"
+        type: string
+      device_id:
+        example: 770e8400-e29b-41d4-a716-446655440002
+        type: string
+      device_location:
+        example: Office Main Entrance
+        type: string
+      employee_id:
+        example: 660e8400-e29b-41d4-a716-446655440001
+        type: string
+      face_image_url:
+        example: https://storage.example.com/faces/img123.jpg
+        type: string
+      location_lat:
+        example: 21.0285
+        type: number
+      location_lng:
+        example: 105.8542
+        type: number
+      record_time:
+        example: "2024-01-15T09:00:00Z"
+        type: string
+      record_type:
+        example: check_in
+        type: string
+      temperature:
+        example: 36.5
+        type: number
+      verify_method:
+        example: face_recognition
+        type: string
+      year_month:
+        example: 2024-01
+        type: string
+    type: object
+  dto.AuditLogRequest:
+    properties:
+      action:
+        example: create_employee
+        type: string
+      actor_id:
+        example: 660e8400-e29b-41d4-a716-446655440001
+        type: string
+      changes:
+        example: '{"name": "old_value -> new_value"}'
+        type: string
+      company_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      description:
+        example: Created new employee record
+        type: string
+      entity_id:
+        example: 770e8400-e29b-41d4-a716-446655440002
+        type: string
+      entity_type:
+        example: employee
+        type: string
+      ip_address:
+        example: 192.168.1.100
+        type: string
+      user_agent:
+        example: Mozilla/5.0
+        type: string
+    required:
+    - action
+    - actor_id
+    - company_id
+    - entity_type
+    type: object
+  dto.AuditLogResponse:
+    properties:
+      action:
+        example: create_employee
+        type: string
+      actor_id:
+        example: 660e8400-e29b-41d4-a716-446655440001
+        type: string
+      changes:
+        example: '{"name": "old_value -> new_value"}'
+        type: string
+      company_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      created_at:
+        example: "2024-01-15T09:00:00Z"
+        type: string
+      description:
+        example: Created new employee record
+        type: string
+      entity_id:
+        example: 770e8400-e29b-41d4-a716-446655440002
+        type: string
+      entity_type:
+        example: employee
+        type: string
+      ip_address:
+        example: 192.168.1.100
+        type: string
+      user_agent:
+        example: Mozilla/5.0
+        type: string
+      year_month:
+        example: 2024-01
+        type: string
+    type: object
+  dto.DailySummaryRequest:
+    properties:
+      attendance_status:
+        example: present
+        type: string
+      check_in_time:
+        example: "2024-01-15T08:30:00Z"
+        type: string
+      check_out_time:
+        example: "2024-01-15T17:30:00Z"
+        type: string
+      company_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      early_leave_minutes:
+        example: 0
+        type: integer
+      employee_id:
+        example: 660e8400-e29b-41d4-a716-446655440001
+        type: string
+      is_absent:
+        example: false
+        type: boolean
+      is_early_leave:
+        example: false
+        type: boolean
+      is_late:
+        example: false
+        type: boolean
+      is_present:
+        example: true
+        type: boolean
+      late_minutes:
+        example: 0
+        type: integer
+      notes:
+        example: Normal working day
+        type: string
+      shift_id:
+        example: shift_001
+        type: string
+      total_work_minutes:
+        example: 480
+        type: integer
+      work_date:
+        example: "2024-01-15T00:00:00Z"
+        type: string
+    required:
+    - company_id
+    - employee_id
+    - work_date
+    type: object
+  dto.DailySummaryResponse:
+    properties:
+      attendance_status:
+        example: present
+        type: string
+      check_in_time:
+        example: "2024-01-15T08:30:00Z"
+        type: string
+      check_out_time:
+        example: "2024-01-15T17:30:00Z"
+        type: string
+      company_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      created_at:
+        example: "2024-01-15T00:00:00Z"
+        type: string
+      early_leave_minutes:
+        example: 0
+        type: integer
+      employee_id:
+        example: 660e8400-e29b-41d4-a716-446655440001
+        type: string
+      is_absent:
+        example: false
+        type: boolean
+      is_early_leave:
+        example: false
+        type: boolean
+      is_late:
+        example: false
+        type: boolean
+      is_present:
+        example: true
+        type: boolean
+      late_minutes:
+        example: 0
+        type: integer
+      notes:
+        example: Normal working day
+        type: string
+      shift_id:
+        example: 880e8400-e29b-41d4-a716-446655440003
+        type: string
+      summary_month:
+        example: 2024-01
+        type: string
+      total_work_minutes:
+        example: 480
+        type: integer
+      updated_at:
+        example: "2024-01-15T18:00:00Z"
+        type: string
+      work_date:
+        example: "2024-01-15T00:00:00Z"
+        type: string
+    type: object
+  dto.EmployeeDailyStatusResponse:
+    properties:
+      attendance_records:
+        items:
+          $ref: '#/definitions/dto.AttendanceRecordResponse'
+        type: array
+      daily_summary:
+        $ref: '#/definitions/dto.DailySummaryResponse'
+      date:
+        example: "2024-01-15"
+        type: string
+      total_records:
+        example: 2
+        type: integer
+    type: object
+  dto.EmployeeMonthlySummaryResponse:
+    properties:
+      absent_days:
+        example: 2
+        type: integer
+      attendance_rate:
+        example: 90.91
+        type: number
+      avg_work_hours_per_day:
+        example: 8
+        type: number
+      daily_summaries:
+        items:
+          $ref: '#/definitions/dto.DailySummaryResponse'
+        type: array
+      employee_id:
+        example: 660e8400-e29b-41d4-a716-446655440001
+        type: string
+      late_days:
+        example: 3
+        type: integer
+      month:
+        example: 2024-01
+        type: string
+      present_days:
+        example: 20
+        type: integer
+      punctuality_rate:
+        example: 85
+        type: number
+      total_days:
+        example: 22
+        type: integer
+      total_early_leave_minutes:
+        example: 30
+        type: integer
+      total_late_minutes:
+        example: 45
+        type: integer
+      total_work_minutes:
+        example: 9600
+        type: integer
+    type: object
+  dto.EmployeeStatsResponse:
+    properties:
+      absent_days:
+        example: 2
+        type: integer
+      attendance_rate:
+        example: 90.91
+        type: number
+      avg_work_hours_per_day:
+        example: 8
+        type: number
+      early_leave_days:
+        example: 1
+        type: integer
+      employee_id:
+        example: 660e8400-e29b-41d4-a716-446655440001
+        type: string
+      late_days:
+        example: 3
+        type: integer
+      month:
+        example: 2024-01
+        type: string
+      present_days:
+        example: 20
+        type: integer
+      punctuality_rate:
+        example: 85
+        type: number
+      total_days:
+        example: 22
+        type: integer
+      total_early_leave_minutes:
+        example: 30
+        type: integer
+      total_late_minutes:
+        example: 45
+        type: integer
+      total_work_hours:
+        example: 160
+        type: number
+      total_work_minutes:
+        example: 9600
+        type: integer
+    type: object
+  dto.EmployeeStatusRangeResponse:
+    properties:
+      attendance_records:
+        items:
+          $ref: '#/definitions/dto.AttendanceRecordResponse'
+        type: array
+      daily_summaries:
+        items:
+          $ref: '#/definitions/dto.DailySummaryResponse'
+        type: array
+      employee_id:
+        example: 660e8400-e29b-41d4-a716-446655440001
+        type: string
+      end_date:
+        example: "2024-01-31"
+        type: string
+      start_date:
+        example: "2024-01-01"
+        type: string
+      total_days:
+        example: 31
+        type: integer
+      total_records:
+        example: 44
+        type: integer
+    type: object
   dto.ErrorInfo:
     properties:
       code:
@@ -19,21 +373,103 @@ definitions:
       message:
         type: string
     type: object
-  dto.ExportReportRequest:
+  dto.ExportDailyStatusRequest:
     properties:
       company_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      date:
+        example: "2024-01-15"
         type: string
       email:
-        type: string
-      end_date:
+        example: admin@example.com
         type: string
       format:
         enum:
         - excel
         - pdf
         - csv
+        example: excel
+        type: string
+    required:
+    - company_id
+    - date
+    - format
+    type: object
+  dto.ExportEmployeeDailyStatusRequest:
+    properties:
+      date:
+        example: "2024-01-15"
+        type: string
+      email:
+        example: employee@example.com
+        type: string
+      format:
+        enum:
+        - excel
+        - pdf
+        - csv
+        example: excel
+        type: string
+    required:
+    - date
+    - format
+    type: object
+  dto.ExportJobResponse:
+    properties:
+      job_id:
+        example: job_660e8400-e29b-41d4-a716-446655440001
+        type: string
+      message:
+        example: Export job queued successfully
+        type: string
+      status:
+        example: processing
+        type: string
+    type: object
+  dto.ExportMonthlySummaryRequest:
+    properties:
+      company_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      email:
+        example: admin@example.com
+        type: string
+      format:
+        enum:
+        - excel
+        - pdf
+        - csv
+        example: excel
+        type: string
+      month:
+        example: 2024-01
+        type: string
+    required:
+    - company_id
+    - format
+    - month
+    type: object
+  dto.ExportReportRequest:
+    properties:
+      company_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      email:
+        example: admin@example.com
+        type: string
+      end_date:
+        example: "2024-01-31"
+        type: string
+      format:
+        enum:
+        - excel
+        - pdf
+        - csv
+        example: excel
         type: string
       start_date:
+        example: "2024-01-01"
         type: string
     required:
     - company_id
@@ -58,6 +494,1388 @@ info:
   title: Swagger Analytics Service REST API
   version: "1.0"
 paths:
+  /attendance-records:
+    get:
+      consumes:
+      - application/json
+      description: Get attendance records for a company and month
+      parameters:
+      - description: Company ID (UUID)
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Year-Month (YYYY-MM)
+        in: query
+        name: year_month
+        required: true
+        type: string
+      - description: Limit (default 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.AttendanceRecordResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get attendance records
+      tags:
+      - Attendance Records
+  /attendance-records-no-shift:
+    get:
+      consumes:
+      - application/json
+      description: Get attendance records without shift information
+      parameters:
+      - description: Company ID (UUID)
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Year-Month (YYYY-MM)
+        in: query
+        name: year_month
+        required: true
+        type: string
+      - description: Limit (default 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.AttendanceRecordResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get attendance records without shift
+      tags:
+      - Attendance Records No Shift
+  /attendance-records/employee/{employee_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get attendance records for a specific employee
+      parameters:
+      - description: Employee ID (UUID)
+        in: path
+        name: employee_id
+        required: true
+        type: string
+      - description: Company ID (UUID)
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Year-Month (YYYY-MM)
+        in: query
+        name: year_month
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.AttendanceRecordResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get attendance records by employee
+      tags:
+      - Attendance Records
+  /attendance-records/range:
+    get:
+      consumes:
+      - application/json
+      description: Get attendance records within a time range
+      parameters:
+      - description: Company ID (UUID)
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Year-Month (YYYY-MM)
+        in: query
+        name: year_month
+        required: true
+        type: string
+      - description: Start time (RFC3339)
+        in: query
+        name: start_time
+        required: true
+        type: string
+      - description: End time (RFC3339)
+        in: query
+        name: end_time
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.AttendanceRecordResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get attendance records by time range
+      tags:
+      - Attendance Records
+  /attendance-records/user/{employee_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get attendance records indexed by user
+      parameters:
+      - description: Employee ID (UUID)
+        in: path
+        name: employee_id
+        required: true
+        type: string
+      - description: Company ID (UUID)
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Year-Month (YYYY-MM)
+        in: query
+        name: year_month
+        required: true
+        type: string
+      - description: Limit (default 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.AttendanceRecordResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      tags:
+      - Attendance Records
+  /audit-logs:
+    get:
+      consumes:
+      - application/json
+      description: Get audit logs for a company and month
+      parameters:
+      - description: Company ID (UUID)
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Year-Month (YYYY-MM)
+        in: query
+        name: year_month
+        required: true
+        type: string
+      - description: Limit (default 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.AttendanceRecordResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get audit logs
+      tags:
+      - Audit Logs
+    post:
+      consumes:
+      - application/json
+      description: Create a new audit log
+      parameters:
+      - description: Audit Log
+        in: body
+        name: log
+        required: true
+        schema:
+          $ref: '#/definitions/dto.AuditLogRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.AuditLogResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Create audit log
+      tags:
+      - Audit Logs
+  /audit-logs/range:
+    get:
+      consumes:
+      - application/json
+      description: Get audit logs within a time range
+      parameters:
+      - description: Company ID (UUID)
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Year-Month (YYYY-MM)
+        in: query
+        name: year_month
+        required: true
+        type: string
+      - description: Start time (RFC3339)
+        in: query
+        name: start_time
+        required: true
+        type: string
+      - description: End time (RFC3339)
+        in: query
+        name: end_time
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.AttendanceRecordResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get audit logs by time range
+      tags:
+      - Audit Logs
+  /company/attendance-status/range:
+    get:
+      consumes:
+      - application/json
+      description: Get attendance status for a company within a time range
+      parameters:
+      - description: Company ID (UUID)
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        required: true
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.AttendanceRecordResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get attendance status for time range
+      tags:
+      - Company Admin
+  /company/daily-attendance-status:
+    get:
+      consumes:
+      - application/json
+      description: Get comprehensive attendance status for a specific day including
+        all employees
+      parameters:
+      - description: Company ID (UUID)
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Date (YYYY-MM-DD)
+        in: query
+        name: date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.AttendanceRecordResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get daily attendance status for company
+      tags:
+      - Company Admin
+  /company/export-daily-status:
+    post:
+      consumes:
+      - application/json
+      description: Export daily attendance status to Excel/PDF/CSV
+      parameters:
+      - description: Export request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ExportDailyStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ExportJobResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Export daily attendance status
+      tags:
+      - Company Admin
+  /company/export-monthly-summary:
+    post:
+      consumes:
+      - application/json
+      description: Export monthly summary to Excel/PDF/CSV
+      parameters:
+      - description: Export request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ExportMonthlySummaryRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ExportJobResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Export monthly detailed summary
+      tags:
+      - Company Admin
+  /company/monthly-summary:
+    get:
+      consumes:
+      - application/json
+      description: Get comprehensive monthly summary including daily summaries and
+        records without shift
+      parameters:
+      - description: Company ID (UUID)
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Month (YYYY-MM)
+        in: query
+        name: month
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.AttendanceRecordResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get detailed monthly summary for company
+      tags:
+      - Company Admin
+  /daily-summaries:
+    get:
+      consumes:
+      - application/json
+      description: Get daily summaries for a month
+      parameters:
+      - description: Company ID (UUID)
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Month (YYYY-MM)
+        in: query
+        name: month
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.AttendanceRecordResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get daily summaries
+      tags:
+      - Daily Summaries
+    post:
+      consumes:
+      - application/json
+      - application/json
+      - application/json
+      description: |-
+        Create a new daily summary
+        Update an existing daily summary
+        Get daily summaries for a specific user
+      parameters:
+      - description: Daily Summary
+        in: body
+        name: summary
+        required: true
+        schema:
+          $ref: '#/definitions/dto.DailySummaryRequest'
+      - description: Daily Summary
+        in: body
+        name: summary
+        required: true
+        schema:
+          $ref: '#/definitions/dto.DailySummaryRequest'
+      - description: Company ID (UUID)
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Month (YYYY-MM)
+        in: query
+        name: month
+        required: true
+        type: string
+      produces:
+      - application/json
+      - application/json
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.AttendanceRecordResponse'
+                  type: array
+              type: object
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.DailySummaryResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      - Bearer: []
+      - Bearer: []
+      summary: Get daily summaries by user
+      tags:
+      - Daily Summaries
+      - Daily Summaries
+      - Daily Summaries
+    put:
+      consumes:
+      - application/json
+      - application/json
+      - application/json
+      description: |-
+        Create a new daily summary
+        Update an existing daily summary
+        Get daily summaries for a specific user
+      parameters:
+      - description: Daily Summary
+        in: body
+        name: summary
+        required: true
+        schema:
+          $ref: '#/definitions/dto.DailySummaryRequest'
+      - description: Daily Summary
+        in: body
+        name: summary
+        required: true
+        schema:
+          $ref: '#/definitions/dto.DailySummaryRequest'
+      - description: Company ID (UUID)
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Month (YYYY-MM)
+        in: query
+        name: month
+        required: true
+        type: string
+      produces:
+      - application/json
+      - application/json
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.AttendanceRecordResponse'
+                  type: array
+              type: object
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.DailySummaryResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      - Bearer: []
+      - Bearer: []
+      summary: Get daily summaries by user
+      tags:
+      - Daily Summaries
+      - Daily Summaries
+      - Daily Summaries
+  /daily-summaries/user/{employee_id}:
+    get:
+      consumes:
+      - application/json
+      - application/json
+      - application/json
+      description: |-
+        Create a new daily summary
+        Update an existing daily summary
+        Get daily summaries for a specific user
+      parameters:
+      - description: Daily Summary
+        in: body
+        name: summary
+        required: true
+        schema:
+          $ref: '#/definitions/dto.DailySummaryRequest'
+      - description: Daily Summary
+        in: body
+        name: summary
+        required: true
+        schema:
+          $ref: '#/definitions/dto.DailySummaryRequest'
+      - description: Employee ID (UUID)
+        in: path
+        name: employee_id
+        required: true
+        type: string
+      - description: Company ID (UUID)
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Month (YYYY-MM)
+        in: query
+        name: month
+        required: true
+        type: string
+      produces:
+      - application/json
+      - application/json
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.AttendanceRecordResponse'
+                  type: array
+              type: object
+        "201":
+          description: Created
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.DailySummaryResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      - Bearer: []
+      - Bearer: []
+      summary: Get daily summaries by user
+      tags:
+      - Daily Summaries
+      - Daily Summaries
+      - Daily Summaries
+  /employee/export-daily-status:
+    post:
+      consumes:
+      - application/json
+      description: Export employee's daily attendance status to Excel/PDF/CSV
+      parameters:
+      - description: Export request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ExportEmployeeDailyStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ExportJobResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Export my daily attendance status
+      tags:
+      - Employee Self-Service
+  /employee/export-monthly-summary:
+    post:
+      consumes:
+      - application/json
+      description: Export employee's monthly summary to Excel/PDF/CSV
+      parameters:
+      - description: Export request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ExportEmployeeDailyStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.ExportJobResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Export my monthly summary
+      tags:
+      - Employee Self-Service
+  /employee/my-attendance-records:
+    get:
+      consumes:
+      - application/json
+      description: Employee views their own attendance records for a specific month
+      parameters:
+      - description: Year-Month (YYYY-MM), defaults to current month
+        in: query
+        name: year_month
+        type: string
+      - description: Limit (default 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.AttendanceRecordResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get my attendance records
+      tags:
+      - Employee Self-Service
+  /employee/my-attendance-records/range:
+    get:
+      consumes:
+      - application/json
+      description: Employee views their attendance records within a specific time
+        range
+      parameters:
+      - description: Year-Month (YYYY-MM)
+        in: query
+        name: year_month
+        required: true
+        type: string
+      - description: Start time (RFC3339)
+        in: query
+        name: start_time
+        required: true
+        type: string
+      - description: End time (RFC3339)
+        in: query
+        name: end_time
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.AttendanceRecordResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get my attendance records in time range
+      tags:
+      - Employee Self-Service
+  /employee/my-daily-status:
+    get:
+      consumes:
+      - application/json
+      description: Employee views detailed attendance status for a specific day
+      parameters:
+      - description: Date (YYYY-MM-DD)
+        in: query
+        name: date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.EmployeeDailyStatusResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get my attendance status for a specific day
+      tags:
+      - Employee Self-Service
+  /employee/my-daily-summaries:
+    get:
+      consumes:
+      - application/json
+      description: Employee views their own daily attendance summaries for a month
+      parameters:
+      - description: Month (YYYY-MM), defaults to current month
+        in: query
+        name: month
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.DailySummaryResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get my daily summaries
+      tags:
+      - Employee Self-Service
+  /employee/my-daily-summary/{date}:
+    get:
+      consumes:
+      - application/json
+      description: Employee views their attendance summary for a specific date
+      parameters:
+      - description: Date (YYYY-MM-DD)
+        in: path
+        name: date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.DailySummaryResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get my daily summary for a specific date
+      tags:
+      - Employee Self-Service
+  /employee/my-monthly-summary:
+    get:
+      consumes:
+      - application/json
+      description: Employee views comprehensive monthly attendance summary
+      parameters:
+      - description: Month (YYYY-MM), defaults to current month
+        in: query
+        name: month
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.EmployeeMonthlySummaryResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get my detailed monthly summary
+      tags:
+      - Employee Self-Service
+  /employee/my-stats:
+    get:
+      consumes:
+      - application/json
+      description: Employee views their attendance statistics for a month
+      parameters:
+      - description: Month (YYYY-MM), defaults to current month
+        in: query
+        name: month
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.EmployeeStatsResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get my attendance statistics
+      tags:
+      - Employee Self-Service
+  /employee/my-status/range:
+    get:
+      consumes:
+      - application/json
+      description: Employee views attendance status within a specific time range
+      parameters:
+      - description: Start date (YYYY-MM-DD)
+        in: query
+        name: start_date
+        required: true
+        type: string
+      - description: End date (YYYY-MM-DD)
+        in: query
+        name: end_date
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.EmployeeStatusRangeResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get my attendance status for a time range
+      tags:
+      - Employee Self-Service
+  /face-enrollment-logs:
+    get:
+      consumes:
+      - application/json
+      description: Get face enrollment logs for a company and month
+      parameters:
+      - description: Company ID (UUID)
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Year-Month (YYYY-MM)
+        in: query
+        name: year_month
+        required: true
+        type: string
+      - description: Limit (default 100)
+        in: query
+        name: limit
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.AttendanceRecordResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get face enrollment logs
+      tags:
+      - Face Enrollment Logs
+  /face-enrollment-logs/employee/{employee_id}:
+    get:
+      consumes:
+      - application/json
+      description: Get face enrollment logs for a specific employee
+      parameters:
+      - description: Employee ID (UUID)
+        in: path
+        name: employee_id
+        required: true
+        type: string
+      - description: Company ID (UUID)
+        in: query
+        name: company_id
+        required: true
+        type: string
+      - description: Year-Month (YYYY-MM)
+        in: query
+        name: year_month
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  items:
+                    $ref: '#/definitions/dto.AttendanceRecordResponse'
+                  type: array
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get face enrollment logs by employee
+      tags:
+      - Face Enrollment Logs
   /health:
     get:
       consumes:

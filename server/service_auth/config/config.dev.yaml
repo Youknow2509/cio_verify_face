@@ -11,6 +11,10 @@ server:
 grpc:
     network: 'tcp'
     port: 50051
+    keepalive_time_ms: 120000
+    keepalive_timeout_ms: 20000
+    http2_min_time_between_pings_ms: 60000
+    keepalive_permit_without_calls: true
     tls:
         enabled: false
         cert_file: ''

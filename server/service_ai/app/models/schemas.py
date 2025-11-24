@@ -7,6 +7,13 @@ from datetime import datetime
 from uuid import UUID
 import base64
 
+class SessionUser(BaseModel):
+    """Model representing authenticated user from JWT"""
+    user_id: UUID = Field(..., description="User ID")
+    role: int = Field(..., description="User role level")
+    company_id: UUID = Field(..., description="Company ID")
+    session_id: UUID = Field(..., description="Session ID")
+    exprires_at: datetime = Field(..., description="Token expiration time")
 
 class EnrollRequest(BaseModel):
     """Request model for face enrollment"""
@@ -26,7 +33,6 @@ class EnrollRequest(BaseModel):
         except Exception:
             raise ValueError("Invalid base64 string")
 
-
 class EnrollResponse(BaseModel):
     """Response model for face enrollment"""
     status: str = Field(..., description="Status: ok, duplicate, failed")
@@ -34,7 +40,6 @@ class EnrollResponse(BaseModel):
     message: Optional[str] = Field(None, description="Status message")
     duplicate_profiles: Optional[List[Dict[str, Any]]] = Field(None, description="Matched profiles if duplicate detected")
     quality_score: Optional[float] = Field(None, description="Image quality score")
-
 
 class VerifyRequest(BaseModel):
     """Request model for face verification"""
@@ -61,7 +66,6 @@ class VerifyRequest(BaseModel):
             raise ValueError("search_mode must be '1:1' or '1:N'")
         return v
 
-
 class VerifyMatch(BaseModel):
     """Single match result"""
     user_id: UUID
@@ -69,7 +73,6 @@ class VerifyMatch(BaseModel):
     similarity: float
     confidence: float
     is_primary: bool
-
 
 class VerifyResponse(BaseModel):
     """Response model for face verification"""
@@ -79,7 +82,6 @@ class VerifyResponse(BaseModel):
     best_match: Optional[VerifyMatch] = Field(None, description="Best match if found")
     message: Optional[str] = Field(None, description="Status message")
     liveness_score: Optional[float] = Field(None, description="Liveness detection score")
-
 
 class UpdateProfileRequest(BaseModel):
     """Request model for updating face profile"""
@@ -98,7 +100,6 @@ class UpdateProfileRequest(BaseModel):
         except Exception:
             raise ValueError("Invalid base64 string")
 
-
 class FaceProfileResponse(BaseModel):
     """Response model for face profile"""
     profile_id: UUID
@@ -112,12 +113,10 @@ class FaceProfileResponse(BaseModel):
     metadata: Dict[str, Any]
     quality_score: Optional[float]
 
-
 class ReindexRequest(BaseModel):
     """Request model for reindexing"""
     force: bool = Field(False, description="Force rebuild even if recent rebuild exists")
     embedding_version: Optional[str] = Field(None, description="Specific embedding version to reindex")
-
 
 class ReindexResponse(BaseModel):
     """Response model for reindex operation"""
@@ -125,7 +124,6 @@ class ReindexResponse(BaseModel):
     message: str
     profiles_indexed: int
     duration_seconds: float
-
 
 class HealthResponse(BaseModel):
     """Health check response"""
@@ -135,7 +133,6 @@ class HealthResponse(BaseModel):
     environment: str
     models_loaded: bool
     index_size: int
-
 
 class ImageOptimizationInfo(BaseModel):
     """Information about image optimization"""

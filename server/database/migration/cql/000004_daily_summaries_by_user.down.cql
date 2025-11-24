@@ -1,0 +1,1 @@
+DROP TABLE IF EXISTS daily_summaries_by_user;

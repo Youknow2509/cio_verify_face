@@ -6,8 +6,10 @@ import (
 
 	"github.com/youknow2509/cio_verify_face/server/service_analytic/internal/global"
 	"github.com/youknow2509/cio_verify_face/server/service_analytic/internal/infrastructure/middleware"
-	"github.com/youknow2509/cio_verify_face/server/service_analytic/internal/interfaces/grpc/router"
+	// grpcRouter "github.com/youknow2509/cio_verify_face/server/service_analytic/internal/interfaces/grpc/router"
+	// pb "github.com/youknow2509/cio_verify_face/server/service_analytic/proto/pb/proto"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 // initGrpcServer initializes and starts the gRPC server
@@ -27,23 +29,19 @@ func initGrpcServer() error {
 		grpc.UnaryInterceptor(middleware.SessionInterceptor()),
 	}
 
-	// TODO: Add TLS support when needed
-	// if config.TLS.Enabled {
-	// 	creds, err := credentials.NewServerTLSFromFile(config.TLS.CertFile, config.TLS.KeyFile)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	opts = append(opts, grpc.Creds(creds))
-	// }
+	if config.TLS.Enabled {
+		creds, err := credentials.NewServerTLSFromFile(config.TLS.CertFile, config.TLS.KeyFile)
+		if err != nil {
+			return err
+		}
+		opts = append(opts, grpc.Creds(creds))
+	}
 
 	grpcServer := grpc.NewServer(opts...)
 
 	// Register services
 	// NOTE: Actual registration will be done after proto generation:
-	// pb.RegisterAnalyticServiceServer(grpcServer, router.NewAnalyticRouter())
-	
-	// For now, we just create the router to verify compilation
-	_ = router.NewAnalyticRouter()
+	// pb.RegisterAnalyticServiceServer(grpcServer, grpcRouter.NewAnalyticRouter())
 
 	// Start server in goroutine
 	global.WaitGroup.Add(1)

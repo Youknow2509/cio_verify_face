@@ -57,6 +57,90 @@ func SetupRouter() *gin.Engine {
 			reports.GET("/summary", analyticHandler.GetSummaryReport)
 			reports.POST("/export", analyticHandler.ExportReport)
 		}
+		
+		// ScyllaDB data access routes (protected by auth middleware)
+		scyllaHandler := handler.NewScyllaHandler()
+		
+		// Attendance Records routes
+		attendanceRecords := v1.Group("/attendance-records")
+		{
+			attendanceRecords.GET("", scyllaHandler.GetAttendanceRecords)
+			attendanceRecords.GET("/range", scyllaHandler.GetAttendanceRecordsByTimeRange)
+			attendanceRecords.GET("/employee/:employee_id", scyllaHandler.GetAttendanceRecordsByEmployee)
+			attendanceRecords.GET("/user/:employee_id", scyllaHandler.GetAttendanceRecordsByUser)
+		}
+		
+		// Daily Summaries routes
+		dailySummaries := v1.Group("/daily-summaries")
+		{
+			dailySummaries.GET("", scyllaHandler.GetDailySummaries)
+			dailySummaries.GET("/user/:employee_id", scyllaHandler.GetDailySummariesByUser)
+		}
+		
+		// Audit Logs routes
+		auditLogs := v1.Group("/audit-logs")
+		{
+			auditLogs.GET("", scyllaHandler.GetAuditLogs)
+			auditLogs.GET("/range", scyllaHandler.GetAuditLogsByTimeRange)
+			auditLogs.POST("", scyllaHandler.CreateAuditLog)
+		}
+		
+		// Face Enrollment Logs routes
+		faceEnrollmentLogs := v1.Group("/face-enrollment-logs")
+		{
+			faceEnrollmentLogs.GET("", scyllaHandler.GetFaceEnrollmentLogs)
+			faceEnrollmentLogs.GET("/employee/:employee_id", scyllaHandler.GetFaceEnrollmentLogsByEmployee)
+		}
+		
+		// Attendance Records No Shift routes
+		attendanceRecordsNoShift := v1.Group("/attendance-records-no-shift")
+		{
+			attendanceRecordsNoShift.GET("", scyllaHandler.GetAttendanceRecordsNoShift)
+		}
+		
+		// ============================================
+		// Company Admin - Advanced Analytics routes
+		// ============================================
+		company := v1.Group("/company")
+		{
+			// Daily attendance status
+			company.GET("/daily-attendance-status", scyllaHandler.GetDailyAttendanceStatus)
+			company.GET("/attendance-status/range", scyllaHandler.GetAttendanceStatusByTimeRange)
+			
+			// Monthly detailed summary
+			company.GET("/monthly-summary", scyllaHandler.GetMonthlyDetailedSummary)
+			
+			// Export endpoints
+			company.POST("/export-daily-status", scyllaHandler.ExportDailyStatus)
+			company.POST("/export-monthly-summary", scyllaHandler.ExportMonthlySummary)
+		}
+		
+		// ============================================
+		// Employee Self-Service routes (for employees to view their own data)
+		// ============================================
+		employeeHandler := handler.NewEmployeeHandler()
+		employee := v1.Group("/employee")
+		{
+			// Attendance Records - Employee's own records
+			employee.GET("/my-attendance-records", employeeHandler.GetMyAttendanceRecords)
+			employee.GET("/my-attendance-records/range", employeeHandler.GetMyAttendanceRecordsInRange)
+			
+			// Daily Summaries - Employee's own summaries
+			employee.GET("/my-daily-summaries", employeeHandler.GetMyDailySummaries)
+			employee.GET("/my-daily-summary/:date", employeeHandler.GetMyDailySummaryByDate)
+			
+			// Statistics - Employee's own statistics
+			employee.GET("/my-stats", employeeHandler.GetMyAttendanceStats)
+			
+			// Detailed status endpoints
+			employee.GET("/my-daily-status", employeeHandler.GetMyDailyStatus)
+			employee.GET("/my-status/range", employeeHandler.GetMyStatusByTimeRange)
+			employee.GET("/my-monthly-summary", employeeHandler.GetMyDetailedMonthlySummary)
+			
+			// Export endpoints
+			employee.POST("/export-daily-status", employeeHandler.ExportMyDailyStatus)
+			employee.POST("/export-monthly-summary", employeeHandler.ExportMyMonthlySummary)
+		}
 	}
 
 	return router

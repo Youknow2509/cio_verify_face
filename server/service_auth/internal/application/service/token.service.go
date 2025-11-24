@@ -22,6 +22,7 @@ type ITokenService interface {
 	CreateTokenDevice(ctx context.Context, input model.CreateTokenDeviceInput) (string, error)
 	BlockTokenDevice(ctx context.Context, input model.BlockTokenDeviceInput) error
 	CheckTokenDevice(ctx context.Context, input model.CheckTokenDeviceInput) (bool, string, error)
+	ParseTokenDevice(ctx context.Context, input model.ParseTokenDeviceInput) (*model.ParseTokenDeviceOutput, error)
 }
 
 /**

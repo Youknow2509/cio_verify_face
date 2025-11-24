@@ -51,6 +51,10 @@ func (h *AnalyticHandler) GetDailyReport(c *gin.Context) {
 
 	// Extract session info from context (set by HTTP middleware)
 	session := getSessionFromContext(c)
+	if session == nil {
+		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse("UNAUTHORIZED", "Invalid or missing session information", ""))
+		return
+	}
 
 	// Prepare input
 	input := &applicationModel.DailyReportInput{
@@ -94,6 +98,10 @@ func (h *AnalyticHandler) GetSummaryReport(c *gin.Context) {
 
 	// Extract session info from context (set by HTTP middleware)
 	session := getSessionFromContext(c)
+	if session == nil {
+		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse("UNAUTHORIZED", "Invalid or missing session information", ""))
+		return
+	}
 
 	// Prepare input
 	input := &applicationModel.SummaryReportInput{
@@ -133,6 +141,10 @@ func (h *AnalyticHandler) ExportReport(c *gin.Context) {
 
 	// Extract session info from context (set by HTTP middleware)
 	session := getSessionFromContext(c)
+	if session == nil {
+		c.JSON(http.StatusUnauthorized, dto.NewErrorResponse("UNAUTHORIZED", "Invalid or missing session information", ""))
+		return
+	}
 
 	// Prepare input
 	input := &applicationModel.ExportReportInput{
@@ -156,37 +168,21 @@ func (h *AnalyticHandler) ExportReport(c *gin.Context) {
 	c.JSON(http.StatusAccepted, dto.NewSuccessResponse(result))
 }
 
-// getSessionFromContext extracts session info from gin context
-// This should be set by authentication middleware
+// getSessionFromContext extracts session info from gin context.
+// It relies *only* on the "session" object set by the authentication middleware.
+// This is a more secure implementation that avoids unsafe fallbacks.
 func getSessionFromContext(c *gin.Context) *applicationModel.SessionInfo {
-	// Try to get session info set by middleware
-	if sessionData, exists := c.Get("session"); exists {
-		if session, ok := sessionData.(*applicationModel.SessionInfo); ok {
-			return session
-		}
+	sessionData, exists := c.Get("session")
+	if !exists {
+		return nil // If "session" is not in context, there is no valid session.
 	}
 
-	// Fallback: create session from individual context values (for testing or when middleware uses different keys)
-	userID, _ := c.Get("user_id")
-	role, _ := c.Get("role")
-	sessionID, _ := c.Get("session_id")
-	companyID, _ := c.Get("company_id")
+	session, ok := sessionData.(*applicationModel.SessionInfo)
+	if !ok {
+		return nil // If the data is not the correct type, the session is invalid.
+	}
 
-	session := &applicationModel.SessionInfo{}
-	if uid, ok := userID.(string); ok {
-		session.UserID = uid
-	}
-	if r, ok := role.(int32); ok {
-		session.Role = r
-	} else if r, ok := role.(int); ok {
-		session.Role = int32(r)
-	}
-	if sid, ok := sessionID.(string); ok {
-		session.SessionID = sid
-	}
-	if cid, ok := companyID.(string); ok {
-		session.CompanyID = cid
-	}
+	// Add client IP and User Agent for logging and security purposes.
 	session.ClientIP = c.ClientIP()
 	session.ClientAgent = c.Request.UserAgent()
 

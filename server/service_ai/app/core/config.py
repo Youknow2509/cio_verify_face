@@ -2,7 +2,7 @@
 Configuration settings for the service
 """
 from pydantic_settings import BaseSettings
-from typing import Optional
+from typing import List, Optional
 import os
 
 
@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     
     # Environment
     ENVIRONMENT: str = "development"
+    SERVICE_NAME: str = "service_ai"
+    SERVICE_ID: str = "service_ai_001"
+    SERVICE_WORKERS: int = 4
     
     # Service
     SERVICE_NAME: str = "service_ai"
@@ -21,17 +24,65 @@ class Settings(BaseSettings):
     # Compute mode (cpu or gpu)
     COMPUTE_MODE: str = "cpu"
     
-    # GRPC client settings
-    GRPC_CLIENT_URL: str = "localhost:50051"
-    GRPC_CLIENT_TLS: bool = False
-    GRPC_CLIENT_CERT_PATH: Optional[str] = None
-    GRPC_CLIENT_KEY_PATH: Optional[str] = None
+    # GRPC client configuration
+    GRPC_CLIENT_KEEPALIVE_TIME_MS: int = 120000
+    GRPC_CLIENT_KEEPALIVE_TIMEOUT_MS: int = 20000
+    GRPC_CLIENT_KEEPALIVE_PERMIT_WITHOUT_CALLS: int = 0
+    GRPC_CLIENT_HTTP2_MAX_PINGS_WITHOUT_DATA: int = 1
+    GRPC_CLIENT_HTTP2_MIN_TIME_BETWEEN_PINGS_MS: int = 60000
+    GRPC_CLIENT_HTTP2_MIN_PING_INTERVAL_WITHOUT_DATA_MS: int = 60000
+
+    # GRPC server keepalive settings
+    GRPC_SERVER_KEEPALIVE_TIME_MS: int = 120000
+    GRPC_SERVER_KEEPALIVE_TIMEOUT_MS: int = 20000
+    GRPC_SERVER_HTTP2_MIN_TIME_BETWEEN_PINGS_MS: int = 60000
+    GRPC_SERVER_KEEPALIVE_PERMIT_WITHOUT_CALLS: int = 1
+    
+    # GRPC auth client settings
+    GRPC_AUTH_URL: str = "localhost:50051"
+    GRPC_AUTH_TLS: bool = False
+    GRPC_AUTH_CERT_PATH: Optional[str] = None
+    GRPC_AUTH_KEY_PATH: Optional[str] = None
+    
+    # GRPC attendance client settings
+    GRPC_ATTENDANCE_URL: str = "localhost:50052"
+    GRPC_ATTENDANCE_TLS: bool = False
+    GRPC_ATTENDANCE_CERT_PATH: Optional[str] = None
+    GRPC_ATTENDANCE_KEY_PATH: Optional[str] = None
+    
+    # Attendance batching settings
+    ATTENDANCE_BATCH_MAX_SIZE: Optional[int] = 10
+    ATTENDANCE_BATCH_FLUSH_INTERVAL: Optional[float] = 3.0
+    ATTENDANCE_BATCH_MAX_PENDING: Optional[int] = 100
     
     # Database
     DATABASE_URL: str = "postgresql://postgres:postgres@localhost:5432/cio_attendance_db"
     
-    # Redis
-    REDIS_URL: str = "redis://localhost:6379/0"
+    # Redis Configuration
+    REDIS_TYPE: int = 1  # 1: standalone, 2: sentinel, 3: cluster
+    REDIS_USE_TLS: bool = False
+    REDIS_CERT_PATH: str = "./config/redis/cert.pem"
+    REDIS_KEY_PATH: str = "./config/redis/key.pem"
+    REDIS_PASSWORD: str = "root1234"
+    REDIS_DB: int = 0
+    
+    # Redis Standalone
+    REDIS_HOST: str = "127.0.0.1"
+    REDIS_PORT: int = 6379
+    
+    # Redis Sentinel
+    REDIS_MASTER_NAME: str = "mymaster"
+    REDIS_SENTINEL_ADDRS: List[str] = ["127.0.0.1:26379", "127.0.0.1:26380", "127.0.0.1:26381"]
+    
+    # Redis Cluster
+    REDIS_CLUSTER_ADDRS: List[str] = ["127.0.0.1:26379", "127.0.0.1:26380", "127.0.0.1:26381"]
+    REDIS_ROUTE_BY_LATENCY: bool = True
+    REDIS_ROUTE_RANDOMLY: bool = False
+    
+    # Redis Pool Configuration
+    REDIS_POOL_SIZE: int = 10
+    REDIS_MIN_IDLE_CONNS: int = 2
+    REDIS_MAX_RETRIES: int = 3
     
     # ScyllaDB - for authentication state tracking
     SCYLLADB_HOSTS: str = "localhost"
@@ -69,6 +120,7 @@ class Settings(BaseSettings):
     # Note: pgvector index is automatically maintained by PostgreSQL
     # No need for manual rebuild intervals like FAISS
     VECTOR_INDEX_REBUILD_INTERVAL: int = 3600  # seconds (for compatibility)
+    VECTOR_DB_INDEX_VERSION: int = 1
     
     # Liveness detection
     LIVENESS_ENABLED: bool = True

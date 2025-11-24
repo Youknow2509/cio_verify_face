@@ -7,9 +7,10 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	applicationErrors "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/application/errors"
-	model "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/application/model"
-	service "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/application/service"
+	"github.com/youknow2509/cio_verify_face/server/service_attendance/internal/application/errors"
+	"github.com/youknow2509/cio_verify_face/server/service_attendance/internal/application/model"
+	"github.com/youknow2509/cio_verify_face/server/service_attendance/internal/application/service"
+	"github.com/youknow2509/cio_verify_face/server/service_attendance/internal/constants"
 	domainCache "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/domain/cache"
 	domainLogger "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/domain/logger"
 	domainModel "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/domain/model"
@@ -19,530 +20,833 @@ import (
 	utilsCrypto "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/shared/utils/crypto"
 )
 
-// ============================================
+// =================================================
 // Attendance Service
-// ============================================
-type AttendanceService struct{}
+// =================================================
+type AttendanceService struct {
+	attendanceRepo   domainRepo.IAttendanceRepository
+	userRepo         domainRepo.IUserRepository
+	logger           domainLogger.ILogger
+	localCache       domainCache.ILocalCache
+	distributedCache domainCache.IDistributedCache
+}
 
-// CheckInUser implements service.IAttendanceService.
-func (a *AttendanceService) CheckInUser(ctx context.Context, input *model.CheckInInput) *applicationErrors.Error {
-	// Instance use
-	var (
-		repo             domainRepo.IAttendanceRepository
-		userRepo         domainRepo.IUserRepository
-		distributedCache domainCache.IDistributedCache
-		logger           domainLogger.ILogger
-	)
-	logger = global.Logger
-	distributedCache, _ = domainCache.GetDistributedCache()
-	repo = domainRepo.GetAttendanceRepository()
-	userRepo = domainRepo.GetUserRepository()
-	// Check permission user manager or admin
-	ok, err := checkUserManagerOrAdminForUser(
+// DeleteDailyAttendanceSummary implements service.IAttendanceService.
+func (a *AttendanceService) DeleteDailyAttendanceSummary(ctx context.Context, req *model.DeleteDailyAttendanceSummaryModel) *errors.Error {
+	// 1. Check permission
+	_, errSession := checkPermissionForManagerAdminService(
 		ctx,
-		input.UserID,
-		input.CompanyId,
-		input.UserCheckInId,
-		input.Role,
+		req.Session,
+		req.ServiceSession,
+		req.CompanyID,
 	)
-	if err != nil {
-		return &applicationErrors.Error{ErrorSystem: err}
+	if errSession != nil {
+		a.logger.Warn("Permission Denied", "session", req.Session, "service_session", req.ServiceSession)
+		return errSession
 	}
-	if !ok {
-		return &applicationErrors.Error{ErrorClient: "User does not have permission to check in"}
-	}
-	// parse timestamp: try int unix seconds first, then RFC3339
-	var recordTime int64
-	if t, err := strconv.ParseInt(input.Timestamp, 10, 64); err == nil {
-		recordTime = t
-	} else if tm, err := time.Parse(time.RFC3339, input.Timestamp); err == nil {
-		recordTime = tm.Unix()
-	} else {
-		return &applicationErrors.Error{ErrorClient: "Timestamp is not valid"}
-	}
-
-	// Prevent rapid duplicate check-ins for same user & date using distributed cache (atomic increment + expire)
-	date := time.Unix(recordTime, 0).Format("2006-01-02")
-	key := utilsCache.GetKeyAttendanceUserLastCheckIn(
-		utilsCrypto.GetHash(input.UserID.String()),
-		date,
-	)
-	// Try local cache first to avoid remote call
-	if lc, err := domainCache.GetLocalCache(); err == nil {
-		if ex, _ := lc.Exists(ctx, key); ex {
-			return &applicationErrors.Error{ErrorClient: "Duplicate check-in detected"}
+	if req.SummaryMonth == "" || len(req.SummaryMonth) != 7 {
+		return &errors.Error{
+			ErrorClient: "InvalidSummaryMonth",
 		}
 	}
-	// Atomic increment with TTL on distributed cache to avoid race conditions
-	lua := `local v=redis.call('INCR', KEYS[1]); if tonumber(v)==1 then redis.call('EXPIRE', KEYS[1], tonumber(ARGV[1])) end; return v`
-	res, err := distributedCache.LuaScript(ctx, lua, []string{key}, 60)
-	if err == nil {
-		// interpret result
-		var val int64
-		switch t := res.(type) {
-		case int64:
-			val = t
-		case int:
-			val = int64(t)
-		case float64:
-			val = int64(t)
-		case string:
-			if p, e := strconv.ParseInt(t, 10, 64); e == nil {
-				val = p
-			}
-		}
-		if val > 1 {
-			return &applicationErrors.Error{ErrorClient: "Duplicate check-in detected"}
-		}
-		// set local cache to short TTL to prevent repeat checks on this instance
-		if lc, err := domainCache.GetLocalCache(); err == nil {
-			_ = lc.SetTTL(ctx, key, "1", 60)
-		}
-	} else {
-		// fallback to Exists/SetTTL if LuaScript not supported
-		if exists, e := distributedCache.Exists(ctx, key); e == nil && exists {
-			return &applicationErrors.Error{ErrorClient: "Duplicate check-in detected"}
-		}
-		_ = distributedCache.SetTTL(ctx, key, "1", 60)
-		if lc, err := domainCache.GetLocalCache(); err == nil {
-			_ = lc.SetTTL(ctx, key, "1", 60)
-		}
-	}
-	// get company ID of user
-	companyReps, err := userRepo.GetCompanyIdUser(
+	// 2. Delete daily attendance summary
+	if err := a.attendanceRepo.DeleteDailySummariesCompany(
 		ctx,
-		&domainModel.GetCompanyIdUserInput{
-			UserID: input.UserCheckInId,
+		&domainModel.DeleteDailySummariesInput{
+			CompanyID:    req.CompanyID,
+			SummaryMonth: req.SummaryMonth,
 		},
-	)
-	if err != nil {
-		logger.Error("GetCompanyIdUser failed", "error", err)
-		return &applicationErrors.Error{ErrorSystem: err}
+	); err != nil {
+		a.logger.Error("Failed to delete daily attendance summary", "summary_month", req.SummaryMonth, "error", err)
+		return &errors.Error{
+			ErrorSystem: err,
+			ErrorClient: "InternalError",
+		}
 	}
-	companyId := companyReps.CompanyID
-	// build domain input and call repository
-	repoInput := &domainModel.AddCheckInRecordInput{
-		CompanyID:           companyId,
-		EmployeeID:          input.UserCheckInId,
-		DeviceID:            input.DeviceId,
-		VerificationMethod:  input.VerificationMethod,
-		VerificationScore:   input.VerificationScore,
-		FaceImageURL:        input.FaceImageURL,
-		LocationCoordinates: input.Location,
-		Metadata: map[string]string{
-			"client_ip":    input.ClientIp,
-			"client_agent": input.ClientAgent,
-		},
-		RecordTime: recordTime,
-	}
-	if err := repo.AddCheckInRecord(ctx, repoInput); err != nil {
-		logger.Error("AddCheckInRecord failed", "error", err)
-		return &applicationErrors.Error{ErrorSystem: err}
-	}
-	logger.Info("Check-in recorded", "user_id", input.UserID.String(), "device_id", input.DeviceId.String())
 	return nil
 }
 
-// CheckOutUser implements service.IAttendanceService.
-func (a *AttendanceService) CheckOutUser(ctx context.Context, input *model.CheckOutInput) *applicationErrors.Error {
-	// Instance use
-	var (
-		repo     domainRepo.IAttendanceRepository
-		userRepo domainRepo.IUserRepository
-		logger   domainLogger.ILogger
-	)
-	logger = global.Logger
-	repo = domainRepo.GetAttendanceRepository()
-	userRepo = domainRepo.GetUserRepository()
-	// Check permission user manager or admin
-	ok, err := checkUserManagerOrAdminForUser(
+// DeleteAttendanceNoShift implements service.IAttendanceService.
+func (a *AttendanceService) DeleteAttendanceNoShift(ctx context.Context, req *model.DeleteAttendanceRecordNoShiftModel) *errors.Error {
+	// 1. Check permission
+	_, errSession := checkPermissionForManagerAdminService(
 		ctx,
-		input.UserID,
-		input.CompanyId,
-		input.UserCheckOutId,
-		input.Role,
+		req.Session,
+		req.ServiceSession,
+		req.CompanyID,
 	)
-	if err != nil {
-		return &applicationErrors.Error{ErrorSystem: err}
+	if errSession != nil {
+		a.logger.Warn("Permission Denied", "session", req.Session, "service_session", req.ServiceSession)
+		return errSession
 	}
-	if !ok {
-		return &applicationErrors.Error{ErrorClient: "User does not have permission to check in"}
-	}
-	// parse timestamp
-	var recordTime int64
-	if t, err := strconv.ParseInt(input.Timestamp, 10, 64); err == nil {
-		recordTime = t
-	} else if tm, err := time.Parse(time.RFC3339, input.Timestamp); err == nil {
-		recordTime = tm.Unix()
-	} else {
-		return &applicationErrors.Error{ErrorClient: "Timestamp is not valid"}
-	}
-	// get company ID of user
-	companyReps, err := userRepo.GetCompanyIdUser(
+	// 2. Delete attendance record no shift
+	if err := a.attendanceRepo.DeleteAttendanceRecordNoShift(
 		ctx,
-		&domainModel.GetCompanyIdUserInput{
-			UserID: input.UserCheckOutId,
+		&domainModel.DeleteAttendanceRecordNoShiftInput{
+			CompanyID: req.CompanyID,
+			YearMonth: req.YearMonth,
 		},
-	)
-	if err != nil {
-		logger.Error("GetCompanyIdUser failed", "error", err)
-		return &applicationErrors.Error{ErrorSystem: err}
+	); err != nil {
+		a.logger.Error("Failed to delete attendance record no shift", "year_month", req.YearMonth, "error", err)
+		return &errors.Error{
+			ErrorSystem: err,
+			ErrorClient: "InternalError",
+		}
 	}
-	companyId := companyReps.CompanyID
-	// build domain input and call repository
-	repoInput := &domainModel.AddCheckOutRecordInput{
-		CompanyID:           companyId,
-		EmployeeID:          input.UserCheckOutId,
-		DeviceID:            input.DeviceId,
-		VerificationMethod:  input.VerificationMethod,
-		VerificationScore:   input.VerificationScore,
-		FaceImageURL:        input.FaceImageURL,
-		LocationCoordinates: input.Location,
-		Metadata: map[string]string{
-			"client_ip":    input.ClientIp,
-			"client_agent": input.ClientAgent,
-		},
-		RecordTime: recordTime,
-	}
-	if err := repo.AddCheckOutRecord(ctx, repoInput); err != nil {
-		logger.Error("AddCheckOutRecord failed", "error", err)
-		return &applicationErrors.Error{ErrorSystem: err}
-	}
-	logger.Info("Check-out recorded", "user_id", input.UserID.String(), "device_id", input.DeviceId.String())
 	return nil
 }
 
-// GetMyRecords implements service.IAttendanceService.
-func (a *AttendanceService) GetMyRecords(ctx context.Context, input *model.GetMyRecordsInput) ([]*model.GetMyRecordsOutput, *applicationErrors.Error) {
-	// Instance use
-	var (
-		repo             domainRepo.IAttendanceRepository
-		distributedCache domainCache.IDistributedCache
-		logger           domainLogger.ILogger
+// DeleteAttendanceEmployee implements service.IAttendanceService.
+func (a *AttendanceService) DeleteAttendanceRecord(ctx context.Context, req *model.DeleteAttendanceModel) *errors.Error {
+	// 1. Check permission
+	_, errSession := checkPermissionForManagerAdminService(
+		ctx,
+		req.Session,
+		req.ServiceSession,
+		req.CompanyID,
 	)
-	logger = global.Logger
-	distributedCache, _ = domainCache.GetDistributedCache()
-	repo = domainRepo.GetAttendanceRepository()
-	// determine time range
-	var start time.Time
-	var end time.Time
-	if input.StartDate.IsZero() {
-		start = time.Now().Add(-30 * 24 * time.Hour)
-	} else {
-		start = input.StartDate
+	if errSession != nil {
+		a.logger.Warn("Permission Denied", "session", req.Session, "service_session", req.ServiceSession)
+		return errSession
 	}
-	if input.EndDate.IsZero() {
-		end = time.Now()
-	} else {
-		end = input.EndDate
+	if req.EmployeeId == uuid.Nil {
+		return &errors.Error{
+			ErrorClient: "InvalidEmployeeID",
+		}
 	}
-	// Try cache first (keyed by user + date range + page)
-	cacheKey := ""
-	if lc, err := domainCache.GetLocalCache(); err == nil {
-		cacheKey = utilsCache.GetKeyAttendanceDeviceRecords(
-			utilsCrypto.GetHash(input.CompanyId.String()),
-			utilsCrypto.GetHash(input.UserID.String()),
-			input.Page,
-			input.Size,
-			start.Format("2006-01-02"),
+	if req.YearMonth == "" || len(req.YearMonth) != 7 {
+		return &errors.Error{
+			ErrorClient: "InvalidYearMonth",
+		}
+	}
+	// 2. Delete attendance record
+	if err := a.attendanceRepo.DeleteAttendanceRecordAllYearMonth(
+		ctx,
+		&domainModel.DeleteAttendanceRecordInput{
+			CompanyID:  req.CompanyID,
+			YearMonth:  req.YearMonth,
+		},
+	); err != nil {
+		a.logger.Error("Failed to delete attendance record", "error", err)
+		return &errors.Error{
+			ErrorSystem: err,
+			ErrorClient: "InternalError",
+		}
+	}
+	return nil
+}
+
+// DeleteAttendanceEmployeeBeforeTime implements service.IAttendanceService.
+func (a *AttendanceService) DeleteAttendanceEmployeeBeforeTime(ctx context.Context, req *model.DeleteAttendanceModel) *errors.Error {
+	// 1. Check permission
+	_, errSession := checkPermissionForManagerAdminService(
+		ctx,
+		req.Session,
+		req.ServiceSession,
+		req.CompanyID,
+	)
+	if errSession != nil {
+		a.logger.Warn("Permission Denied", "session", req.Session, "service_session", req.ServiceSession)
+		return errSession
+	}
+	if req.EmployeeId == uuid.Nil {
+		return &errors.Error{
+			ErrorClient: "InvalidEmployeeID",
+		}
+	}
+	if req.Time.IsZero() || req.Time.Unix() < 0 {
+		return &errors.Error{
+			ErrorClient: "InvalidTime",
+		}
+	}
+	// 2. Delete attendance record
+	if err := a.attendanceRepo.DeleteAttendanceRecordBeforeTimestamp(
+		ctx,
+		&domainModel.DeleteAttendanceRecordInput{
+			CompanyID:  req.CompanyID,
+			EmployeeID: req.EmployeeId,
+			RecordTime: req.Time,
+			YearMonth:  req.Time.Format("2006-01"),
+		},
+	); err != nil {
+		a.logger.Error("Failed to delete attendance record before time", "time", req.Time, "error", err)
+		return &errors.Error{
+			ErrorSystem: err,
+			ErrorClient: "InternalError",
+		}
+	}
+	return nil
+}
+
+// GetAttendanceRecordsEmployeeForConpany implements service.IAttendanceService.
+func (a *AttendanceService) GetAttendanceRecordsEmployeeForConpany(ctx context.Context, req *model.GetAttendanceRecordsEmployeeModel) (*model.GetAttendanceRecordsCompanyResultModel, *errors.Error) {
+	// 1. Check permission
+	if err := checkPermissionEmployee(ctx, *req.Session, req.EmployeeID); err != nil {
+		a.logger.Warn("Permission Denied", "session", req.Session)
+		return nil, err
+	}
+	// 2. Check cache -> get from DB if not exist
+	keyAttendanceRecordsEmployee := utilsCache.GetKeyAttendanceRecordsEmployee(
+		utilsCrypto.GetHash(req.EmployeeID.String()),
+		req.YearMonth,
+		req.PageSize,
+		req.PageStage,
+	)
+	cacheData := ""
+	if data, err := a.localCache.Get(ctx, keyAttendanceRecordsEmployee); err == nil {
+		cacheData = data
+		a.logger.Info("Get attendance records from local cache", "key", keyAttendanceRecordsEmployee)
+	} else if data, err := a.distributedCache.Get(ctx, keyAttendanceRecordsEmployee); err == nil {
+		cacheData = data
+		a.logger.Info("Get attendance records from distributed cache", "key", keyAttendanceRecordsEmployee)
+		// Set to local cache
+		_ = a.localCache.SetTTL(ctx, keyAttendanceRecordsEmployee, cacheData, getTTLTimeCacheLocal(constants.TTL_CACHE_DEFAULT))
+	}
+	var result model.GetAttendanceRecordsCompanyResultModel
+	if err := json.Unmarshal([]byte(cacheData), &result); err == nil && cacheData != "" {
+		return &result, nil
+	}
+	// 3. Return result
+	reps, err := a.attendanceRepo.GetAttendanceRecordCompanyForEmployee(
+		ctx,
+		&domainModel.GetAttendanceRecordCompanyForEmployeeInput{
+			CompanyID:  req.CompanyID,
+			EmployeeID: req.EmployeeID,
+			YearMonth:  req.YearMonth,
+			PageSize:   req.PageSize,
+			PageStage:  req.PageStage,
+		},
+	)
+	if err != nil {
+		a.logger.Error("Failed to get attendance records from DB", "error", err)
+		return nil, &errors.Error{
+			ErrorSystem: err,
+			ErrorClient: "InternalError",
+		}
+	}
+	if reps == nil {
+		return nil, &errors.Error{
+			ErrorClient: "NoData",
+		}
+	}
+	// mapping data output
+	result = model.GetAttendanceRecordsCompanyResultModel{
+		Records:       []model.AttendanceRecordInfo{},
+		PageSize:      reps.PageSize,
+		PageStageNext: string(reps.PageStageNext),
+	}
+	for _, item := range reps.Records {
+		result.Records = append(result.Records, model.AttendanceRecordInfo{
+			CompanyID:           item.CompanyID,
+			YearMonth:           item.YearMonth,
+			RecordTime:          item.RecordTime,
+			EmployeeID:          item.EmployeeID,
+			DeviceID:            item.DeviceID,
+			RecordType:          item.RecordType,
+			VerificationMethod:  item.VerificationMethod,
+			VerificationScore:   item.VerificationScore,
+			FaceImageURL:        item.FaceImageURL,
+			LocationCoordinates: item.LocationCoordinates,
+			Metadata:            item.Metadata,
+			SyncStatus:          item.SyncStatus,
+			CreatedAt:           item.CreatedAt,
+		})
+	}
+	// Set to caches
+	marshaledData, _ := json.Marshal(result)
+	cacheValue := string(marshaledData)
+	_ = a.distributedCache.SetTTL(ctx, keyAttendanceRecordsEmployee, cacheValue, constants.TTL_ATTENDANCE_RECORDS_EMPLOYEE)
+	_ = a.localCache.SetTTL(ctx, keyAttendanceRecordsEmployee, cacheValue, getTTLTimeCacheLocal(constants.TTL_ATTENDANCE_RECORDS_EMPLOYEE))
+	// 3. Return result
+	return &result, nil
+}
+
+// GetDailyAttendanceSummaryEmployeeForCompany implements service.IAttendanceService.
+func (a *AttendanceService) GetDailyAttendanceSummaryEmployeeForCompany(ctx context.Context, req *model.GetDailyAttendanceSummaryEmployeeModel) (*model.GetDailyAttendanceSummaryEmployeeResultModel, *errors.Error) {
+	// 1. Check permission
+	if err := checkPermissionEmployee(ctx, *req.Session, req.EmployeeID); err != nil {
+		a.logger.Warn("Permission Denied", "session", req.Session)
+		return nil, err
+	}
+	// 2. Check cache -> get from DB if not exist
+	keyDailySummaryEmployee := utilsCache.GetKeyDailyAttendanceSummaryEmployee(
+		utilsCrypto.GetHash(req.EmployeeID.String()),
+		req.SummaryMonth,
+		req.PageSize,
+		req.PageStage,
+	)
+	cacheData := ""
+	if data, err := a.localCache.Get(ctx, keyDailySummaryEmployee); err == nil {
+		cacheData = data
+		a.logger.Info("Get daily summary from local cache", "key", keyDailySummaryEmployee)
+	} else if data, err := a.distributedCache.Get(ctx, keyDailySummaryEmployee); err == nil {
+		cacheData = data
+		a.logger.Info("Get daily summary from distributed cache", "key", keyDailySummaryEmployee)
+		_ = a.localCache.SetTTL(ctx, keyDailySummaryEmployee, cacheData, getTTLTimeCacheLocal(constants.TTL_CACHE_DEFAULT))
+	}
+
+	var result model.GetDailyAttendanceSummaryEmployeeResultModel
+	if err := json.Unmarshal([]byte(cacheData), &result); err == nil && cacheData != "" {
+		return &result, nil
+	}
+
+	// 3. Get from DB
+	reps, err := a.attendanceRepo.GetDailySummarieCompanyForEmployee(
+		ctx,
+		&domainModel.GetDailySummariesCompanyForEmployeeInput{
+			CompanyID:    req.CompanyID,
+			EmployeeID:   req.EmployeeID,
+			SummaryMonth: req.SummaryMonth,
+			PageSize:     req.PageSize,
+			PageStage:    req.PageStage,
+		},
+	)
+	if err != nil {
+		a.logger.Error("Failed to get daily attendance summary from DB", "error", err)
+		return nil, &errors.Error{
+			ErrorSystem: err,
+			ErrorClient: "InternalError",
+		}
+	}
+	if reps == nil {
+		return nil, &errors.Error{
+			ErrorClient: "NoData",
+		}
+	}
+
+	// mapping data output
+	result = model.GetDailyAttendanceSummaryEmployeeResultModel{
+		Records:       []model.DailySummariesEmployeeInfo{},
+		PageSize:      reps.PageSize,
+		PageStageNext: string(reps.PageStageNext),
+	}
+	for _, item := range reps.Records {
+		result.Records = append(result.Records, model.DailySummariesEmployeeInfo{
+			CompanyId:         item.CompanyId,
+			SummaryMonth:      item.SummaryMonth,
+			WorkDate:          item.WorkDate,
+			EmployeeId:        item.EmployeeId,
+			ShiftId:           item.ShiftId,
+			ActualCheckIn:     item.ActualCheckIn,
+			ActualCheckOut:    item.ActualCheckOut,
+			AttendanceStatus:  item.AttendanceStatus,
+			LateMinutes:       item.LateMinutes,
+			EarlyLeaveMinutes: item.EarlyLeaveMinutes,
+			TotalWorkMinutes:  item.TotalWorkMinutes,
+			Notes:             item.Notes,
+			UpdatedAt:         item.UpdatedAt,
+		})
+	}
+
+	// Set to caches
+	marshaledData, _ := json.Marshal(result)
+	cacheValue := string(marshaledData)
+	_ = a.distributedCache.SetTTL(ctx, keyDailySummaryEmployee, cacheValue, constants.TTL_ATTENDANCE_RECORDS_EMPLOYEE)
+	_ = a.localCache.SetTTL(ctx, keyDailySummaryEmployee, cacheValue, getTTLTimeCacheLocal(constants.TTL_ATTENDANCE_RECORDS_EMPLOYEE))
+
+	// 4. Return result
+	return &result, nil
+}
+
+// GetDailyAttendanceSummaryForCompany implements service.IAttendanceService.
+func (a *AttendanceService) GetDailyAttendanceSummaryForCompany(ctx context.Context, req *model.GetDailyAttendanceSummaryModel) (*model.GetDailyAttendanceSummaryResultModel, *errors.Error) {
+	// 1. Check permission
+	if err := checkPermisionManager(ctx, *req.Session, req.CompanyID); err != nil {
+		a.logger.Warn("Permission Denied", "session", req.Session)
+		return nil, err
+	}
+	// 2. Check cache -> get from DB if not exist
+	keyDailySummary := utilsCache.GetKeyDailyAttendanceSummary(
+		utilsCrypto.GetHash(req.CompanyID.String()),
+		req.SummaryMonth,
+		req.WorkDate.Unix(),
+		req.PageSize,
+		req.PageStage,
+	)
+	cacheData := ""
+	if data, err := a.localCache.Get(ctx, keyDailySummary); err == nil {
+		cacheData = data
+		a.logger.Info("Get daily summary from local cache", "key", keyDailySummary)
+	} else if data, err := a.distributedCache.Get(ctx, keyDailySummary); err == nil {
+		cacheData = data
+		a.logger.Info("Get daily summary from distributed cache", "key", keyDailySummary)
+		_ = a.localCache.SetTTL(ctx, keyDailySummary, cacheData, getTTLTimeCacheLocal(constants.TTL_CACHE_DEFAULT))
+	}
+
+	var result model.GetDailyAttendanceSummaryResultModel
+	if err := json.Unmarshal([]byte(cacheData), &result); err == nil && cacheData != "" {
+		return &result, nil
+	}
+
+	// 3. Get from DB
+	reps, err := a.attendanceRepo.GetDailySummarieCompany(
+		ctx,
+		&domainModel.GetDailySummariesCompanyInput{
+			CompanyID:    req.CompanyID,
+			SummaryMonth: req.SummaryMonth,
+			WorkDate:     req.WorkDate,
+			PageSize:     req.PageSize,
+			PageStage:    req.PageStage,
+		},
+	)
+	if err != nil {
+		a.logger.Error("Failed to get daily attendance summary from DB", "error", err)
+		return nil, &errors.Error{
+			ErrorSystem: err,
+			ErrorClient: "InternalError",
+		}
+	}
+	if reps == nil {
+		return nil, &errors.Error{
+			ErrorClient: "NoData",
+		}
+	}
+
+	// mapping data output
+	result = model.GetDailyAttendanceSummaryResultModel{
+		Records:       []model.DailySummariesCompanyInfo{},
+		PageSize:      reps.PageSize,
+		PageStageNext: string(reps.PageStageNext),
+	}
+	for _, item := range reps.Records {
+		result.Records = append(result.Records, model.DailySummariesCompanyInfo{
+			CompanyId:         item.CompanyId,
+			SummaryMonth:      item.SummaryMonth,
+			WorkDate:          item.WorkDate,
+			EmployeeId:        item.EmployeeId,
+			ShiftId:           item.ShiftId,
+			ActualCheckIn:     item.ActualCheckIn,
+			ActualCheckOut:    item.ActualCheckOut,
+			AttendanceStatus:  item.AttendanceStatus,
+			LateMinutes:       item.LateMinutes,
+			EarlyLeaveMinutes: item.EarlyLeaveMinutes,
+			TotalWorkMinutes:  item.TotalWorkMinutes,
+			Notes:             item.Notes,
+			UpdatedAt:         item.UpdatedAt,
+		})
+	}
+
+	// Set to caches
+	marshaledData, _ := json.Marshal(result)
+	cacheValue := string(marshaledData)
+	_ = a.distributedCache.SetTTL(ctx, keyDailySummary, cacheValue, constants.TTL_ATTENDANCE_RECORDS_EMPLOYEE)
+	_ = a.localCache.SetTTL(ctx, keyDailySummary, cacheValue, getTTLTimeCacheLocal(constants.TTL_ATTENDANCE_RECORDS_EMPLOYEE))
+
+	// 4. Return result
+	return &result, nil
+}
+
+// GetAttendanceRecordsCompany implements service.IAttendanceService.
+func (a *AttendanceService) GetAttendanceRecordsCompany(ctx context.Context, req *model.GetAttendanceRecordsCompanyModel) (*model.GetAttendanceRecordsCompanyResultModel, *errors.Error) {
+	// 1. Check permission
+	if err := checkPermisionManager(ctx, *req.Session, req.CompanyID); err != nil {
+		a.logger.Warn("Permission Denied", "session", req.Session)
+		return nil, err
+	}
+	// 2. Check cache -> get from DB if not exist
+	keyAttendanceRecordsCompany := utilsCache.GetKeyAttendanceRecordsCompany(
+		utilsCrypto.GetHash(req.CompanyID.String()),
+		req.YearMonth,
+		req.PageSize,
+		req.PageStage,
+	)
+	cacheData := ""
+	if data, err := a.localCache.Get(ctx, keyAttendanceRecordsCompany); err == nil {
+		cacheData = data
+		a.logger.Info("Get attendance records from local cache", "key", keyAttendanceRecordsCompany)
+	} else if data, err := a.distributedCache.Get(ctx, keyAttendanceRecordsCompany); err == nil {
+		cacheData = data
+		a.logger.Info("Get attendance records from distributed cache", "key", keyAttendanceRecordsCompany)
+		// Set to local cache
+		_ = a.localCache.SetTTL(ctx, keyAttendanceRecordsCompany, cacheData, getTTLTimeCacheLocal(constants.TTL_CACHE_DEFAULT))
+	}
+	var result model.GetAttendanceRecordsCompanyResultModel
+	if err := json.Unmarshal([]byte(cacheData), &result); err == nil && cacheData != "" {
+		return &result, nil
+	}
+
+	// 3. Get from DB
+	reps, err := a.attendanceRepo.GetAttendanceRecordCompany(
+		ctx,
+		&domainModel.GetAttendanceRecordCompanyInput{
+			CompanyID: req.CompanyID,
+			YearMonth: req.YearMonth,
+			PageSize:  req.PageSize,
+			PageStage: req.PageStage,
+		},
+	)
+	if err != nil {
+		a.logger.Error("Failed to get attendance records from DB", "error", err)
+		return nil, &errors.Error{
+			ErrorSystem: err,
+			ErrorClient: "InternalError",
+		}
+	}
+	if reps == nil {
+		return nil, &errors.Error{
+			ErrorClient: "NoData",
+		}
+	}
+	// mapping data output
+	result = model.GetAttendanceRecordsCompanyResultModel{
+		Records:       []model.AttendanceRecordInfo{},
+		PageSize:      reps.PageSize,
+		PageStageNext: string(reps.PageStageNext),
+	}
+	for _, item := range reps.Records {
+		result.Records = append(result.Records, model.AttendanceRecordInfo{
+			CompanyID:           item.CompanyID,
+			YearMonth:           item.YearMonth,
+			RecordTime:          item.RecordTime,
+			EmployeeID:          item.EmployeeID,
+			DeviceID:            item.DeviceID,
+			RecordType:          item.RecordType,
+			VerificationMethod:  item.VerificationMethod,
+			VerificationScore:   item.VerificationScore,
+			FaceImageURL:        item.FaceImageURL,
+			LocationCoordinates: item.LocationCoordinates,
+			Metadata:            item.Metadata,
+			SyncStatus:          item.SyncStatus,
+			CreatedAt:           item.CreatedAt,
+		})
+	}
+	// Set to caches
+	marshaledData, _ := json.Marshal(result)
+	cacheValue := string(marshaledData)
+	_ = a.distributedCache.SetTTL(ctx, keyAttendanceRecordsCompany, cacheValue, constants.TTL_ATTENDANCE_RECORDS_EMPLOYEE)
+	_ = a.localCache.SetTTL(ctx, keyAttendanceRecordsCompany, cacheValue, getTTLTimeCacheLocal(constants.TTL_ATTENDANCE_RECORDS_EMPLOYEE))
+	// 4. Return result
+	return &result, nil
+}
+
+// AddAttendance implements service.IAttendanceService.
+func (a *AttendanceService) AddAttendance(ctx context.Context, req *model.AddAttendanceModel) *errors.Error {
+	// 1. Check permission
+	sessionInfo, errSession := checkPermissionForManagerAdminService(
+		ctx,
+		req.Session,
+		req.ServiceSession,
+		req.CompanyID,
+	)
+	if errSession != nil {
+		a.logger.Warn("Permission Denied", "session", req.Session, "service_session", req.ServiceSession)
+		return errSession
+	}
+	var mapDataSession = map[string]string{}
+	switch sessionInfo {
+	case 0:
+		// service session
+		mapDataSession["service_session_id"] = req.ServiceSession.ServiceId
+		mapDataSession["service_name"] = req.ServiceSession.ServiceName
+		mapDataSession["service_ip"] = req.ServiceSession.ClientIp
+		mapDataSession["service_agent"] = req.ServiceSession.ClientAgent
+	case 1:
+		// manager, admin
+		mapDataSession["user_id"] = req.Session.UserId.String()
+		mapDataSession["role"] = strconv.Itoa(req.Session.Role)
+		mapDataSession["company_id"] = req.Session.CompanyId.String()
+		mapDataSession["session_id"] = req.Session.SessionId.String()
+		mapDataSession["client_ip"] = req.Session.ClientIp
+		mapDataSession["client_agent"] = req.Session.ClientAgent
+	}
+	// 2. Get shift info -> check in(0) or check out(1)
+	// - Cache local cache, distributed cache(Redis)
+	// - if not exist, get from DB and set to cache
+	keyListShiftEmployee := utilsCache.GetKeyListShiftTimeEmployee(
+		utilsCrypto.GetHash(req.EmployeeID.String()),
+	)
+	cacheData := ""
+	if data, err := a.localCache.Get(ctx, keyListShiftEmployee); err == nil {
+		cacheData = data
+		a.logger.Info("Get shift time from local cache", "key", keyListShiftEmployee)
+	} else if data, err := a.distributedCache.Get(ctx, keyListShiftEmployee); err == nil {
+		cacheData = data
+		a.logger.Info("Get shift time from distributed cache", "key", keyListShiftEmployee)
+		// Set to local cache
+		_ = a.localCache.SetTTL(ctx, keyListShiftEmployee, cacheData, getTTLTimeCacheLocal(constants.TTL_CACHE_DEFAULT))
+	}
+	var shiftTimes []model.ShiftTimeEmployee
+	if err := json.Unmarshal([]byte(cacheData), &shiftTimes); err != nil && cacheData != "" {
+		a.logger.Warn("Failed to unmarshal shift times", "error", err, "cache_data", cacheData)
+	} else {
+		respListShiftEmployee, err := a.userRepo.GetListTimeShiftEmployee(
+			ctx,
+			&domainModel.GetListTimeShiftEmployeeInput{
+				EmployeeID: req.EmployeeID,
+				CompanyID:  req.CompanyID,
+			},
 		)
-		if v, e := lc.Get(ctx, cacheKey); e == nil && v != "" {
-			var outCached []*model.GetMyRecordsOutput
-			if jErr := json.Unmarshal([]byte(v), &outCached); jErr == nil {
-				return outCached, nil
+		if err != nil {
+			a.logger.Error("Failed to get list shift time employee from DB", "error", err)
+			return &errors.Error{
+				ErrorSystem: err,
+				ErrorClient: "InternalError",
 			}
+		}
+		// mapping data
+		for _, item := range respListShiftEmployee {
+			shiftTimes = append(shiftTimes, model.ShiftTimeEmployee{
+				ShiftID:               item.ShiftID,
+				StartTime:             item.StartTime,
+				EndTime:               item.EndTime,
+				GracePeriodMinutes:    item.GracePeriodMinutes,
+				EarlyDepartureMinutes: item.EarlyDepartureMinutes,
+				WorkDays:              item.WorkDays,
+				EffectiveFrom:         item.EffectiveFrom,
+				EffectiveTo:           item.EffectiveTo,
+			})
+		}
+		// Set to caches
+		marshaledData, _ := json.Marshal(shiftTimes)
+		cacheValue := string(marshaledData)
+		_ = a.distributedCache.SetTTL(ctx, keyListShiftEmployee, cacheValue, constants.TTL_CACHE_DEFAULT)
+		_ = a.localCache.SetTTL(ctx, keyListShiftEmployee, cacheValue, getTTLTimeCacheLocal(constants.TTL_CACHE_DEFAULT))
+	}
+	// 3. Check req is check in or check out
+	matchedShift, isCheckIn, foundValidShift := findShiftAndDetermineCheckIn(
+		req.RecordTime,
+		shiftTimes,
+	)
+	if !foundValidShift {
+		a.logger.Warn("No valid shift found for employee", "employee_id", req.EmployeeID, "record_time", req.RecordTime)
+		// Add attendance record with no shift matched
+		inputAddAttendanceRecord := &domainModel.AddAttendanceRecordNoShiftInput{
+			CompanyID:           req.CompanyID,
+			YearMonth:           req.RecordTime.Format("2006-01"),
+			RecordTime:          req.RecordTime,
+			EmployeeID:          req.EmployeeID,
+			DeviceID:            req.DeviceID,
+			VerificationMethod:  req.VerificationMethod,
+			VerificationScore:   req.VerificationScore,
+			FaceImageURL:        req.FaceImageURL,
+			LocationCoordinates: req.LocationCoordinates,
+		}
+		if err := a.attendanceRepo.AddAttendanceRecordNoShift(ctx, inputAddAttendanceRecord); err != nil {
+			a.logger.Error("Failed to add attendance record no shift", "error", err)
+		}
+		return nil
+	}
+
+	// 4. Add attendance record
+	inputAddAttendanceRecord := &domainModel.AddAttendanceRecordInput{
+		CompanyID:  req.CompanyID,
+		EmployeeID: req.EmployeeID,
+		YearMonth:  req.RecordTime.Format("2006-01"),
+		RecordTime: req.RecordTime,
+		DeviceID:   req.DeviceID,
+		RecordType: func() int {
+			if isCheckIn {
+				return 0
+			} else {
+				return 1
+			}
+		}(),
+		VerificationMethod:  req.VerificationMethod,
+		VerificationScore:   req.VerificationScore,
+		FaceImageURL:        req.FaceImageURL,
+		LocationCoordinates: req.LocationCoordinates,
+		Metadata:            mapDataSession,
+	}
+	if err := a.attendanceRepo.AddAttendanceRecord(
+		ctx,
+		inputAddAttendanceRecord,
+	); err != nil {
+		a.logger.Error("Failed to add attendance record", "error", err)
+		return &errors.Error{
+			ErrorSystem: err,
+			ErrorClient: "InternalError",
 		}
 	}
 
-	// build repo input; repository requires company and device - company not available here so use nil UUID
-	repoInput := &domainModel.GetAttendanceRecordRangeTimeInput{
-		CompanyID: input.CompanyId,
-		DeviceID:  uuid.Nil,
-		StartTime: start.Unix(),
-		EndTime:   end.Unix(),
+	// 5. Send to message queue for worker processing daily_summaries if checkout
+	if !isCheckIn {
+		// TODO: feature gửi lên mq tự xử lí với hiệu năng cao
+		a.logger.Info("Handle cal daily summary", "mathced_shift", matchedShift, "record_time", req.RecordTime)
+		global.AttendanceServiceWorker.AddJobToDailySummaryWorkerV2(
+			req.CompanyID,
+			req.EmployeeID,
+			req.RecordTime,
+			domainModel.ShiftTimeEmployee{
+				ShiftID:               matchedShift.ShiftID,
+				StartTime:             matchedShift.StartTime,
+				EndTime:               matchedShift.EndTime,
+				GracePeriodMinutes:    matchedShift.GracePeriodMinutes,
+				EarlyDepartureMinutes: matchedShift.EarlyDepartureMinutes,
+				WorkDays:              matchedShift.WorkDays,
+				EffectiveFrom:         matchedShift.EffectiveFrom,
+				EffectiveTo:           matchedShift.EffectiveTo,
+			},
+		)
 	}
-	records, err := repo.GetAttendanceRecordRangeTime(ctx, repoInput)
-	if err != nil {
-		logger.Error("GetAttendanceRecordRangeTime failed", "error", err)
-		return nil, &applicationErrors.Error{ErrorSystem: err}
+	return nil
+}
+
+// NewAttendanceService creates a new instance of AttendanceService
+func NewAttendanceService() service.IAttendanceService {
+	// Get dependencies
+	attendanceRepo := domainRepo.GetAttendanceRepository()
+	userRepo := domainRepo.GetUserRepository()
+	logger := domainLogger.GetLogger()
+	localCache, _ := domainCache.GetLocalCache()
+	distributedCache, _ := domainCache.GetDistributedCache()
+
+	// Create service instance
+	return &AttendanceService{
+		attendanceRepo:   attendanceRepo,
+		userRepo:         userRepo,
+		logger:           logger,
+		localCache:       localCache,
+		distributedCache: distributedCache,
+	}
+}
+
+// =================================================
+// Helper Functions
+// =================================================
+
+// findShiftAndDetermineCheckIn finds the most suitable shift for a given record time
+// and determines if it's a check-in or check-out event.
+func findShiftAndDetermineCheckIn(recordTime time.Time, shiftTimes []model.ShiftTimeEmployee) (model.ShiftTimeEmployee, bool, bool) {
+	// Initialize variables
+	isCheckIn := true
+	foundValidShift := false
+	// Khởi tạo chênh lệch thời gian tối đa (12 giờ) để tìm ca làm việc gần nhất
+	minDiffMinutes := float64(12 * 60)
+	var matchedShift model.ShiftTimeEmployee
+
+	// Chuyển đổi ngày trong tuần của Go (0=Chủ nhật) sang quy ước ISO 8601 (1=Thứ hai...7=Chủ nhật)
+	currentWeekday := int32(recordTime.Weekday())
+	if currentWeekday == 0 {
+		currentWeekday = 7
 	}
 
-	// filter records only for current user and group by user into outputs
-	grouped := map[uuid.UUID]*model.AttendanceRecordInfo{}
-	for _, r := range records {
-		if r.EmployeeID != input.UserID {
+	for _, shift := range shiftTimes {
+		// A. Kiểm tra ngày hiệu lực của ca làm việc
+		if recordTime.Before(shift.EffectiveFrom) {
 			continue
 		}
-		info, ok := grouped[r.EmployeeID]
-		if !ok {
-			info = &model.AttendanceRecordInfo{
-				RecordID: uuid.Nil,
-				UserID:   r.EmployeeID,
-				DeviceID: r.DeviceID,
-				Location: r.LocationCoordinates,
+		if shift.EffectiveTo != nil && recordTime.After(*shift.EffectiveTo) {
+			continue
+		}
+
+		// B. Kiểm tra xem hôm nay có phải là ngày làm việc theo lịch không
+		isWorkDay := false
+		for _, day := range shift.WorkDays {
+			if day == currentWeekday {
+				isWorkDay = true
+				break
 			}
-			grouped[r.EmployeeID] = info
 		}
-		tStr := time.Unix(r.RecordTime, 0).Format(time.RFC3339)
-		if r.Type == 0 {
-			info.CheckIn = tStr
-		} else {
-			info.CheckOut = tStr
+		if !isWorkDay {
+			continue
+		}
+
+		// C. Chuẩn hóa thời gian bắt đầu/kết thúc ca về cùng ngày với ngày chấm công
+		year, month, day := recordTime.Date()
+		shiftStart := time.Date(year, month, day, shift.StartTime.Hour(), shift.StartTime.Minute(), 0, 0, recordTime.Location())
+		shiftEnd := time.Date(year, month, day, shift.EndTime.Hour(), shift.EndTime.Minute(), 0, 0, recordTime.Location())
+
+		// Xử lý ca đêm (ví dụ: 22:00 - 06:00)
+		if shiftEnd.Before(shiftStart) {
+			if recordTime.Hour() < 12 {
+				shiftStart = shiftStart.Add(-24 * time.Hour)
+			} else {
+				shiftEnd = shiftEnd.Add(24 * time.Hour)
+			}
+		}
+
+		// D. Tính toán độ chênh lệch
+		diffStart := recordTime.Sub(shiftStart).Minutes() // Dương nếu đến muộn, Âm nếu đến sớm
+		diffEnd := recordTime.Sub(shiftEnd).Minutes()     // Dương nếu về muộn, Âm nếu về sớm
+
+		absDiffStart := diffStart
+		if absDiffStart < 0 {
+			absDiffStart = -absDiffStart
+		}
+
+		absDiffEnd := diffEnd
+		if absDiffEnd < 0 {
+			absDiffEnd = -absDiffEnd
+		}
+
+		// Tìm ca làm việc phù hợp nhất
+		localMin := absDiffStart
+		if absDiffEnd < localMin {
+			localMin = absDiffEnd
+		}
+
+		if localMin < minDiffMinutes {
+			minDiffMinutes = localMin
+			foundValidShift = true
+			matchedShift = shift
+
+			// LOGIC QUYẾT ĐỊNH CHECK-IN HAY CHECK-OUT:
+			// 1. Tính điểm giữa ca làm việc (midpoint)
+			midPoint := shiftStart.Add(shiftEnd.Sub(shiftStart) / 2)
+
+			// 2. Nếu thời gian chấm công nằm trước điểm giữa -> Check In
+			//    Nếu thời gian chấm công nằm sau điểm giữa -> Check Out
+			//    Cách này xử lý tốt trường hợp đến rất muộn (vẫn là Check In) hoặc về rất sớm (vẫn là Check Out)
+			if recordTime.Before(midPoint) {
+				isCheckIn = true
+			} else {
+				isCheckIn = false
+			}
 		}
 	}
-	out := &model.GetMyRecordsOutput{}
-	for _, v := range grouped {
-		out.Records = append(out.Records, *v)
+
+	if !foundValidShift {
+		return model.ShiftTimeEmployee{}, false, false
 	}
-	out.Total = len(out.Records)
-	result := []*model.GetMyRecordsOutput{out}
-	// cache result in local and distributed caches
-	if bs, jErr := json.Marshal(result); jErr == nil {
-		if lc, err := domainCache.GetLocalCache(); err == nil {
-			_ = lc.SetTTL(ctx, cacheKey, string(bs), 30)
-		}
-		if distributedCache != nil {
-			_ = distributedCache.SetTTL(ctx, cacheKey, bs, 30)
-		}
-	}
-	return result, nil
+
+	return matchedShift, isCheckIn, foundValidShift
 }
 
-// GetRecords implements service.IAttendanceService.
-func (a *AttendanceService) GetRecords(ctx context.Context, input *model.GetAttendanceRecordsInput) ([]*model.AttendanceRecordOutput, *applicationErrors.Error) {
-	// Instance use
-	var (
-		repo             domainRepo.IAttendanceRepository
-		distributedCache domainCache.IDistributedCache
-		logger           domainLogger.ILogger
-	)
-	logger = global.Logger
-	distributedCache, _ = domainCache.GetDistributedCache()
-	repo = domainRepo.GetAttendanceRepository()
-	// Check permission user manager or admin
-	ok, err := checkUserManagerOrAdmin(
-		ctx,
-		input.UserID,
-		input.CompanyIdUser,
-		input.CompanyId,
-		input.Role,
-	)
-	if err != nil {
-		return nil, &applicationErrors.Error{ErrorSystem: err}
+// handler ttl time cache local
+func getTTLTimeCacheLocal(ttlDistributed int64) int64 {
+	ttlLocal := ttlDistributed / 3
+	if ttlLocal <= 0 || ttlLocal >= 60 {
+		ttlLocal = 12 // default 12 seconds
 	}
-	if !ok {
-		return nil, &applicationErrors.Error{ErrorClient: "User does not have permission to check in"}
-	}
-	// determine time range
-	var start time.Time
-	var end time.Time
-	if input.StartDate.IsZero() {
-		start = time.Now().Add(-30 * 24 * time.Hour)
-	} else {
-		start = input.StartDate
-	}
-	if input.EndDate.IsZero() {
-		end = time.Now()
-	} else {
-		end = input.EndDate
-	}
-	deviceId := input.DeviceID
-	if deviceId == uuid.Nil {
-		deviceId = uuid.Nil
-	}
-	// caching per device+date
-	cacheKey := utilsCache.GetKeyAttendanceDeviceRecords(
-		utilsCrypto.GetHash(input.CompanyId.String()),
-		deviceId.String(),
-		input.Page,
-		input.Size,
-		start.Format("2006-01-02"),
-	)
-	if lc, err := domainCache.GetLocalCache(); err == nil {
-		if v, e := lc.Get(ctx, cacheKey); e == nil && v != "" {
-			var outCached []*model.AttendanceRecordOutput
-			if jErr := json.Unmarshal([]byte(v), &outCached); jErr == nil {
-				return outCached, nil
-			}
-		}
-	}
-
-	repoInput := &domainModel.GetAttendanceRecordRangeTimeInput{
-		CompanyID: input.CompanyId,
-		DeviceID:  deviceId,
-		StartTime: start.Unix(),
-		EndTime:   end.Unix(),
-		Limit:     input.Page,
-		Offset:    (input.Page - 1) * input.Size,
-	}
-	records, err := repo.GetAttendanceRecordRangeTime(ctx, repoInput)
-	if err != nil {
-		logger.Error("GetAttendanceRecordRangeTime failed", "error", err)
-		return nil, &applicationErrors.Error{ErrorSystem: err}
-	}
-
-	// group records by employee
-	grouped := map[uuid.UUID]*model.AttendanceRecordInfo{}
-	for _, r := range records {
-		info, ok := grouped[r.EmployeeID]
-		if !ok {
-			info = &model.AttendanceRecordInfo{
-				RecordID: uuid.Nil,
-				UserID:   r.EmployeeID,
-				DeviceID: r.DeviceID,
-				Location: r.LocationCoordinates,
-			}
-			grouped[r.EmployeeID] = info
-		}
-		tStr := time.Unix(r.RecordTime, 0).Format(time.RFC3339)
-		if r.Type == 0 {
-			info.CheckIn = tStr
-		} else {
-			info.CheckOut = tStr
-		}
-	}
-	out := &model.AttendanceRecordOutput{}
-	for _, v := range grouped {
-		out.Records = append(out.Records, *v)
-	}
-	out.Total = len(out.Records)
-	result := []*model.AttendanceRecordOutput{out}
-	if bs, jErr := json.Marshal(result); jErr == nil {
-		if lc, err := domainCache.GetLocalCache(); err == nil {
-			_ = lc.SetTTL(ctx, cacheKey, string(bs), 30)
-		}
-		if distributedCache != nil {
-			_ = distributedCache.SetTTL(ctx, cacheKey, bs, 30)
-		}
-	}
-	return result, nil
+	return ttlLocal
 }
 
-// New Attendance Service instance and impl interface
-func NewAttendanceService() service.IAttendanceService {
-	return &AttendanceService{}
+// Check permission for manager, admin, service
+// 0: service session
+// 1: manager, admin
+// 2: permission denied
+func checkPermissionForManagerAdminService(ctx context.Context, session *model.SessionReq, serviceSession *model.ServiceSession, companyReq uuid.UUID) (int, *errors.Error) {
+	if serviceSession != nil {
+		return 0, nil
+	}
+	if err := checkPermisionManager(ctx, *session, companyReq); err != nil {
+		return 2, err
+	}
+	return 1, nil
 }
 
-// ============================================
-//  Helper functions
-// ============================================
-
-// Check permission user manager or admin
-func checkUserManagerOrAdmin(
-	ctx context.Context,
-	userReq uuid.UUID,
-	companyIdUserReq uuid.UUID,
-	companyId uuid.UUID,
-	role int,
-) (bool, error) {
-	// Instance use
-	var (
-		localCache       domainCache.ILocalCache
-		distributedCache domainCache.IDistributedCache
-	)
-	localCache, _ = domainCache.GetLocalCache()
-	distributedCache, _ = domainCache.GetDistributedCache()
-	// Check user role
-	if role > domainModel.RoleManager {
-		return false, nil
+// Check perrmission manager helper function
+func checkPermisionManager(ctx context.Context, session model.SessionReq, companyReq uuid.UUID) *errors.Error {
+	if session.Role == domainModel.RoleAdmin {
+		return nil
 	}
-	if role == domainModel.RoleAdmin {
-		return true, nil
+	if session.Role == domainModel.RoleManager && session.CompanyId == companyReq {
+		return nil
 	}
-	if companyIdUserReq != companyId {
-		return false, nil
+	return &errors.Error{
+		ErrorClient: "PermissionDenied",
 	}
-	// Check cache first
-	cacheKey := utilsCache.GetKeyUserIsManagerCompany(
-		utilsCrypto.GetHash(userReq.String()),
-		utilsCrypto.GetHash(companyId.String()),
-	)
-	if localCache != nil {
-		if v, err := localCache.Get(ctx, cacheKey); err == nil && v == "1" {
-			return true, nil
-		}
-	}
-	if distributedCache != nil {
-		if v, err := distributedCache.Get(ctx, cacheKey); err == nil && v == "1" {
-			// set local cache for faster access next time
-			if localCache != nil {
-				_ = localCache.SetTTL(ctx, cacheKey, "1", 300)
-			}
-			return true, nil
-		}
-	}
-	// Cache result if is manager
-	if localCache != nil {
-		_ = localCache.SetTTL(ctx, cacheKey, "1", 300)
-	}
-	if distributedCache != nil {
-		_ = distributedCache.SetTTL(ctx, cacheKey, "1", 600)
-	}
-	return true, nil
 }
 
-// Check permission user manager or admin for user
-func checkUserManagerOrAdminForUser(
-	ctx context.Context,
-	userReq uuid.UUID,
-	userReqCompanyId uuid.UUID,
-	user uuid.UUID,
-	role int,
-) (bool, error) {
-	// Instance use
-	var (
-		repo             domainRepo.IUserRepository
-		localCache       domainCache.ILocalCache
-		distributedCache domainCache.IDistributedCache
-	)
-	localCache, _ = domainCache.GetLocalCache()
-	distributedCache, _ = domainCache.GetDistributedCache()
-	repo = domainRepo.GetUserRepository()
-	// Check user role
-	if role >= domainModel.RoleManager {
-		return false, nil
+// check permission employee helper function
+func checkPermissionEmployee(ctx context.Context, session model.SessionReq, employeeReq uuid.UUID) *errors.Error {
+	if err := checkPermisionManager(ctx, session, employeeReq); err == nil {
+		return nil
 	}
-	if role == domainModel.RoleAdmin {
-		return true, nil
+	if session.UserId == employeeReq {
+		return nil
 	}
-	// Check cache first
-	cacheKey := utilsCache.GetKeyUserIsManagerCompanyForUser(
-		utilsCrypto.GetHash(userReq.String()),
-		utilsCrypto.GetHash(user.String()),
-	)
-	if localCache != nil {
-		if v, err := localCache.Get(ctx, cacheKey); err == nil && v == "1" {
-			return true, nil
-		}
+	return &errors.Error{
+		ErrorClient: "PermissionDenied",
 	}
-	if distributedCache != nil {
-		if v, err := distributedCache.Get(ctx, cacheKey); err == nil && v == "1" {
-			// set local cache for faster access next time
-			if localCache != nil {
-				_ = localCache.SetTTL(ctx, cacheKey, "1", 300)
-			}
-			return true, nil
-		}
-	}
-	// Check from repository
-	isManager, err := repo.UserIsManagerCompany(
-		ctx,
-		&domainModel.UserIsManagerCompanyInput{
-			UserID:    userReq,
-			CompanyID: userReqCompanyId,
-		},
-	)
-	if err != nil {
-		return false, err
-	}
-	// Cache result if is manager
-	if isManager {
-		if localCache != nil {
-			_ = localCache.SetTTL(ctx, cacheKey, "1", 300)
-		}
-		if distributedCache != nil {
-			_ = distributedCache.SetTTL(ctx, cacheKey, "1", 600)
-		}
-	}
-	return isManager, nil
 }

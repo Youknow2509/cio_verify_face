@@ -2,6 +2,8 @@ syntax = "proto3";
 
 package auth;
 
+import "google/protobuf/empty.proto";
+
 option go_package = "github.com/youknow2509/cio_verify_face/server/service_auth/proto/pb";
 
 // Auth service for inter-service communication
@@ -12,6 +14,7 @@ service AuthService {
     rpc ParseUserToken(ParseUserTokenRequest) returns (ParseUserTokenResponse);
     rpc ParseServiceToken(ParseServiceTokenRequest) returns (ParseServiceTokenResponse);
     rpc ParseDeviceToken(ParseDeviceTokenRequest) returns (ParseDeviceTokenResponse);
+    rpc HealthCheck(google.protobuf.Empty) returns (google.protobuf.Empty);
 }
 
 message CreateUserTokenRequest {
@@ -68,4 +71,7 @@ message ParseDeviceTokenRequest {
 
 message ParseDeviceTokenResponse {
     string device_id = 1;
+    string token_id = 2;
+    string company_id = 3;
+    int64 expires_at = 4;
 }

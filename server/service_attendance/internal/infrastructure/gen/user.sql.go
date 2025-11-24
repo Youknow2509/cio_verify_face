@@ -69,6 +69,72 @@ func (q *Queries) GetCompanyIdUser(ctx context.Context, employeeID pgtype.UUID) 
 	return company_id, err
 }
 
+const getListTimeShiftEmployee = `-- name: GetListTimeShiftEmployee :many
+SELECT 
+    ws.shift_id,
+    ws.start_time,
+    ws.end_time,
+    ws.grace_period_minutes,
+    ws.early_departure_minutes,
+    ws.work_days,
+    es.effective_from,
+    es.effective_to
+FROM 
+    employee_shifts es
+JOIN 
+    work_shifts ws ON es.shift_id = ws.shift_id
+WHERE 
+    ws.company_id = $1
+    AND es.employee_id = $2
+    AND es.is_active = TRUE
+    AND ws.is_active = TRUE
+`
+
+type GetListTimeShiftEmployeeParams struct {
+	CompanyID  pgtype.UUID
+	EmployeeID pgtype.UUID
+}
+
+type GetListTimeShiftEmployeeRow struct {
+	ShiftID               pgtype.UUID
+	StartTime             pgtype.Time
+	EndTime               pgtype.Time
+	GracePeriodMinutes    pgtype.Int4
+	EarlyDepartureMinutes pgtype.Int4
+	WorkDays              []int32
+	EffectiveFrom         pgtype.Date
+	EffectiveTo           pgtype.Date
+}
+
+func (q *Queries) GetListTimeShiftEmployee(ctx context.Context, arg GetListTimeShiftEmployeeParams) ([]GetListTimeShiftEmployeeRow, error) {
+	rows, err := q.db.Query(ctx, getListTimeShiftEmployee, arg.CompanyID, arg.EmployeeID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetListTimeShiftEmployeeRow
+	for rows.Next() {
+		var i GetListTimeShiftEmployeeRow
+		if err := rows.Scan(
+			&i.ShiftID,
+			&i.StartTime,
+			&i.EndTime,
+			&i.GracePeriodMinutes,
+			&i.EarlyDepartureMinutes,
+			&i.WorkDays,
+			&i.EffectiveFrom,
+			&i.EffectiveTo,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getUserBaseWithMail = `-- name: GetUserBaseWithMail :one
 SELECT user_id, email, salt, password_hash, role, is_locked 
 FROM users

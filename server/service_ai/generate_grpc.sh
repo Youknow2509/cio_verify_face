@@ -8,12 +8,12 @@ cd "$SCRIPT_DIR"
 mkdir -p app/grpc_generated
 
 # Generate Python gRPC code
-python -m grpc_tools.protoc \
+/Users/vinh/code/github.com/youknow2509/cio_verify_face/server/service_ai/.venv/bin/python -m grpc_tools.protoc \
     -I./protos \
     --python_out=./app/grpc_generated \
     --grpc_python_out=./app/grpc_generated \
     --pyi_out=./app/grpc_generated \
-    ./protos/face_service.proto ./protos/auth.proto
+    ./protos/face_service.proto ./protos/auth.proto ./protos/attendance.proto
 
 # Fix imports in generated files to use relative imports
 # This fixes the "No module named 'face_service_pb2'" error
@@ -21,10 +21,13 @@ if [[ "$OSTYPE" == "darwin"* ]]; then
     # macOS sed
     sed -i '' 's/^import face_service_pb2 as face__service__pb2/from . import face_service_pb2 as face__service__pb2/' app/grpc_generated/face_service_pb2_grpc.py
     sed -i '' 's/^import auth_pb2 as auth__pb2/from . import auth_pb2 as auth__pb2/' app/grpc_generated/auth_pb2_grpc.py
+    sed -i '' 's/^import attendance_pb2 as attendance__pb2/from . import attendance_pb2 as attendance__pb2/' app/grpc_generated/attendance_pb2_grpc.py
+
 else
     # Linux sed
     sed -i 's/^import face_service_pb2 as face__service__pb2/from . import face_service_pb2 as face__service__pb2/' app/grpc_generated/face_service_pb2_grpc.py
     sed -i 's/^import auth_pb2 as auth__pb2/from . import auth_pb2 as auth__pb2/' app/grpc_generated/auth_pb2_grpc.py
+    sed -i 's/^import attendance_pb2 as attendance__pb2/from . import attendance_pb2 as attendance__pb2/' app/grpc_generated/attendance_pb2_grpc.py
 fi
 
 # Create __init__.py in generated directory
@@ -37,12 +40,16 @@ from .face_service_pb2 import *
 from .face_service_pb2_grpc import *
 from .auth_pb2 import *
 from .auth_pb2_grpc import *
+from .attendance_pb2 import *
+from .attendance_pb2_grpc import *
 
 __all__ = [
     'face_service_pb2',
     'face_service_pb2_grpc',
     'auth_pb2',
     'auth_pb2_grpc',
+    'attendance_pb2',
+    'attendance_pb2_grpc',
 ]
 EOF
 

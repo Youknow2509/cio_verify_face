@@ -1,68 +1,232 @@
 package model
 
-import "github.com/google/uuid"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // ============================================
 // Attendance Record Model
 // ============================================
-
-// For GetAttendanceRecordRangeTimeWithUserId
-type GetAttendanceRecordRangeTimeWithUserIdInput struct {
-	CompanyID uuid.UUID
-	UserID    uuid.UUID
-	StartTime int64
-	EndTime   int64
-	Limit     int
-	Offset    int
+type DeleteAttendanceRecordNoShiftInput struct {
+	CompanyID uuid.UUID `json:"company_id"`
+	YearMonth string    `json:"year_month"`
+	Time      time.Time `json:"time"`
 }
 
-// For GetAttendanceRecordRangeTime
-type GetAttendanceRecordRangeTimeInput struct {
-	CompanyID uuid.UUID
-	DeviceID  uuid.UUID
-	StartTime int64
-	EndTime   int64
-	Limit     int
-	Offset    int
+type GetAttendanceRecordNoShiftInput struct {
+	CompanyID uuid.UUID `json:"company_id"`
+	YearMonth string    `json:"year_month"`
+	PageSize  int       `json:"page_size,omitempty"`
+	PageStage []byte    `json:"page_stage,omitempty"`
 }
 
-// Attendance Record structure
-type AttendanceRecord struct {
-	CompanyID           uuid.UUID
-	EmployeeID          uuid.UUID
-	DeviceID            uuid.UUID
-	RecordTime          int64
-	Type                int // 0: CHECK_IN, 1: CHECK_OUT
-	VerificationMethod  string
-	VerificationScore   float32
-	FaceImageURL        string
-	LocationCoordinates string // "lat,lng" format
-	Metadata            map[string]string
-	CreatedAt           int64
+type AttendanceRecordNoShiftOutput struct {
+	Records       []AttendanceRecordInfo `json:"records"`
+	PageStageNext []byte                 `json:"page_stage_next,omitempty"`
+	PageSize      int                    `json:"page_size,omitempty"`
 }
 
-// For adding a check-out record
-type AddCheckOutRecordInput struct {
-	CompanyID           uuid.UUID
-	EmployeeID          uuid.UUID
-	DeviceID            uuid.UUID
-	VerificationMethod  string
-	VerificationScore   float32
-	FaceImageURL        string
-	LocationCoordinates string // "lat,lng" format
-	Metadata            map[string]string
-	RecordTime          int64
+type AddAttendanceRecordNoShiftInput struct {
+	CompanyID           uuid.UUID `json:"company_id"`
+	YearMonth           string    `json:"year_month"`
+	RecordTime          time.Time `json:"record_time"`
+	EmployeeID          uuid.UUID `json:"employee_id"`
+	DeviceID            uuid.UUID `json:"device_id"`
+	VerificationMethod  string    `json:"verification_method"`
+	VerificationScore   float64   `json:"verification_score"`
+	FaceImageURL        string    `json:"face_image_url"`
+	LocationCoordinates string    `json:"location_coordinates"`
 }
 
-// For adding a check-in record
-type AddCheckInRecordInput struct {
-	CompanyID           uuid.UUID
-	EmployeeID          uuid.UUID
-	DeviceID            uuid.UUID
-	VerificationMethod  string
-	VerificationScore   float32
-	FaceImageURL        string
-	LocationCoordinates string // "lat,lng" format
-	Metadata            map[string]string
-	RecordTime          int64
+type GetFirstCheckInInput struct {
+	CompanyID      uuid.UUID `json:"company_id"`
+	EmployeeID     uuid.UUID `json:"employee_id"`
+	YearMonth      string    `json:"year_month"`
+	ShiftTimeStart time.Time `json:"shift_time_start"`
+	ShiftTimeEnd   time.Time `json:"shift_time_end"`
+	DateCheckOut   time.Time `json:"date_check_out"`
+}
+
+type GetFirstCheckInOutput struct {
+	RecordTime          time.Time `json:"record_time"`
+	DeviceID            uuid.UUID `json:"device_id"`
+	VerificationMethod  string    `json:"verification_method"`
+	VerificationScore   float64   `json:"verification_score"`
+	LocationCoordinates string    `json:"location_coordinates"`
+}
+
+type ShiftTimeEmployee struct {
+	ShiftID               uuid.UUID  `json:"shift_id"`
+	StartTime             time.Time  `json:"start_time"`
+	EndTime               time.Time  `json:"end_time"`
+	GracePeriodMinutes    int        `json:"grace_period_minutes"`
+	EarlyDepartureMinutes int        `json:"early_departure_minutes"`
+	WorkDays              []int32    `json:"work_days"`
+	EffectiveFrom         time.Time  `json:"effective_from"`
+	EffectiveTo           *time.Time `json:"effective_to"`
+}
+
+type GetListTimeShiftEmployeeInput struct {
+	EmployeeID uuid.UUID `json:"employee_id"`
+	CompanyID  uuid.UUID `json:"company_id"`
+}
+
+type DailySummariesEmployeeOutput struct {
+	Records       []DailySummariesEmployeeInfo `json:"records"`
+	PageStageNext []byte                       `json:"page_stage_next,omitempty"`
+	PageSize      int                          `json:"page_size,omitempty"`
+}
+
+type DailySummariesEmployeeInfo struct {
+	CompanyId         uuid.UUID `json:"company_id"`
+	SummaryMonth      string    `json:"summary_month"`
+	WorkDate          time.Time `json:"work_date"`
+	EmployeeId        uuid.UUID `json:"employee_id"`
+	ShiftId           uuid.UUID `json:"shift_id"`
+	ActualCheckIn     time.Time `json:"actual_check_in"`
+	ActualCheckOut    time.Time `json:"actual_check_out"`
+	AttendanceStatus  string    `json:"attendance_status"`
+	LateMinutes       int       `json:"late_minutes"`
+	EarlyLeaveMinutes int       `json:"early_leave_minutes"`
+	TotalWorkMinutes  int       `json:"total_work_minutes"`
+	Notes             string    `json:"notes"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+type DailySummariesCompanyOutput struct {
+	Records       []DailySummariesCompanyInfo `json:"records"`
+	PageStageNext []byte                      `json:"page_stage_next,omitempty"`
+	PageSize      int                         `json:"page_size,omitempty"`
+}
+
+type DailySummariesCompanyInfo struct {
+	CompanyId         uuid.UUID `json:"company_id"`
+	SummaryMonth      string    `json:"summary_month"`
+	WorkDate          time.Time `json:"work_date"`
+	EmployeeId        uuid.UUID `json:"employee_id"`
+	ShiftId           uuid.UUID `json:"shift_id"`
+	ActualCheckIn     time.Time `json:"actual_check_in"`
+	ActualCheckOut    time.Time `json:"actual_check_out"`
+	AttendanceStatus  string    `json:"attendance_status"`
+	LateMinutes       int       `json:"late_minutes"`
+	EarlyLeaveMinutes int       `json:"early_leave_minutes"`
+	TotalWorkMinutes  int       `json:"total_work_minutes"`
+	Notes             string    `json:"notes"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+type GetDailySummariesCompanyForEmployeeInput struct {
+	// company_id = uuid_company AND employee_id = uuid_employee AND summary_month = '2023-10';
+	CompanyID    uuid.UUID `json:"company_id"`
+	EmployeeID   uuid.UUID `json:"employee_id"`
+	SummaryMonth string    `json:"summary_month"`
+	PageSize     int       `json:"page_size,omitempty"`
+	PageStage    []byte    `json:"page_stage,omitempty"`
+}
+
+type GetDailySummariesCompanyInput struct {
+	// company_id = uuid_company AND summary_month = '2023-10' AND work_date = '2023-10-25';
+	CompanyID    uuid.UUID `json:"company_id"`
+	SummaryMonth string    `json:"summary_month"`
+	WorkDate     time.Time `json:"work_date"`
+	PageSize     int       `json:"page_size,omitempty"`
+	PageStage    []byte    `json:"page_stage,omitempty"`
+}
+
+type UpdateDailySummariesEmployeeInput struct {
+	CompanyID        uuid.UUID `json:"company_id"`
+	SummaryMonth     string    `json:"summary_month"`
+	WorkDate         time.Time `json:"work_date"`
+	EmployeeID       uuid.UUID `json:"employee_id"`
+	Notes            string    `json:"notes"`
+	AttendanceStatus int       `json:"attendance_status"`
+}
+
+type DeleteDailySummariesInput struct {
+	CompanyID    uuid.UUID `json:"company_id"`
+	SummaryMonth string    `json:"summary_month"`
+	WorkDate     time.Time `json:"work_date"`
+}
+
+type DeleteDailySummariesEmployeeInput struct {
+	CompanyID    uuid.UUID `json:"company_id"`
+	SummaryMonth string    `json:"summary_month"`
+	EmployeeID   uuid.UUID `json:"employee_id"`
+	WorkDate     time.Time `json:"work_date"`
+}
+
+type DeleteAttendanceRecordInput struct {
+	CompanyID  uuid.UUID `json:"company_id"`
+	YearMonth  string    `json:"year_month"`
+	RecordTime time.Time `json:"record_time"`
+	EmployeeID uuid.UUID `json:"employee_id"`
+}
+
+type GetAttendanceRecordCompanyForEmployeeInput struct {
+	CompanyID  uuid.UUID `json:"company_id"`
+	YearMonth  string    `json:"year_month"`
+	EmployeeID uuid.UUID `json:"employee_id"`
+	PageSize   int       `json:"page_size,omitempty"`
+	PageStage  []byte    `json:"page_stage,omitempty"`
+}
+
+type AttendanceRecordOutput struct {
+	Records       []AttendanceRecordInfo `json:"records"`
+	PageStageNext []byte                 `json:"page_stage_next,omitempty"`
+	PageSize      int                    `json:"page_size,omitempty"`
+}
+
+type AttendanceRecordInfo struct {
+	CompanyID           uuid.UUID         `json:"company_id"`
+	YearMonth           string            `json:"year_month"`
+	RecordTime          time.Time         `json:"record_time"`
+	EmployeeID          uuid.UUID         `json:"employee_id"`
+	DeviceID            uuid.UUID         `json:"device_id"`
+	RecordType          int               `json:"record_type,omitempty"`
+	VerificationMethod  string            `json:"verification_method"`
+	VerificationScore   float64           `json:"verification_score"`
+	FaceImageURL        string            `json:"face_image_url"`
+	LocationCoordinates string            `json:"location_coordinates"`
+	Metadata            map[string]string `json:"metadata,omitempty"`
+	SyncStatus          string            `json:"sync_status,omitempty"`
+	CreatedAt           time.Time         `json:"created_at"`
+}
+
+type GetAttendanceRecordCompanyInput struct {
+	CompanyID uuid.UUID `json:"company_id"`
+	YearMonth string    `json:"year_month"`
+	PageSize  int       `json:"page_size,omitempty"`
+	PageStage []byte    `json:"page_stage,omitempty"`
+}
+
+type AddDailySummariesInput struct {
+	CompanyID         uuid.UUID `json:"company_id"`
+	SummaryMonth      string    `json:"summary_month"`
+	WorkDate          time.Time `json:"work_date"`
+	EmployeeID        uuid.UUID `json:"employee_id"`
+	ShiftID           uuid.UUID `json:"shift_id"`
+	ActualCheckIn     time.Time `json:"actual_check_in"`
+	ActualCheckOut    time.Time `json:"actual_check_out"`
+	AttendanceStatus  int       `json:"attendance_status"`
+	LateMinutes       int       `json:"late_minutes"`
+	EarlyLeaveMinutes int       `json:"early_leave_minutes"`
+	TotalWorkMinutes  int       `json:"total_work_minutes"`
+	Notes             string    `json:"notes"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+type AddAttendanceRecordInput struct {
+	CompanyID           uuid.UUID         `json:"company_id"`
+	EmployeeID          uuid.UUID         `json:"employee_id"`
+	YearMonth           string            `json:"year_month"`
+	RecordTime          time.Time         `json:"record_time"`
+	DeviceID            uuid.UUID         `json:"device_id"`
+	RecordType          int               `json:"record_type"`
+	VerificationMethod  string            `json:"verification_method"`
+	VerificationScore   float64           `json:"verification_score"`
+	FaceImageURL        string            `json:"face_image_url"`
+	LocationCoordinates string            `json:"location_coordinates"`
+	Metadata            map[string]string `json:"metadata"`
 }

@@ -64,7 +64,6 @@ func (m *HTTPAuthMiddleware) Apply() gin.HandlerFunc {
 		c.Set("role", sessionInfo.Role)
 		c.Set("session_id", sessionInfo.SessionID)
 		c.Set("company_id", sessionInfo.CompanyID)
-
 		// Continue to next handler
 		c.Next()
 	}

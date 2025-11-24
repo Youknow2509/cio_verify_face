@@ -45,8 +45,8 @@ func (s *AnalyticServiceImpl) GetDailyReport(ctx context.Context, input *model.D
 		)
 	}
 
-	// Authorization check
-	if err := s.checkAuthorization(input.Session, input.CompanyID); err != nil {
+	// Authorization check: Require CompanyAdmin role minimum, no employee self-access for company-wide reports
+	if err := s.checkAuthorization(input.Session, input.CompanyID, domainModel.RoleCompanyAdmin, false); err != nil {
 		return nil, err
 	}
 
@@ -200,8 +200,8 @@ func (s *AnalyticServiceImpl) GetDailyReport(ctx context.Context, input *model.D
 
 // GetSummaryReport returns monthly summary report
 func (s *AnalyticServiceImpl) GetSummaryReport(ctx context.Context, input *model.SummaryReportInput) (*model.SummaryReportOutput, *applicationErrors.Error) {
-	// Authorization check
-	if err := s.checkAuthorization(input.Session, input.CompanyID); err != nil {
+	// Authorization check: Require CompanyAdmin role, but allow employees to view their own summary
+	if err := s.checkAuthorization(input.Session, input.CompanyID, domainModel.RoleCompanyAdmin, true); err != nil {
 		return nil, err
 	}
 
@@ -219,6 +219,19 @@ func (s *AnalyticServiceImpl) GetSummaryReport(ctx context.Context, input *model
 	if err != nil {
 		return nil, applicationErrors.ErrInvalidInput.WithDetails("invalid company_id")
 	}
+
+	// Check if user is an employee - if so, return only their own summary
+	userRole := domainModel.Role(input.Session.Role)
+	if userRole == domainModel.RoleEmployee {
+		// Employee can only view their own data
+		employeeID, parseErr := uuid.Parse(input.Session.UserID)
+		if parseErr != nil {
+			return nil, applicationErrors.ErrInvalidInput.WithDetails("invalid user_id in session")
+		}
+		return s.getEmployeeSummaryReport(ctx, companyID, employeeID, input.Month, startDate, endDate)
+	}
+
+	// For CompanyAdmin and SystemAdmin: return full company summary
 	monthKey := cacheutil.BuildDailyByMonthKey(companyID, input.Month)
 	if v, ok := cacheutil.GetLocal(monthKey); ok {
 		if out, ok2 := v.(*model.SummaryReportOutput); ok2 {
@@ -288,10 +301,115 @@ func (s *AnalyticServiceImpl) GetSummaryReport(ctx context.Context, input *model
 	return out, nil
 }
 
+// getEmployeeSummaryReport returns monthly summary report for a specific employee
+func (s *AnalyticServiceImpl) getEmployeeSummaryReport(ctx context.Context, companyID, employeeID uuid.UUID, month string, startDate, endDate time.Time) (*model.SummaryReportOutput, *applicationErrors.Error) {
+	// Fetch employee's daily summaries for the month
+	summaries, err := s.repo.GetDailySummariesByEmployeeMonth(ctx, companyID, employeeID, month)
+	if err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("GetDailySummariesByEmployeeMonth failed", "error", err.Error(), "employee_id", employeeID.String())
+		}
+		return nil, applicationErrors.ErrDatabaseError.WithDetails(err.Error())
+	}
+
+	totalWorkingDays := endDate.Day()
+	totalPresentDays := 0
+	totalWorkingMinutes := 0
+	totalOvertimeMinutes := 0
+
+	for _, summary := range summaries {
+		if summary.AttendanceStatus == 0 { // PRESENT
+			totalPresentDays++
+		}
+		totalWorkingMinutes += summary.TotalWorkMinutes
+		totalOvertimeMinutes += summary.OvertimeMinutes
+	}
+
+	// Calculate attendance rate for this employee
+	averageAttendanceRate := 0.0
+	if totalWorkingDays > 0 {
+		averageAttendanceRate = float64(totalPresentDays) / float64(totalWorkingDays) * 100
+	}
+
+	// For employee view, weekly summary is calculated only for this employee
+	weeklySummary := s.calculateWeeklySummaryForEmployee(ctx, startDate, endDate, companyID, employeeID)
+
+	// Top/Low attendance lists don't make sense for single employee, return empty
+	out := &model.SummaryReportOutput{
+		Month:                  month,
+		TotalWorkingDays:       totalWorkingDays,
+		TotalEmployees:         1, // Only this employee
+		AverageAttendanceRate:  roundFloat(averageAttendanceRate, 2),
+		TotalWorkingHours:      totalWorkingMinutes / 60,
+		TotalOvertimeHours:     totalOvertimeMinutes / 60,
+		WeeklySummary:          weeklySummary,
+		TopAttendanceEmployees: []model.EmployeeAttendanceStat{}, // Not applicable for single employee
+		LowAttendanceEmployees: []model.EmployeeAttendanceStat{}, // Not applicable for single employee
+	}
+
+	if global.Logger != nil {
+		global.Logger.Info("GetEmployeeSummaryReport computed", "employee_id", employeeID.String(), "month", month, "present_days", totalPresentDays)
+	}
+
+	return out, nil
+}
+
+// calculateWeeklySummaryForEmployee calculates weekly summary for a specific employee
+func (s *AnalyticServiceImpl) calculateWeeklySummaryForEmployee(ctx context.Context, startDate, endDate time.Time, companyID, employeeID uuid.UUID) []model.WeeklySummary {
+	weeklySummaries := []model.WeeklySummary{}
+	currentDate := startDate
+	weekNumber := 1
+
+	for currentDate.Before(endDate) || currentDate.Equal(endDate) {
+		weekStart := currentDate
+		weekEnd := currentDate.AddDate(0, 0, 6)
+		if weekEnd.After(endDate) {
+			weekEnd = endDate
+		}
+
+		// Get attendance data for this week for this specific employee
+		weekSummaries, err := s.repo.GetDailySummariesByEmployeeDateRange(ctx, companyID, employeeID, weekStart, weekEnd)
+		if err != nil {
+			currentDate = currentDate.AddDate(0, 0, 7)
+			weekNumber++
+			continue
+		}
+
+		totalPresentDays := 0
+		totalMinutes := 0
+		for _, summary := range weekSummaries {
+			if summary.AttendanceStatus == 0 { // PRESENT
+				totalPresentDays++
+			}
+			totalMinutes += summary.TotalWorkMinutes
+		}
+
+		// For employee, attendance rate is based on actual working days in the week
+		daysInWeek := int(weekEnd.Sub(weekStart).Hours()/24) + 1
+		attendanceRate := 0.0
+		if daysInWeek > 0 {
+			attendanceRate = float64(totalPresentDays) / float64(daysInWeek) * 100
+		}
+
+		weeklySummaries = append(weeklySummaries, model.WeeklySummary{
+			Week:           weekNumber,
+			StartDate:      weekStart.Format("2006-01-02"),
+			EndDate:        weekEnd.Format("2006-01-02"),
+			AttendanceRate: roundFloat(attendanceRate, 2),
+			TotalHours:     totalMinutes / 60,
+		})
+
+		currentDate = currentDate.AddDate(0, 0, 7)
+		weekNumber++
+	}
+
+	return weeklySummaries
+}
+
 // ExportReport exports attendance report to file
 func (s *AnalyticServiceImpl) ExportReport(ctx context.Context, input *model.ExportReportInput) (*model.ExportReportOutput, *applicationErrors.Error) {
-	// Authorization check
-	if err := s.checkAuthorization(input.Session, input.CompanyID); err != nil {
+	// Authorization check: Require CompanyAdmin role, but allow employees to export their own data
+	if err := s.checkAuthorization(input.Session, input.CompanyID, domainModel.RoleCompanyAdmin, true); err != nil {
 		return nil, err
 	}
 
@@ -316,6 +434,17 @@ func (s *AnalyticServiceImpl) ExportReport(ctx context.Context, input *model.Exp
 	companyID, err := uuid.Parse(*input.CompanyID)
 	if err != nil {
 		return nil, applicationErrors.ErrInvalidInput.WithDetails("invalid company_id")
+	}
+
+	// Check if user is an employee - if so, filter to their own data only
+	userRole := domainModel.Role(input.Session.Role)
+	var employeeFilterID *uuid.UUID
+	if userRole == domainModel.RoleEmployee {
+		employeeID, parseErr := uuid.Parse(input.Session.UserID)
+		if parseErr != nil {
+			return nil, applicationErrors.ErrInvalidInput.WithDetails("invalid user_id in session")
+		}
+		employeeFilterID = &employeeID
 	}
 
 	// Normalize format (excel -> csv)
@@ -421,7 +550,17 @@ func (s *AnalyticServiceImpl) ExportReport(ctx context.Context, input *model.Exp
 	}
 
 	// Fetch data from ScyllaDB (cache miss)
-	summaries, derr := s.repo.GetDailySummariesByDateRange(ctx, companyID, startDate, endDate)
+	var summaries []*domainModel.DailySummary
+	var derr error
+
+	if employeeFilterID != nil {
+		// Employee: fetch only their own data
+		summaries, derr = s.repo.GetDailySummariesByEmployeeDateRange(ctx, companyID, *employeeFilterID, startDate, endDate)
+	} else {
+		// Admin: fetch all company data
+		summaries, derr = s.repo.GetDailySummariesByDateRange(ctx, companyID, startDate, endDate)
+	}
+
 	if derr != nil {
 		return nil, applicationErrors.ErrDatabaseError.WithDetails(derr.Error())
 	}
@@ -881,7 +1020,10 @@ func (s *AnalyticServiceImpl) publishExportEmail(ctx context.Context, email, url
 }
 
 // checkAuthorization checks if the user has permission to access the requested company data
-func (s *AnalyticServiceImpl) checkAuthorization(session *model.SessionInfo, requestedCompanyID *string) *applicationErrors.Error {
+// Returns the effective role that determines data access scope
+// minRole: minimum role required to access this endpoint (RoleSystemAdmin=0, RoleCompanyAdmin=1, RoleEmployee=2)
+// allowEmployeeSelfAccess: if true, employees can access their own data even if minRole is higher
+func (s *AnalyticServiceImpl) checkAuthorization(session *model.SessionInfo, requestedCompanyID *string, minRole domainModel.Role, allowEmployeeSelfAccess bool) *applicationErrors.Error {
 	if session == nil {
 		return applicationErrors.ErrUnauthorized.WithDetails("session info required")
 	}
@@ -890,28 +1032,47 @@ func (s *AnalyticServiceImpl) checkAuthorization(session *model.SessionInfo, req
 		return applicationErrors.ErrInvalidInput.WithDetails("company_id is required")
 	}
 
-	// System admin (root) has full access
-	if session.Role == int32(domainModel.RoleSystemAdmin) {
+	userRole := domainModel.Role(session.Role)
+
+	// 1. System admin has full access to all companies
+	if userRole == domainModel.RoleSystemAdmin {
 		return nil
 	}
 
-	// Company admin/manager can only access their own company data
-	if session.Role == int32(domainModel.RoleCompanyAdmin) {
-		// Check if company_id in session matches requested company_id
-		if session.CompanyID != *requestedCompanyID {
-			if global.Logger != nil {
-				global.Logger.Warn("Authorization failed: company mismatch",
-					"user_id", session.UserID,
-					"session_company_id", session.CompanyID,
-					"requested_company_id", *requestedCompanyID)
-			}
-			return applicationErrors.ErrForbidden.WithDetails("access denied: you can only access your own company data")
+	// 2. Check company_id match for non-system-admin users
+	// Both CompanyAdmin and Employee must belong to the requested company
+	if session.CompanyID != *requestedCompanyID {
+		if global.Logger != nil {
+			global.Logger.Warn("Authorization failed: company mismatch",
+				"user_id", session.UserID,
+				"session_company_id", session.CompanyID,
+				"requested_company_id", *requestedCompanyID)
 		}
-		return nil
+		return applicationErrors.ErrForbidden.WithDetails("access denied: you can only access your own company data")
 	}
 
-	// Employees (role 0) should not access analytics
-	return applicationErrors.ErrForbidden.WithDetails("access denied: insufficient permissions")
+	// 3. Check if user's role meets the minimum required role
+	// Lower role value = higher privilege (SystemAdmin=0, CompanyAdmin=1, Employee=2)
+	if userRole > minRole {
+		// User doesn't have sufficient privileges
+		// Check if employee self-access is allowed for this endpoint
+		if !allowEmployeeSelfAccess || userRole != domainModel.RoleEmployee {
+			if global.Logger != nil {
+				global.Logger.Warn("Authorization failed: insufficient role",
+					"user_id", session.UserID,
+					"user_role", userRole,
+					"min_role", minRole,
+					"allow_employee_self_access", allowEmployeeSelfAccess)
+			}
+			return applicationErrors.ErrForbidden.WithDetails("access denied: insufficient permissions")
+		}
+		// If allowEmployeeSelfAccess is true and user is employee,
+		// authorization passes but business logic must filter data to employee's own records
+	}
+
+	// 4. CompanyAdmin has passed: they can see all company data
+	// 5. Employee with allowEmployeeSelfAccess has passed: business logic must filter to their own data
+	return nil
 }
 
 // jsonMarshal keeps minimal deps by using stdlib encoding/json via indirection
@@ -939,4 +1100,107 @@ func localTTLFrom(distSeconds int) time.Duration {
 		return dist / 2
 	}
 	return time.Second
+}
+
+// ============================================
+// Attendance Records methods implementation
+// ============================================
+
+// GetAttendanceRecords retrieves attendance records for a company and month
+func (s *AnalyticServiceImpl) GetAttendanceRecords(ctx context.Context, companyID uuid.UUID, yearMonth string, limit int) ([]*domainModel.AttendanceRecord, error) {
+	return s.repo.GetAttendanceRecords(ctx, companyID, yearMonth, limit)
+}
+
+// GetAttendanceRecordsByTimeRange retrieves attendance records within a time range
+func (s *AnalyticServiceImpl) GetAttendanceRecordsByTimeRange(ctx context.Context, companyID uuid.UUID, yearMonth string, startTime, endTime time.Time) ([]*domainModel.AttendanceRecord, error) {
+	return s.repo.GetAttendanceRecordsByTimeRange(ctx, companyID, yearMonth, startTime, endTime)
+}
+
+// GetAttendanceRecordsByEmployee retrieves attendance records for a specific employee
+func (s *AnalyticServiceImpl) GetAttendanceRecordsByEmployee(ctx context.Context, companyID uuid.UUID, yearMonth string, employeeID uuid.UUID) ([]*domainModel.AttendanceRecord, error) {
+	return s.repo.GetAttendanceRecordsByEmployee(ctx, companyID, yearMonth, employeeID)
+}
+
+// GetAttendanceRecordsByUser retrieves attendance records indexed by user
+func (s *AnalyticServiceImpl) GetAttendanceRecordsByUser(ctx context.Context, companyID, employeeID uuid.UUID, yearMonth string, limit int) ([]*domainModel.AttendanceRecordByUser, error) {
+	return s.repo.GetAttendanceRecordsByUser(ctx, companyID, employeeID, yearMonth, limit)
+}
+
+// ============================================
+// Daily Summary methods implementation
+// ============================================
+
+// GetDailySummaries retrieves daily summaries for a month
+func (s *AnalyticServiceImpl) GetDailySummaries(ctx context.Context, companyID uuid.UUID, month string) ([]*domainModel.DailySummary, error) {
+	return s.repo.GetDailySummariesByMonth(ctx, companyID, month)
+}
+
+// GetDailySummaryByEmployeeDate retrieves a specific daily summary
+func (s *AnalyticServiceImpl) GetDailySummaryByEmployeeDate(ctx context.Context, companyID uuid.UUID, month string, workDate time.Time, employeeID uuid.UUID) (*domainModel.DailySummary, error) {
+	return s.repo.GetDailySummaryByEmployeeDate(ctx, companyID, month, workDate, employeeID)
+}
+
+// GetDailySummariesByUser retrieves daily summaries for a user
+func (s *AnalyticServiceImpl) GetDailySummariesByUser(ctx context.Context, companyID, employeeID uuid.UUID, month string) ([]*domainModel.DailySummaryByUser, error) {
+	return s.repo.GetDailySummariesByUser(ctx, companyID, employeeID, month)
+}
+
+// ============================================
+// Audit Logs methods implementation
+// ============================================
+
+// GetAuditLogs retrieves audit logs for a company and month
+func (s *AnalyticServiceImpl) GetAuditLogs(ctx context.Context, companyID uuid.UUID, yearMonth string, limit int) ([]*domainModel.AuditLog, error) {
+	return s.repo.GetAuditLogs(ctx, companyID, yearMonth, limit)
+}
+
+// GetAuditLogsByTimeRange retrieves audit logs within a time range
+func (s *AnalyticServiceImpl) GetAuditLogsByTimeRange(ctx context.Context, companyID uuid.UUID, yearMonth string, startTime, endTime time.Time) ([]*domainModel.AuditLog, error) {
+	return s.repo.GetAuditLogsByTimeRange(ctx, companyID, yearMonth, startTime, endTime)
+}
+
+// CreateAuditLog creates a new audit log
+func (s *AnalyticServiceImpl) CreateAuditLog(ctx context.Context, log *domainModel.AuditLog) error {
+	// Ensure YearMonth is set
+	if log.YearMonth == "" {
+		log.YearMonth = log.CreatedAt.Format("2006-01")
+	}
+	return s.repo.CreateAuditLog(ctx, log)
+}
+
+// ============================================
+// Face Enrollment Logs methods implementation
+// ============================================
+
+// GetFaceEnrollmentLogs retrieves face enrollment logs for a company and month
+func (s *AnalyticServiceImpl) GetFaceEnrollmentLogs(ctx context.Context, companyID uuid.UUID, yearMonth string, limit int) ([]*domainModel.FaceEnrollmentLog, error) {
+	return s.repo.GetFaceEnrollmentLogs(ctx, companyID, yearMonth, limit)
+}
+
+// GetFaceEnrollmentLogsByEmployee retrieves face enrollment logs for a specific employee
+func (s *AnalyticServiceImpl) GetFaceEnrollmentLogsByEmployee(ctx context.Context, companyID uuid.UUID, yearMonth string, employeeID uuid.UUID) ([]*domainModel.FaceEnrollmentLog, error) {
+	return s.repo.GetFaceEnrollmentLogsByEmployee(ctx, companyID, yearMonth, employeeID)
+}
+
+// ============================================
+// Attendance Records No Shift methods implementation
+// ============================================
+
+// GetAttendanceRecordsNoShift retrieves attendance records without shift
+func (s *AnalyticServiceImpl) GetAttendanceRecordsNoShift(ctx context.Context, companyID uuid.UUID, yearMonth string, limit int) ([]*domainModel.AttendanceRecordNoShift, error) {
+	return s.repo.GetAttendanceRecordsNoShift(ctx, companyID, yearMonth, limit)
+}
+
+// ============================================
+// Additional helper methods
+// ============================================
+
+// GetAttendanceRecordsByUserTimeRange retrieves attendance records for a user within a time range
+func (s *AnalyticServiceImpl) GetAttendanceRecordsByUserTimeRange(ctx context.Context, companyID, employeeID uuid.UUID, yearMonth string, startTime, endTime time.Time) ([]*domainModel.AttendanceRecordByUser, error) {
+	return s.repo.GetAttendanceRecordsByUserTimeRange(ctx, companyID, employeeID, yearMonth, startTime, endTime)
+}
+
+// GetDailySummaryByUserDate retrieves a specific daily summary for a user and date
+func (s *AnalyticServiceImpl) GetDailySummaryByUserDate(ctx context.Context, companyID, employeeID uuid.UUID, month string, workDate time.Time) (*domainModel.DailySummaryByUser, error) {
+	return s.repo.GetDailySummaryByUserDate(ctx, companyID, employeeID, month, workDate)
 }

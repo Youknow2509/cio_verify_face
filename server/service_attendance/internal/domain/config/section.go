@@ -7,23 +7,25 @@ package config
 // ==========================================================
 type (
 	Setting struct {
-		Grpc              GrpcSetting          `mapstructure:"grpc"`
-		Server            ServerSetting        `mapstructure:"server"`
-		WsServer          WsSetting            `mapstructure:"ws"`
-		Cassandra         CassandraSetting     `mapstructure:"cassandra"`
-		Elasticsearch     ElasticsearchSetting `mapstructure:"elasticsearch"`
-		Jaeger            JaegerSetting        `mapstructure:"jaeger"`
-		Kafka             KafkaSetting         `mapstructure:"kafka"`
-		Memcached         MemcachedSetting     `mapstructure:"memcached"`
-		Minio             MinioSetting         `mapstructure:"minio"`
-		Postgres          PostgresSetting      `mapstructure:"postgres"`
-		Redis             RedisSetting         `mapstructure:"redis"`
-		ScyllaDb          ScyllaDbSetting      `mapstructure:"scylladb"`
-		Logstash          LogstashSetting      `mapstructure:"logstash"`
-		SMTP              SMTPSetting          `mapstructure:"smtp"`
-		JWT               JWTSetting           `mapstructure:"jwt"`
-		Logger            LoggerSetting        `mapstructure:"logger"`
-		RateLimitPolicies []RateLimitPolicy    `mapstructure:"policy_rate_limit"`
+		WorkerAttendance  WorkerAttendanceSetting `mapstructure:"worker_attendance"`
+		ServiceAuth       ServiceAuthSetting      `mapstructure:"service_auth"`
+		Grpc              GrpcSetting             `mapstructure:"grpc"`
+		Server            ServerSetting           `mapstructure:"server"`
+		WsServer          WsSetting               `mapstructure:"ws"`
+		Cassandra         CassandraSetting        `mapstructure:"cassandra"`
+		Elasticsearch     ElasticsearchSetting    `mapstructure:"elasticsearch"`
+		Jaeger            JaegerSetting           `mapstructure:"jaeger"`
+		Kafka             KafkaSetting            `mapstructure:"kafka"`
+		Memcached         MemcachedSetting        `mapstructure:"memcached"`
+		Minio             MinioSetting            `mapstructure:"minio"`
+		Postgres          PostgresSetting         `mapstructure:"postgres"`
+		Redis             RedisSetting            `mapstructure:"redis"`
+		ScyllaDb          ScyllaDbSetting         `mapstructure:"scylladb"`
+		Logstash          LogstashSetting         `mapstructure:"logstash"`
+		SMTP              SMTPSetting             `mapstructure:"smtp"`
+		JWT               JWTSetting              `mapstructure:"jwt"`
+		Logger            LoggerSetting           `mapstructure:"logger"`
+		RateLimitPolicies []RateLimitPolicy       `mapstructure:"policy_rate_limit"`
 	}
 )
 
@@ -32,6 +34,31 @@ type (
 //	List of configuration sections
 //
 // ==========================================================
+
+// WorkerAttendanceSetting
+type WorkerAttendanceSetting struct {
+	NumWorkers     int `mapstructure:"num_workers"`
+	SizeBufferChan int `mapstructure:"size_buffer_chan"`
+}
+
+// ServiceAuthSetting
+type ServiceAuthSetting struct {
+	Enabled  bool   `mapstructure:"enabled"`
+	GrpcAddr string `mapstructure:"grpc_addr"`
+	Tls      struct {
+		Enabled  bool   `mapstructure:"enabled"`
+		CertFile string `mapstructure:"cert_file"`
+		KeyFile  string `mapstructure:"key_file"`
+	}
+	// Keepalive Policy
+	KeepaliveTimeMs                   int  `mapstructure:"keepalive_time_ms"`
+	KeepaliveTimeoutMs                int  `mapstructure:"keepalive_timeout_ms"`
+	KeepalivePermitWithoutCalls       bool `mapstructure:"keepalive_permit_without_calls"`
+	Http2MaxPingsWithoutData          int  `mapstructure:"http2_max_pings_without_data"`
+	Http2MinTimeBetweenPingsMs        int  `mapstructure:"http2_min_time_between_pings_ms"`
+	Http2MinPingIntervalWithoutDataMs int  `mapstructure:"http2_min_ping_interval_without_data_ms"`
+}
+
 // RateLimitPolicySetting
 type RateLimitPolicySetting struct {
 	Policies []RateLimitPolicy
@@ -64,6 +91,12 @@ type GrpcSetting struct {
 		CertFile string `mapstructure:"cert_file"`
 		KeyFile  string `mapstructure:"key_file"`
 	}
+	// ServerParameters
+	KeepaliveTimeMs    int `mapstructure:"keepalive_time_ms"`
+	KeepaliveTimeoutMs int `mapstructure:"keepalive_timeout_ms"`
+	// EnforcementPolicy
+	Http2MinTimeBetweenPingsMs  int  `mapstructure:"http2_min_time_between_pings_ms"`
+	KeepalivePermitWithoutCalls bool `mapstructure:"keepalive_permit_without_calls"`
 }
 
 // WsSetting

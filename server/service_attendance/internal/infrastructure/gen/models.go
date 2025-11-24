@@ -8,35 +8,8 @@ import (
 	"net/netip"
 
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/pgvector/pgvector-go"
 )
-
-type AttendanceException struct {
-	ExceptionID       pgtype.UUID
-	SummaryID         pgtype.UUID
-	ExceptionType     int16
-	Reason            string
-	RequestedBy       pgtype.UUID
-	ApprovedBy        pgtype.UUID
-	Status            pgtype.Int2
-	AdjustmentMinutes pgtype.Int4
-	CreatedAt         pgtype.Timestamptz
-	UpdatedAt         pgtype.Timestamptz
-}
-
-type AttendanceRecord struct {
-	RecordID            pgtype.UUID
-	EmployeeID          pgtype.UUID
-	DeviceID            pgtype.UUID
-	Timestamp           pgtype.Timestamptz
-	RecordType          int32
-	VerificationMethod  pgtype.Text
-	VerificationScore   pgtype.Numeric
-	FaceImageUrl        pgtype.Text
-	LocationCoordinates pgtype.Point
-	Metadata            []byte
-	SyncStatus          pgtype.Int2
-	CreatedAt           pgtype.Timestamptz
-}
 
 type AuditLog struct {
 	LogID        pgtype.UUID
@@ -79,29 +52,6 @@ type CompanySetting struct {
 	UpdatedAt    pgtype.Timestamptz
 }
 
-type DailyAttendanceSummary struct {
-	SummaryID            pgtype.UUID
-	EmployeeID           pgtype.UUID
-	ShiftID              pgtype.UUID
-	WorkDate             pgtype.Date
-	ScheduledIn          pgtype.Time
-	ScheduledOut         pgtype.Time
-	ActualCheckIn        pgtype.Timestamptz
-	ActualCheckOut       pgtype.Timestamptz
-	TotalWorkMinutes     pgtype.Int4
-	BreakMinutes         pgtype.Int4
-	OvertimeMinutes      pgtype.Int4
-	LateMinutes          pgtype.Int4
-	EarlyLeaveMinutes    pgtype.Int4
-	Status               int32
-	AttendancePercentage pgtype.Numeric
-	Notes                pgtype.Text
-	ApprovedBy           pgtype.UUID
-	ApprovedAt           pgtype.Timestamptz
-	CreatedAt            pgtype.Timestamptz
-	UpdatedAt            pgtype.Timestamptz
-}
-
 type Device struct {
 	DeviceID        pgtype.UUID
 	CompanyID       pgtype.UUID
@@ -135,13 +85,45 @@ type Employee struct {
 }
 
 type EmployeeShift struct {
-	EmployeeShiftID pgtype.UUID
-	EmployeeID      pgtype.UUID
-	ShiftID         pgtype.UUID
-	EffectiveFrom   pgtype.Date
-	EffectiveTo     pgtype.Date
-	IsActive        pgtype.Bool
+	EmployeeID    pgtype.UUID
+	ShiftID       pgtype.UUID
+	EffectiveFrom pgtype.Date
+	EffectiveTo   pgtype.Date
+	IsActive      pgtype.Bool
+	CreatedAt     pgtype.Timestamptz
+}
+
+type FaceAuditLog struct {
+	LogID           pgtype.UUID
+	ProfileID       pgtype.UUID
+	UserID          pgtype.UUID
+	Operation       string
+	Status          string
+	DeviceID        pgtype.Text
+	IpAddress       pgtype.Text
+	SimilarityScore pgtype.Float8
+	LivenessScore   pgtype.Float8
+	QualityScore    pgtype.Float8
+	Metadata        []byte
+	ErrorMessage    pgtype.Text
 	CreatedAt       pgtype.Timestamptz
+}
+
+type FaceProfile struct {
+	ProfileID        pgtype.UUID
+	UserID           pgtype.UUID
+	CompanyID        pgtype.UUID
+	Embedding        pgvector.Vector
+	EmbeddingVersion string
+	EnrollImagePath  pgtype.Text
+	IsPrimary        bool
+	QualityScore     pgtype.Float8
+	MetaData         []byte
+	CreatedAt        pgtype.Timestamptz
+	UpdatedAt        pgtype.Timestamptz
+	DeletedAt        pgtype.Timestamptz
+	Indexed          bool
+	IndexVersion     int32
 }
 
 type SystemSetting struct {

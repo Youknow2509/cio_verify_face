@@ -80,3 +80,7 @@ config/config.yaml
 
 # exports
 /exports
+
+# Go binaries
+server
+/server

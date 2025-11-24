@@ -18,9 +18,9 @@
     "host": "localhost:8080",
     "basePath": "/api",
     "paths": {
-        "/v1/attendance/check_in": {
+        "/v1/attendance": {
             "post": {
-                "description": "User check-in for attendance",
+                "description": "Add attendance record",
                 "consumes": [
                     "application/json"
                 ],
@@ -30,116 +30,22 @@
                 "tags": [
                     "Attendance"
                 ],
-                "summary": "Check In attendance",
+                "summary": "Add attendance record",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Bearer token",
-                        "name": "authorization",
+                        "description": "With the bearer started",
+                        "name": "Authorization",
                         "in": "header",
                         "required": true
                     },
                     {
-                        "description": "Request body check-in",
+                        "description": "Request body add attendance record",
                         "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.CheckInRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ResponseData"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrResponseData"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/attendance/check_out": {
-            "post": {
-                "description": "User check-out for attendance",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Attendance"
-                ],
-                "summary": "Check Out attendance",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "Request body check-out",
-                        "name": "request",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.CheckOutRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ResponseData"
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "$ref": "#/definitions/dto.ErrResponseData"
-                        }
-                    }
-                }
-            }
-        },
-        "/v1/attendance/history/my": {
-            "post": {
-                "description": "Retrieve the attendance history for the current user",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Attendance"
-                ],
-                "summary": "Get My Attendance History",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Bearer token",
-                        "name": "authorization",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "description": "Request body to get my attendance records",
-                        "name": "req",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/dto.GetMyAttendanceRecordsRequest"
+                            "$ref": "#/definitions/dto.AddAttendanceRequest"
                         }
                     }
                 ],
@@ -161,7 +67,7 @@
         },
         "/v1/attendance/records": {
             "post": {
-                "description": "Retrieve attendance records for device, day, user, ...",
+                "description": "Get attendance records",
                 "consumes": [
                     "application/json"
                 ],
@@ -171,18 +77,18 @@
                 "tags": [
                     "Attendance"
                 ],
-                "summary": "Get Attendance Records",
+                "summary": "Get attendance records",
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Bearer token",
-                        "name": "authorization",
+                        "description": "With the bearer started",
+                        "name": "Authorization",
                         "in": "header",
                         "required": true
                     },
                     {
-                        "description": "Request body to get attendance records",
-                        "name": "req",
+                        "description": "Request body get attendance records",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
@@ -205,76 +111,188 @@
                     }
                 }
             }
-        }
-    },
-    "definitions": {
-        "dto.CheckInRequest": {
-            "type": "object",
-            "required": [
-                "device_id",
-                "face_image_url",
-                "location",
-                "timestamp",
-                "user_id",
-                "verification_method",
-                "verification_score"
-            ],
-            "properties": {
-                "device_id": {
-                    "type": "string"
-                },
-                "face_image_url": {
-                    "type": "string"
-                },
-                "location": {
-                    "type": "string"
-                },
-                "timestamp": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "string"
-                },
-                "verification_method": {
-                    "type": "string"
-                },
-                "verification_score": {
-                    "type": "number"
+        },
+        "/v1/attendance/records/employee": {
+            "post": {
+                "description": "Get attendance records for employee",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "summary": "Get attendance records for employee",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "With the bearer started",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body get attendance records for employee",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.GetAttendanceRecordsEmployeeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ResponseData"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrResponseData"
+                        }
+                    }
                 }
             }
         },
-        "dto.CheckOutRequest": {
+        "/v1/attendance/records/employee/summary/daily": {
+            "post": {
+                "description": "Get daily attendance summary for employee",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "summary": "Get daily attendance summary for employee",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "With the bearer started",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body get daily attendance summary for employee",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.GetDailyAttendanceSummaryEmployeeRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ResponseData"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrResponseData"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/attendance/records/summary/daily": {
+            "post": {
+                "description": "Get daily attendance summary",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Attendance"
+                ],
+                "summary": "Get daily attendance summary",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "With the bearer started",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "description": "Request body get daily attendance summary",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.GetDailyAttendanceSummaryRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ResponseData"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrResponseData"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "dto.AddAttendanceRequest": {
             "type": "object",
             "required": [
+                "company_id",
                 "device_id",
+                "employee_id",
                 "face_image_url",
-                "location",
-                "timestamp",
-                "user_id",
+                "location_coordinates",
+                "record_time",
                 "verification_method",
                 "verification_score"
             ],
             "properties": {
+                "company_id": {
+                    "type": "string"
+                },
                 "device_id": {
+                    "type": "string"
+                },
+                "employee_id": {
                     "type": "string"
                 },
                 "face_image_url": {
                     "type": "string"
                 },
-                "location": {
+                "location_coordinates": {
                     "type": "string"
                 },
-                "timestamp": {
-                    "type": "string"
-                },
-                "user_id": {
-                    "type": "string"
+                "record_time": {
+                    "type": "integer"
                 },
                 "verification_method": {
                     "type": "string"
                 },
                 "verification_score": {
-                    "type": "number"
+                    "type": "number",
+                    "maximum": 1,
+                    "minimum": 0
                 }
             }
         },
@@ -293,49 +311,99 @@
                 }
             }
         },
-        "dto.GetAttendanceRecordsRequest": {
+        "dto.GetAttendanceRecordsEmployeeRequest": {
             "type": "object",
+            "required": [
+                "company_id",
+                "year_month"
+            ],
             "properties": {
                 "company_id": {
                     "type": "string"
                 },
-                "device_id": {
+                "employee_id": {
                     "type": "string"
-                },
-                "end_date": {
-                    "type": "string"
-                },
-                "page": {
-                    "type": "integer",
-                    "minimum": 1
                 },
                 "page_size": {
-                    "type": "integer",
-                    "maximum": 100,
-                    "minimum": 1
+                    "type": "integer"
                 },
-                "start_date": {
+                "page_stage": {
+                    "type": "string"
+                },
+                "year_month": {
+                    "description": "Format: YYYY-MM",
                     "type": "string"
                 }
             }
         },
-        "dto.GetMyAttendanceRecordsRequest": {
+        "dto.GetAttendanceRecordsRequest": {
             "type": "object",
+            "required": [
+                "company_id",
+                "year_month"
+            ],
             "properties": {
-                "end_date": {
+                "company_id": {
                     "type": "string"
-                },
-                "page": {
-                    "type": "integer",
-                    "minimum": 1
                 },
                 "page_size": {
-                    "type": "integer",
-                    "maximum": 100,
-                    "minimum": 1
+                    "type": "integer"
                 },
-                "start_date": {
+                "page_stage": {
                     "type": "string"
+                },
+                "year_month": {
+                    "description": "Format: YYYY-MM",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.GetDailyAttendanceSummaryEmployeeRequest": {
+            "type": "object",
+            "required": [
+                "company_id"
+            ],
+            "properties": {
+                "company_id": {
+                    "type": "string"
+                },
+                "employee_id": {
+                    "type": "string"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "page_stage": {
+                    "type": "string"
+                },
+                "summary_month": {
+                    "description": "Format: YYYY-MM",
+                    "type": "string"
+                }
+            }
+        },
+        "dto.GetDailyAttendanceSummaryRequest": {
+            "type": "object",
+            "required": [
+                "company_id"
+            ],
+            "properties": {
+                "company_id": {
+                    "type": "string"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "page_stage": {
+                    "type": "string"
+                },
+                "summary_month": {
+                    "description": "Format: YYYY-MM",
+                    "type": "string"
+                },
+                "work_date": {
+                    "description": "Unix timestamp in milliseconds",
+                    "type": "integer"
                 }
             }
         },

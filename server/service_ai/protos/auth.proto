@@ -2,10 +2,12 @@ syntax = "proto3";
 
 package auth;
 
+import "google/protobuf/empty.proto";
 option go_package = "github.com/youknow2509/cio_verify_face/server/service_auth/proto/pb";
 
 // Auth service for inter-service communication
 service AuthService {
+    rpc HealthCheck(google.protobuf.Empty) returns (google.protobuf.Empty);
     rpc CreateUserToken(CreateUserTokenRequest) returns (CreateUserTokenResponse);
     rpc CreateServiceToken(CreateServiceTokenRequest) returns (CreateServiceTokenResponse);
     rpc CreateDeviceToken(CreateDeviceTokenRequest) returns (CreateDeviceTokenResponse);

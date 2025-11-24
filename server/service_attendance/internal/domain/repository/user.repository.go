@@ -11,6 +11,7 @@ import (
 // User repository interface
 // ============================================
 type IUserRepository interface {
+	GetListTimeShiftEmployee(ctx context.Context, input *model.GetListTimeShiftEmployeeInput) ([]model.ShiftTimeEmployee, error)
 	UserIsManagerCompany(ctx context.Context, input *model.UserIsManagerCompanyInput) (bool, error)
 	UserIsEmployeeInCompany(ctx context.Context, input *model.UserIsEmployeeInCompanyInput) (bool, error)
 	GetCompanyIdUser(ctx context.Context, input *model.GetCompanyIdUserInput) (*model.GetCompanyIdUserOutput, error)

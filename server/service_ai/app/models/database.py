@@ -55,7 +55,6 @@ class FaceProfile(Base):
     user_id = Column(UUID(as_uuid=True), nullable=False, index=True)
     
     # Embedding data - using pgvector's vector type for efficient similarity search
-    # Falls back to ARRAY(Float) if pgvector is not available
     embedding = Column(Vector(512), nullable=False)
     embedding_version = Column(String(50), nullable=False, index=True)
     
@@ -75,32 +74,3 @@ class FaceProfile(Base):
     # Indexing status
     indexed = Column(Boolean, default=False, nullable=False)
     index_version = Column(Integer, default=0, nullable=False)
-
-
-class FaceAuditLog(Base):
-    """Audit log for face operations"""
-    __tablename__ = "face_audit_logs"
-    
-    log_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    profile_id = Column(UUID(as_uuid=True), nullable=True, index=True)
-    user_id = Column(UUID(as_uuid=True), nullable=True, index=True)
-    
-    # Operation details
-    operation = Column(String(50), nullable=False, index=True)  # enroll, verify, update, delete
-    status = Column(String(20), nullable=False)  # success, failed, duplicate
-    
-    # Request metadata
-    device_id = Column(String(100), nullable=True)
-    ip_address = Column(String(50), nullable=True)
-    
-    # Results
-    similarity_score = Column(Float, nullable=True)
-    liveness_score = Column(Float, nullable=True)
-    quality_score = Column(Float, nullable=True)
-    
-    # Additional data
-    meta_data = Column(JSONB, default={}, nullable=False)  # Use meta_data to avoid SQLAlchemy reserved name
-    error_message = Column(Text, nullable=True)
-    
-    # Timestamp
-    created_at = Column(DateTime(timezone=True), server_default=func.now(), nullable=False, index=True)

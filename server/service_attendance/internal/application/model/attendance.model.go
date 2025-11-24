@@ -6,125 +6,187 @@ import (
 	"github.com/google/uuid"
 )
 
-// For GetMyRecords method
-type GetMyRecordsInput struct {
-	StartDate time.Time `json:"start_date,omitempty"`
-	EndDate   time.Time `json:"end_date,omitempty"`
-	Page      int       `json:"page,omitempty"`
-	Size      int       `json:"size,omitempty"`
-	// Session info
-	UserID      uuid.UUID `json:"user_id"`
-	SessionID   uuid.UUID `json:"session_id"`
-	Role        int       `json:"role"`
-	ClientIp    string    `json:"client_ip"`
-	ClientAgent string    `json:"client_agent"`
-	CompanyId   uuid.UUID `json:"company_id"`
-}
-type GetMyRecordsOutput struct {
-	Records []AttendanceRecordInfo `json:"records"`
-	Total   int                    `json:"total"`
+// For Delete daily attendance summary
+type DeleteDailyAttendanceSummaryModel struct {
+	Session        *SessionReq     `json:"session"`
+	ServiceSession *ServiceSession `json:"service_session,omitempty"`
+	//
+	CompanyID    uuid.UUID `json:"company_id"`
+	WorkDate     time.Time `json:"work_date"`
+	SummaryMonth string    `json:"summary_month"` // Format: YYYY-MM
 }
 
-// For GetRecordByID method
-type GetAttendanceRecordByIDInput struct {
-	RecordID uuid.UUID `json:"record_id"`
-	// Session info
-	UserID      uuid.UUID `json:"user_id"`
-	SessionID   uuid.UUID `json:"session_id"`
-	Role        int       `json:"role"`
-	ClientIp    string    `json:"client_ip"`
-	ClientAgent string    `json:"client_agent"`
-	CompanyId   uuid.UUID `json:"company_id"`
+// For Delete attendance records no shift
+type DeleteAttendanceRecordNoShiftModel struct {
+	Session        *SessionReq     `json:"session"`
+	ServiceSession *ServiceSession `json:"service_session,omitempty"`
+	//
+	CompanyID uuid.UUID `json:"company_id"`
+	YearMonth string    `json:"year_month"` // Format: YYYY-MM
 }
 
-// For GetRecords method
-type GetAttendanceRecordsInput struct {
-	DeviceID  uuid.UUID `json:"device_id,omitempty"`
-	CompanyId uuid.UUID `json:"company_id,omitempty"`
-	StartDate time.Time `json:"start_date,omitempty"`
-	EndDate   time.Time `json:"end_date,omitempty"`
-	Page      int       `json:"page,omitempty"`
-	Size      int       `json:"size,omitempty"`
-	// Session info
-	UserID        uuid.UUID `json:"user_id"`
-	SessionID     uuid.UUID `json:"session_id"`
-	Role          int       `json:"role"`
-	ClientIp      string    `json:"client_ip"`
-	ClientAgent   string    `json:"client_agent"`
-	CompanyIdUser   uuid.UUID `json:"company_id_user"`
+// For Delete attendace records
+type DeleteAttendanceModel struct {
+	Session        *SessionReq     `json:"session"`
+	ServiceSession *ServiceSession `json:"service_session,omitempty"`
+	//
+	CompanyID  uuid.UUID `json:"company_id"`
+	YearMonth  string    `json:"year_month"` // Format: YYYY-MM
+	Time       time.Time `json:"time,omitempty"`
+	EmployeeId uuid.UUID `json:"employee_id,omitempty"`
 }
-type AttendanceRecordOutput struct {
-	Records []AttendanceRecordInfo `json:"records"`
-	Total   int                    `json:"total"`
+
+// ShiftTimeEmployee
+type ShiftTimeEmployee struct {
+	ShiftID               uuid.UUID  `json:"shift_id"`
+	StartTime             time.Time  `json:"start_time"`
+	EndTime               time.Time  `json:"end_time"`
+	GracePeriodMinutes    int        `json:"grace_period_minutes"`
+	EarlyDepartureMinutes int        `json:"early_departure_minutes"`
+	WorkDays              []int32    `json:"work_days"`
+	EffectiveFrom         time.Time  `json:"effective_from"`
+	EffectiveTo           *time.Time `json:"effective_to"`
 }
+
+// For GetDailyAttendanceSummary
+type GetDailyAttendanceSummaryModel struct {
+	Session *SessionReq `json:"session"`
+	//
+	CompanyID    uuid.UUID `json:"company_id"`
+	SummaryMonth string    `json:"summary_month"` // Format: YYYY-MM
+	WorkDate     time.Time `json:"work_date"`
+	PageSize     int       `json:"page_size,omitempty"`
+	PageStage    []byte    `json:"page_stage,omitempty"`
+}
+
+type GetDailyAttendanceSummaryResultModel struct {
+	Records       []DailySummariesCompanyInfo `json:"records"`
+	PageStageNext string                      `json:"page_stage_next,omitempty"`
+	PageSize      int                         `json:"page_size,omitempty"`
+}
+
+type DailySummariesCompanyInfo struct {
+	CompanyId         uuid.UUID `json:"company_id"`
+	SummaryMonth      string    `json:"summary_month"`
+	WorkDate          time.Time `json:"work_date"`
+	EmployeeId        uuid.UUID `json:"employee_id"`
+	ShiftId           uuid.UUID `json:"shift_id"`
+	ActualCheckIn     time.Time `json:"actual_check_in"`
+	ActualCheckOut    time.Time `json:"actual_check_out"`
+	AttendanceStatus  string    `json:"attendance_status"`
+	LateMinutes       int       `json:"late_minutes"`
+	EarlyLeaveMinutes int       `json:"early_leave_minutes"`
+	TotalWorkMinutes  int       `json:"total_work_minutes"`
+	Notes             string    `json:"notes"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+// For GetDailyAttendanceSummaryEmployee
+type GetDailyAttendanceSummaryEmployeeResultModel struct {
+	Records       []DailySummariesEmployeeInfo `json:"records"`
+	PageStageNext string                       `json:"page_stage_next,omitempty"`
+	PageSize      int                          `json:"page_size,omitempty"`
+}
+
+type DailySummariesEmployeeInfo struct {
+	CompanyId         uuid.UUID `json:"company_id"`
+	SummaryMonth      string    `json:"summary_month"`
+	WorkDate          time.Time `json:"work_date"`
+	EmployeeId        uuid.UUID `json:"employee_id"`
+	ShiftId           uuid.UUID `json:"shift_id"`
+	ActualCheckIn     time.Time `json:"actual_check_in"`
+	ActualCheckOut    time.Time `json:"actual_check_out"`
+	AttendanceStatus  string    `json:"attendance_status"`
+	LateMinutes       int       `json:"late_minutes"`
+	EarlyLeaveMinutes int       `json:"early_leave_minutes"`
+	TotalWorkMinutes  int       `json:"total_work_minutes"`
+	Notes             string    `json:"notes"`
+	UpdatedAt         time.Time `json:"updated_at"`
+}
+
+type GetDailyAttendanceSummaryEmployeeModel struct {
+	Session *SessionReq `json:"session"`
+	//
+	CompanyID    uuid.UUID `json:"company_id"`
+	EmployeeID   uuid.UUID `json:"employee_id"`
+	SummaryMonth string    `json:"summary_month" ` // Format: YYYY-MM,
+	PageSize     int       `json:"page_size"`
+	PageStage    []byte    `json:"page_stage"`
+}
+
+type GetAttendanceRecordsCompanyResultModel struct {
+	Records       []AttendanceRecordInfo `json:"records"`
+	PageStageNext string                 `json:"page_stage_next,omitempty"`
+	PageSize      int                    `json:"page_size,omitempty"`
+}
+
 type AttendanceRecordInfo struct {
-	RecordID uuid.UUID `json:"record_id"`
-	UserID   uuid.UUID `json:"user_id"`
-	CheckIn  string    `json:"check_in"`
-	CheckOut string    `json:"check_out"`
-	Location string    `json:"location"`
-	DeviceID uuid.UUID `json:"device_id"`
+	CompanyID           uuid.UUID         `json:"company_id"`
+	YearMonth           string            `json:"year_month"`
+	RecordTime          time.Time         `json:"record_time"`
+	EmployeeID          uuid.UUID         `json:"employee_id"`
+	DeviceID            uuid.UUID         `json:"device_id"`
+	RecordType          int               `json:"record_type"`
+	VerificationMethod  string            `json:"verification_method"`
+	VerificationScore   float64           `json:"verification_score"`
+	FaceImageURL        string            `json:"face_image_url"`
+	LocationCoordinates string            `json:"location_coordinates"`
+	Metadata            map[string]string `json:"metadata"`
+	SyncStatus          string            `json:"sync_status"`
+	CreatedAt           time.Time         `json:"created_at"`
 }
 
-// For CheckIn method
-type CheckInInput struct {
-	UserCheckInId      uuid.UUID `json:"user_checkin_id"`
-	VerificationMethod string    `json:"verification_method"`
-	VerificationScore  float32   `json:"verification_score"`
-	FaceImageURL       string    `json:"face_image_url"`
-	Timestamp          string    `json:"timestamp"`
-	Location           string    `json:"location"`
-	DeviceId           uuid.UUID `json:"device_id"`
-	// Session info
-	UserID      uuid.UUID `json:"user_id"`
-	SessionID   uuid.UUID `json:"session_id"`
+// For GetAttendanceRecordsEmployee
+type GetAttendanceRecordsEmployeeModel struct {
+	//
+	CompanyID  uuid.UUID `json:"company_id"`
+	YearMonth  string    `json:"year_month" ` // Format: YYYY-MM
+	EmployeeID uuid.UUID `json:"employee_id"`
+	PageSize   int       `json:"page_size,omitempty"`
+	PageStage  []byte    `json:"page_stage,omitempty"`
+	//
+	Session *SessionReq `json:"session"`
+}
+
+type GetAttendanceRecordsCompanyModel struct {
+	//
+	CompanyID uuid.UUID `json:"company_id"`
+	YearMonth string    `json:"year_month" ` // Format: YYYY-MM
+	PageSize  int       `json:"page_size"`
+	PageStage []byte    `json:"page_stage"`
+	//
+	Session *SessionReq `json:"session"`
+}
+
+// For AddAttendanceModel
+type AddAttendanceModel struct {
+	// Info required for adding an attendance record
+	CompanyID           uuid.UUID `json:"company_id"`
+	EmployeeID          uuid.UUID `json:"employee_id"`
+	DeviceID            uuid.UUID `json:"device_id"`
+	RecordTime          time.Time `json:"record_time"`
+	VerificationMethod  string    `json:"verification_method"`
+	VerificationScore   float64   `json:"verification_score"`
+	FaceImageURL        string    `json:"face_image_url"`
+	LocationCoordinates string    `json:"location_coordinates"`
+	// Session information
+	Session        *SessionReq     `json:"session"`
+	ServiceSession *ServiceSession `json:"service_session,omitempty"`
+}
+
+type ServiceSession struct {
+	ServiceId   string `json:"service_id"`
+	ServiceName string `json:"service_name"`
+	ClientIp    string `json:"client_ip"`
+	ClientAgent string `json:"client_agent"`
+}
+
+// Session input for adding attendance record
+type SessionReq struct {
+	SessionId   uuid.UUID `json:"session_id"`
+	UserId      uuid.UUID `json:"user_id"`
+	CompanyId   uuid.UUID `json:"company_id"`
 	Role        int       `json:"role"`
 	ClientIp    string    `json:"client_ip"`
 	ClientAgent string    `json:"client_agent"`
-	CompanyId   uuid.UUID `json:"company_id"`
-}
-
-// For CheckOut method
-type CheckOutInput struct {
-	UserCheckOutId     uuid.UUID `json:"user_check_out_id"`
-	VerificationMethod string    `json:"verification_method"`
-	VerificationScore  float32   `json:"verification_score"`
-	FaceImageURL       string    `json:"face_image_url"`
-	Timestamp          string    `json:"timestamp"`
-	Location           string    `json:"location"`
-	DeviceId           uuid.UUID `json:"device_id"`
-	// Session info
-	UserID      uuid.UUID `json:"user_id"`
-	SessionID   uuid.UUID `json:"session_id"`
-	Role        int       `json:"role"`
-	ClientIp    string    `json:"client_ip"`
-	ClientAgent string    `json:"client_agent"`
-	CompanyId   uuid.UUID `json:"company_id"`
-}
-
-// ===========================
-// Attendance admin models
-// ===========================
-// For CheckOut method
-type AdminCheckOutInput struct {
-	UserCheckOutId     uuid.UUID `json:"user_check_out_id"`
-	VerificationMethod string    `json:"verification_method"`
-	VerificationScore  float32   `json:"verification_score"`
-	FaceImageURL       string    `json:"face_image_url"`
-	Timestamp          string    `json:"timestamp"`
-	Location           string    `json:"location"`
-	DeviceId           uuid.UUID `json:"device_id"`
-	ClientIp           string    `json:"client_ip"`
-}
-
-// For CheckIn method
-type AdminCheckInInput struct {
-	UserCheckInId      uuid.UUID `json:"user_checkin_id"`
-	VerificationMethod string    `json:"verification_method"`
-	VerificationScore  float32   `json:"verification_score"`
-	FaceImageURL       string    `json:"face_image_url"`
-	Timestamp          string    `json:"timestamp"`
-	Location           string    `json:"location"`
-	DeviceId           uuid.UUID `json:"device_id"`
-	ClientIp           string    `json:"client_ip"`
 }

@@ -11,10 +11,15 @@ import (
 // Attendance Service Interfaces
 // ============================================
 type IAttendanceService interface {
-	CheckInUser(ctx context.Context, input *model.CheckInInput) *applicationErrors.Error
-	CheckOutUser(ctx context.Context, input *model.CheckOutInput) *applicationErrors.Error
-	GetRecords(ctx context.Context, input *model.GetAttendanceRecordsInput) ([]*model.AttendanceRecordOutput, *applicationErrors.Error)	
-	GetMyRecords(ctx context.Context, input *model.GetMyRecordsInput) ([]*model.GetMyRecordsOutput, *applicationErrors.Error)
+	GetDailyAttendanceSummaryForCompany(ctx context.Context, req *model.GetDailyAttendanceSummaryModel) (*model.GetDailyAttendanceSummaryResultModel, *applicationErrors.Error)
+	GetDailyAttendanceSummaryEmployeeForCompany(ctx context.Context, req *model.GetDailyAttendanceSummaryEmployeeModel) (*model.GetDailyAttendanceSummaryEmployeeResultModel, *applicationErrors.Error)
+	GetAttendanceRecordsEmployeeForConpany(ctx context.Context, req *model.GetAttendanceRecordsEmployeeModel) (*model.GetAttendanceRecordsCompanyResultModel, *applicationErrors.Error)
+	GetAttendanceRecordsCompany(ctx context.Context, req *model.GetAttendanceRecordsCompanyModel) (*model.GetAttendanceRecordsCompanyResultModel, *applicationErrors.Error)
+	AddAttendance(ctx context.Context, req *model.AddAttendanceModel) *applicationErrors.Error
+	DeleteAttendanceRecord(ctx context.Context, req *model.DeleteAttendanceModel) *applicationErrors.Error
+	DeleteAttendanceEmployeeBeforeTime(ctx context.Context, req *model.DeleteAttendanceModel) *applicationErrors.Error
+	DeleteAttendanceNoShift(ctx context.Context, req *model.DeleteAttendanceRecordNoShiftModel) *applicationErrors.Error
+	DeleteDailyAttendanceSummary(ctx context.Context, req *model.DeleteDailyAttendanceSummaryModel) *applicationErrors.Error
 }
 
 // Manager instance of attendance service

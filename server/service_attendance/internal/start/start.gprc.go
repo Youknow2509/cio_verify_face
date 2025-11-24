@@ -4,19 +4,19 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"time"
 
 	global "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/global"
-	router "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/interfaces/grpc/router"
+	interfaceGrpc "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/interfaces/grpc"
 	pb "github.com/youknow2509/cio_verify_face/server/service_attendance/proto"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/keepalive"
 )
 
 var (
 	grpcClient pb.AuthServiceClient
 )
-
-// init server grpc
 
 // init server grpc
 func initServerGrpc() error {
@@ -58,11 +58,23 @@ func initServerGrpc() error {
 		}
 		opts = []grpc.ServerOption{grpc.Creds(creds)}
 	}
+	// Server Parameters
+	kaParams := grpc.KeepaliveParams(keepalive.ServerParameters{
+		Time:    time.Duration(config.KeepaliveTimeMs) * time.Millisecond,
+		Timeout: time.Duration(config.KeepaliveTimeoutMs) * time.Millisecond,
+	})
+	opts = append(opts, kaParams)
+	// Enforcement Policy
+	kaEnforcement := grpc.KeepaliveEnforcementPolicy(keepalive.EnforcementPolicy{
+		MinTime:             time.Duration(config.Http2MinTimeBetweenPingsMs) * time.Millisecond,
+		PermitWithoutStream: config.KeepalivePermitWithoutCalls,
+	})
+	opts = append(opts, kaEnforcement)
 
 	grpcServer := grpc.NewServer(opts...)
 
 	// Register service
-	pb.RegisterAttendanceServiceServer(grpcServer, router.NewAttendanceRouter())
+	pb.RegisterAttendanceServiceServer(grpcServer, interfaceGrpc.NewAttendanceGRPCServer())
 
 	// start server
 	global.Logger.Info("gRPC server starting", "address", lis.Addr().String())
@@ -78,7 +90,7 @@ func initServerGrpc() error {
 
 // init client grpc
 func initClientGrpc() error {
-	config := global.SettingServer.Grpc
+	config := global.SettingServer.ServiceAuth
 	// load configuration
 	var opts []grpc.DialOption
 	if config.Tls.Enabled {
@@ -90,7 +102,20 @@ func initClientGrpc() error {
 	} else {
 		opts = append(opts, grpc.WithInsecure())
 	}
-	conn, err := grpc.Dial(fmt.Sprintf("%s:%d", config.Host, config.Port), opts...)
+	// Keepalive parameters
+	kaParams := grpc.WithKeepaliveParams(keepalive.ClientParameters{
+		Time:                time.Duration(config.KeepaliveTimeMs) * time.Millisecond,
+		Timeout:             time.Duration(config.KeepaliveTimeoutMs) * time.Millisecond,
+		PermitWithoutStream: config.KeepalivePermitWithoutCalls,
+	})
+	opts = append(opts, kaParams)
+	// HTTP/2 Ping Policy
+	http2PingPolicy := grpc.WithDefaultCallOptions(
+		grpc.MaxCallRecvMsgSize(config.Http2MaxPingsWithoutData),
+	)
+	opts = append(opts, http2PingPolicy)
+	// create connection
+	conn, err := grpc.Dial(config.GrpcAddr, opts...)
 	if err != nil {
 		return fmt.Errorf("failed to connect to gRPC server: %w", err)
 	}
