@@ -4,4 +4,5 @@ package constants
 
 const (
 	ContextKeySessionInfo = "session_info"
+	ContextKeySession     = "session"
 )

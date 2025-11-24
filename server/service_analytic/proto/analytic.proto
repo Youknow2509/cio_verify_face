@@ -4,12 +4,49 @@ option go_package = "github.com/youknow2509/cio_verify_face/server/service_analy
 
 // Analytics service for inter-service communication
 service AnalyticService {
+    // ========== Existing Report APIs ==========
     // Get daily attendance report
     rpc GetDailyReport(GetDailyReportRequest) returns (GetDailyReportResponse);
     // Get monthly summary report
     rpc GetSummaryReport(GetSummaryReportRequest) returns (GetSummaryReportResponse);
     // Export attendance report
     rpc ExportReport(ExportReportRequest) returns (ExportReportResponse);
+
+    // ========== Attendance Records APIs ==========
+    // Get attendance records for a company (uses: attendance_records table with partition key company_id + year_month)
+    rpc GetAttendanceRecords(GetAttendanceRecordsRequest) returns (GetAttendanceRecordsResponse);
+    // Get attendance records by time range (uses: attendance_records table with clustering key record_time)
+    rpc GetAttendanceRecordsByTimeRange(GetAttendanceRecordsByTimeRangeRequest) returns (GetAttendanceRecordsResponse);
+    // Get attendance records for an employee (uses: attendance_records_by_user table with partition key company_id + employee_id + year_month)
+    rpc GetAttendanceRecordsByEmployee(GetAttendanceRecordsByEmployeeRequest) returns (GetAttendanceRecordsResponse);
+    // Create attendance record (writes to both attendance_records and attendance_records_by_user for dual indexing)
+    rpc CreateAttendanceRecord(CreateAttendanceRecordRequest) returns (CreateAttendanceRecordResponse);
+
+    // ========== Daily Summaries APIs ==========
+    // Get daily summaries for a company (uses: daily_summaries table with partition key company_id + summary_month)
+    rpc GetDailySummaries(GetDailySummariesRequest) returns (GetDailySummariesResponse);
+    // Get daily summaries for a user (uses: daily_summaries_by_user table with partition key company_id + employee_id + summary_month)
+    rpc GetDailySummariesByUser(GetDailySummariesByUserRequest) returns (GetDailySummariesResponse);
+    // Create daily summary (writes to both daily_summaries and daily_summaries_by_user for dual indexing)
+    rpc CreateDailySummary(CreateDailySummaryRequest) returns (CreateDailySummaryResponse);
+    // Update daily summary (updates both daily_summaries and daily_summaries_by_user)
+    rpc UpdateDailySummary(UpdateDailySummaryRequest) returns (UpdateDailySummaryResponse);
+
+    // ========== Audit Logs APIs ==========
+    // Get audit logs for a company (uses: audit_logs table with partition key company_id + year_month)
+    rpc GetAuditLogs(GetAuditLogsRequest) returns (GetAuditLogsResponse);
+    // Get audit logs by time range (uses: audit_logs table with clustering key created_at)
+    rpc GetAuditLogsByTimeRange(GetAuditLogsByTimeRangeRequest) returns (GetAuditLogsResponse);
+    // Create audit log (writes to audit_logs table)
+    rpc CreateAuditLog(CreateAuditLogRequest) returns (CreateAuditLogResponse);
+
+    // ========== Face Enrollment Logs APIs ==========
+    // Get face enrollment logs for a company (uses: face_enrollment_logs table with partition key company_id + year_month)
+    rpc GetFaceEnrollmentLogs(GetFaceEnrollmentLogsRequest) returns (GetFaceEnrollmentLogsResponse);
+    // Get face enrollment logs for an employee (uses: face_enrollment_logs table with clustering key employee_id)
+    rpc GetFaceEnrollmentLogsByEmployee(GetFaceEnrollmentLogsByEmployeeRequest) returns (GetFaceEnrollmentLogsResponse);
+    // Create face enrollment log (writes to face_enrollment_logs table)
+    rpc CreateFaceEnrollmentLog(CreateFaceEnrollmentLogRequest) returns (CreateFaceEnrollmentLogResponse);
 }
 
 message GetDailyReportRequest {
@@ -122,4 +159,218 @@ message SessionInfo {
     string client_ip = 4;
     string client_agent = 5;
     string company_id = 6;      // Company ID from token
+}
+
+// ========== Attendance Records Messages ==========
+
+message GetAttendanceRecordsRequest {
+    SessionInfo session_info = 1;
+    string company_id = 2;      // Required - partition key
+    string year_month = 3;      // Required - partition key (YYYY-MM)
+    int32 limit = 4;            // Optional, default 100
+}
+
+message GetAttendanceRecordsByTimeRangeRequest {
+    SessionInfo session_info = 1;
+    string company_id = 2;      // Required - partition key
+    string year_month = 3;      // Required - partition key (YYYY-MM)
+    string start_time = 4;      // Required - clustering key filter (RFC3339)
+    string end_time = 5;        // Required - clustering key filter (RFC3339)
+}
+
+message GetAttendanceRecordsByEmployeeRequest {
+    SessionInfo session_info = 1;
+    string company_id = 2;      // Required - partition key
+    string employee_id = 3;     // Required - partition key
+    string year_month = 4;      // Required - partition key (YYYY-MM)
+}
+
+message AttendanceRecordData {
+    string company_id = 1;
+    string year_month = 2;
+    string record_time = 3;     // RFC3339 timestamp
+    string employee_id = 4;
+    string device_id = 5;
+    int32 record_type = 6;      // 0: CHECK_IN, 1: CHECK_OUT
+    string verification_method = 7;
+    double verification_score = 8;
+    string face_image_url = 9;
+    string location_coordinates = 10;
+    map<string, string> metadata = 11;
+    string sync_status = 12;
+    string created_at = 13;     // RFC3339 timestamp
+}
+
+message GetAttendanceRecordsResponse {
+    string msg = 1;
+    int32 status_code = 2;
+    repeated AttendanceRecordData records = 3;
+    int32 total_count = 4;
+}
+
+message CreateAttendanceRecordRequest {
+    SessionInfo session_info = 1;
+    AttendanceRecordData record = 2;
+}
+
+message CreateAttendanceRecordResponse {
+    string msg = 1;
+    int32 status_code = 2;
+    string message = 3;
+}
+
+// ========== Daily Summaries Messages ==========
+
+message GetDailySummariesRequest {
+    SessionInfo session_info = 1;
+    string company_id = 2;      // Required - partition key
+    string month = 3;           // Required - partition key (YYYY-MM)
+}
+
+message GetDailySummariesByUserRequest {
+    SessionInfo session_info = 1;
+    string company_id = 2;      // Required - partition key
+    string employee_id = 3;     // Required - partition key
+    string month = 4;           // Required - partition key (YYYY-MM)
+}
+
+message DailySummaryData {
+    string company_id = 1;
+    string summary_month = 2;   // YYYY-MM
+    string work_date = 3;       // YYYY-MM-DD
+    string employee_id = 4;
+    string shift_id = 5;
+    string actual_check_in = 6;     // RFC3339 timestamp (nullable)
+    string actual_check_out = 7;    // RFC3339 timestamp (nullable)
+    int32 attendance_status = 8;    // 0: PRESENT, 1: LATE, 2: EARLY_LEAVE, 3: ABSENT
+    int32 late_minutes = 9;
+    int32 early_leave_minutes = 10;
+    int32 total_work_minutes = 11;
+    string notes = 12;
+    string updated_at = 13;     // RFC3339 timestamp
+}
+
+message GetDailySummariesResponse {
+    string msg = 1;
+    int32 status_code = 2;
+    repeated DailySummaryData summaries = 3;
+    int32 total_count = 4;
+}
+
+message CreateDailySummaryRequest {
+    SessionInfo session_info = 1;
+    DailySummaryData summary = 2;
+}
+
+message CreateDailySummaryResponse {
+    string msg = 1;
+    int32 status_code = 2;
+    string message = 3;
+}
+
+message UpdateDailySummaryRequest {
+    SessionInfo session_info = 1;
+    DailySummaryData summary = 2;
+}
+
+message UpdateDailySummaryResponse {
+    string msg = 1;
+    int32 status_code = 2;
+    string message = 3;
+}
+
+// ========== Audit Logs Messages ==========
+
+message GetAuditLogsRequest {
+    SessionInfo session_info = 1;
+    string company_id = 2;      // Required - partition key
+    string year_month = 3;      // Required - partition key (YYYY-MM)
+    int32 limit = 4;            // Optional, default 100
+}
+
+message GetAuditLogsByTimeRangeRequest {
+    SessionInfo session_info = 1;
+    string company_id = 2;      // Required - partition key
+    string year_month = 3;      // Required - partition key (YYYY-MM)
+    string start_time = 4;      // Required - clustering key filter (RFC3339)
+    string end_time = 5;        // Required - clustering key filter (RFC3339)
+}
+
+message AuditLogData {
+    string company_id = 1;
+    string year_month = 2;
+    string created_at = 3;      // RFC3339 timestamp - clustering key
+    string actor_id = 4;        // clustering key
+    string action_category = 5;
+    string action_name = 6;
+    string resource_type = 7;
+    string resource_id = 8;
+    map<string, string> details = 9;
+    string ip_address = 10;
+    string user_agent = 11;
+    string status = 12;
+}
+
+message GetAuditLogsResponse {
+    string msg = 1;
+    int32 status_code = 2;
+    repeated AuditLogData logs = 3;
+    int32 total_count = 4;
+}
+
+message CreateAuditLogRequest {
+    SessionInfo session_info = 1;
+    AuditLogData log = 2;
+}
+
+message CreateAuditLogResponse {
+    string msg = 1;
+    int32 status_code = 2;
+    string message = 3;
+}
+
+// ========== Face Enrollment Logs Messages ==========
+
+message GetFaceEnrollmentLogsRequest {
+    SessionInfo session_info = 1;
+    string company_id = 2;      // Required - partition key
+    string year_month = 3;      // Required - partition key (YYYY-MM)
+    int32 limit = 4;            // Optional, default 100
+}
+
+message GetFaceEnrollmentLogsByEmployeeRequest {
+    SessionInfo session_info = 1;
+    string company_id = 2;      // Required - partition key
+    string year_month = 3;      // Required - partition key (YYYY-MM)
+    string employee_id = 4;     // Required - clustering key
+}
+
+message FaceEnrollmentLogData {
+    string company_id = 1;
+    string year_month = 2;
+    string created_at = 3;      // RFC3339 timestamp - clustering key
+    string employee_id = 4;     // clustering key
+    string action_type = 5;     // enrollment, update, deletion
+    string status = 6;          // success, failure
+    string image_url = 7;
+    string failure_reason = 8;
+    map<string, string> metadata = 9;
+}
+
+message GetFaceEnrollmentLogsResponse {
+    string msg = 1;
+    int32 status_code = 2;
+    repeated FaceEnrollmentLogData logs = 3;
+    int32 total_count = 4;
+}
+
+message CreateFaceEnrollmentLogRequest {
+    SessionInfo session_info = 1;
+    FaceEnrollmentLogData log = 2;
+}
+
+message CreateFaceEnrollmentLogResponse {
+    string msg = 1;
+    int32 status_code = 2;
+    string message = 3;
 }

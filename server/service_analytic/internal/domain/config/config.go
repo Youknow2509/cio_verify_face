@@ -6,7 +6,7 @@ import "time"
 type Config struct {
 	Server        ServerConfig        `mapstructure:"server"`
 	Grpc          GrpcConfig          `mapstructure:"grpc"`
-	AuthService   AuthServiceConfig   `mapstructure:"auth_service"`
+	AuthService   AuthServiceConfig   `mapstructure:"service_auth"`
 	Postgres      PostgresConfig      `mapstructure:"postgres"`
 	Scylla        ScyllaConfig        `mapstructure:"scylladb"`
 	Redis         RedisConfig         `mapstructure:"redis"`
