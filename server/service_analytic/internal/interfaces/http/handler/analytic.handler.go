@@ -188,3 +188,43 @@ func getSessionFromContext(c *gin.Context) *applicationModel.SessionInfo {
 
 	return session
 }
+
+// DownloadExport handles GET /api/v1/reports/download/:filename
+// @Summary Download exported report file
+// @Description Download a previously exported report file
+// @Tags Reports
+// @Produce application/octet-stream
+// @Param filename path string true "Export filename"
+// @Success 200 {file} file
+// @Failure 404 {object} dto.APIResponse
+// @Failure 500 {object} dto.APIResponse
+// @Security Bearer
+// @Router /reports/download/{filename} [get]
+func (h *AnalyticHandler) DownloadExport(c *gin.Context) {
+	filename := c.Param("filename")
+	if filename == "" {
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse("INVALID_INPUT", "Filename is required", ""))
+		return
+	}
+
+	// Security: validate filename to prevent directory traversal
+	if !isValidFilename(filename) {
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse("INVALID_INPUT", "Invalid filename", ""))
+		return
+	}
+
+	// Serve file from exports directory
+	filePath := "exports/" + filename
+	c.File(filePath)
+}
+
+// isValidFilename checks if filename is safe (no directory traversal)
+func isValidFilename(filename string) bool {
+	// Basic validation: no path separators, no hidden files
+	for _, char := range filename {
+		if char == '/' || char == '\\' || char == '.' && filename[0] == '.' {
+			return false
+		}
+	}
+	return len(filename) > 0 && len(filename) < 255
+}

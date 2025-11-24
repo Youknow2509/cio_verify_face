@@ -310,7 +310,7 @@ func (h *EmployeeHandler) GetMyAttendanceStats(c *gin.Context) {
 
 	// Calculate statistics
 	stats := calculateEmployeeStats(summaries)
-	
+
 	c.JSON(http.StatusOK, dto.NewSuccessResponse(stats))
 }
 
@@ -327,7 +327,7 @@ func getEmployeeSessionFromContext(c *gin.Context) *applicationModel.SessionInfo
 			return session
 		}
 	}
-	
+
 	// Try alternative key
 	session, exists := c.Get(constants.ContextKeySession)
 	if exists {
@@ -335,25 +335,25 @@ func getEmployeeSessionFromContext(c *gin.Context) *applicationModel.SessionInfo
 			return sessionInfo
 		}
 	}
-	
+
 	return nil
 }
 
 // Helper function to calculate employee statistics from daily summaries
 func calculateEmployeeStats(summaries []*domainModel.DailySummaryByUser) map[string]interface{} {
 	stats := map[string]interface{}{
-		"month":                "",
-		"total_days":           len(summaries),
-		"present_days":         0,
-		"late_days":            0,
-		"early_leave_days":     0,
-		"absent_days":          0,
-		"total_work_minutes":   0,
-		"total_late_minutes":   0,
+		"month":                     "",
+		"total_days":                len(summaries),
+		"present_days":              0,
+		"late_days":                 0,
+		"early_leave_days":          0,
+		"absent_days":               0,
+		"total_work_minutes":        0,
+		"total_late_minutes":        0,
 		"total_early_leave_minutes": 0,
-		"average_work_hours":   0.0,
-		"attendance_rate":      0.0,
-		"punctuality_rate":     0.0,
+		"average_work_hours":        0.0,
+		"attendance_rate":           0.0,
+		"punctuality_rate":          0.0,
 	}
 
 	if len(summaries) == 0 {
@@ -404,7 +404,7 @@ func calculateEmployeeStats(summaries []*domainModel.DailySummaryByUser) map[str
 	if totalDays > 0 {
 		stats["attendance_rate"] = float64(presentDays) / float64(totalDays) * 100
 		stats["average_work_hours"] = float64(totalWorkMinutes) / float64(totalDays) / 60.0
-		
+
 		// Punctuality rate: days without being late
 		punctualDays := presentDays - lateDays
 		if punctualDays < 0 {
@@ -469,7 +469,7 @@ func (h *EmployeeHandler) GetMyDailyStatus(c *gin.Context) {
 	// Get attendance records for the day
 	startTime := time.Date(date.Year(), date.Month(), date.Day(), 0, 0, 0, 0, time.UTC)
 	endTime := time.Date(date.Year(), date.Month(), date.Day(), 23, 59, 59, 999999999, time.UTC)
-	
+
 	records, err := h.service.GetAttendanceRecordsByUserTimeRange(c.Request.Context(), companyID, employeeID, yearMonth, startTime, endTime)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse("QUERY_FAILED", "Failed to get attendance records", err.Error()))
@@ -554,7 +554,7 @@ func (h *EmployeeHandler) GetMyStatusByTimeRange(c *gin.Context) {
 
 	for currentMonth.Before(endMonth.AddDate(0, 1, 0)) {
 		yearMonth := currentMonth.Format("2006-01")
-		
+
 		// Get attendance records
 		startTime := startDate
 		endTime := endDate
@@ -586,12 +586,12 @@ func (h *EmployeeHandler) GetMyStatusByTimeRange(c *gin.Context) {
 	}
 
 	response := map[string]interface{}{
-		"start_date":          startDateStr,
-		"end_date":            endDateStr,
-		"total_records":       len(allRecords),
-		"total_summaries":     len(allSummaries),
-		"attendance_records":  allRecords,
-		"daily_summaries":     allSummaries,
+		"start_date":         startDateStr,
+		"end_date":           endDateStr,
+		"total_records":      len(allRecords),
+		"total_summaries":    len(allSummaries),
+		"attendance_records": allRecords,
+		"daily_summaries":    allSummaries,
 	}
 
 	c.JSON(http.StatusOK, dto.NewSuccessResponse(response))
@@ -663,12 +663,12 @@ func (h *EmployeeHandler) GetMyDetailedMonthlySummary(c *gin.Context) {
 	stats := calculateEmployeeStats(dailySummaries)
 
 	response := map[string]interface{}{
-		"month":                month,
+		"month":                 month,
 		"total_daily_summaries": len(dailySummaries),
-		"total_records":        len(records),
-		"statistics":           stats,
-		"daily_summaries":      dailySummaries,
-		"attendance_records":   records,
+		"total_records":         len(records),
+		"statistics":            stats,
+		"daily_summaries":       dailySummaries,
+		"attendance_records":    records,
 	}
 
 	c.JSON(http.StatusOK, dto.NewSuccessResponse(response))
@@ -699,21 +699,41 @@ func (h *EmployeeHandler) ExportMyDailyStatus(c *gin.Context) {
 	}
 
 	var req dto.ExportEmployeeDailyStatusRequest
-	
+
 	// Validate and bind request
 	if err := middleware.ValidateAndBind(c, &req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.NewErrorResponse("VALIDATION_ERROR", "Invalid request data", err.Error()))
 		return
 	}
 
-	// In a real implementation, this would queue a background job
-	response := map[string]interface{}{
-		"job_id":  uuid.New().String(),
-		"status":  "processing",
-		"message": "Export job queued successfully for date=" + req.Date + ", format=" + req.Format,
+	// Parse and validate date
+	_, err := time.Parse("2006-01-02", req.Date)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse("INVALID_INPUT", "Invalid date format (expected YYYY-MM-DD)", err.Error()))
+		return
 	}
 
-	c.JSON(http.StatusAccepted, dto.NewSuccessResponse(response))
+	// Prepare export input for single day (employee's own data)
+	companyID := session.CompanyID
+	input := &applicationModel.ExportReportInput{
+		Session:   session,
+		StartDate: req.Date,
+		EndDate:   req.Date,
+		Format:    req.Format,
+		CompanyID: &companyID,
+	}
+	if req.Email != "" {
+		input.Email = &req.Email
+	}
+
+	// Call export service (it will automatically filter to employee's own data based on role)
+	result, appErr := h.service.ExportReport(c.Request.Context(), input)
+	if appErr != nil {
+		c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message, appErr.Details))
+		return
+	}
+
+	c.JSON(http.StatusAccepted, dto.NewSuccessResponse(result))
 }
 
 // ExportMyMonthlySummary handles POST /api/v1/employee/export-monthly-summary
@@ -722,7 +742,7 @@ func (h *EmployeeHandler) ExportMyDailyStatus(c *gin.Context) {
 // @Tags Employee Self-Service
 // @Accept json
 // @Produce json
-// @Param request body dto.ExportEmployeeDailyStatusRequest true "Export request"
+// @Param request body dto.ExportEmployeeMonthlySummaryRequest true "Export request"
 // @Success 202 {object} dto.APIResponse{data=dto.ExportJobResponse}
 // @Failure 400 {object} dto.APIResponse
 // @Failure 401 {object} dto.APIResponse
@@ -737,19 +757,44 @@ func (h *EmployeeHandler) ExportMyMonthlySummary(c *gin.Context) {
 	}
 
 	var req dto.ExportEmployeeMonthlySummaryRequest
-	
+
 	// Validate and bind request
 	if err := middleware.ValidateAndBind(c, &req); err != nil {
 		c.JSON(http.StatusBadRequest, dto.NewErrorResponse("VALIDATION_ERROR", "Invalid request data", err.Error()))
 		return
 	}
 
-	// In a real implementation, this would queue a background job
-	response := map[string]interface{}{
-		"job_id":  uuid.New().String(),
-		"status":  "processing",
-		"message": "Export job queued successfully for month=" + req.Month + ", format=" + req.Format,
+	// Parse and validate month
+	monthStart, err := time.Parse("2006-01", req.Month)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse("INVALID_INPUT", "Invalid month format (expected YYYY-MM)", err.Error()))
+		return
 	}
 
-	c.JSON(http.StatusAccepted, dto.NewSuccessResponse(response))
+	// Calculate month range (first day to last day)
+	monthEnd := monthStart.AddDate(0, 1, -1)
+	startDate := monthStart.Format("2006-01-02")
+	endDate := monthEnd.Format("2006-01-02")
+
+	// Prepare export input for full month (employee's own data)
+	companyID := session.CompanyID
+	input := &applicationModel.ExportReportInput{
+		Session:   session,
+		StartDate: startDate,
+		EndDate:   endDate,
+		Format:    req.Format,
+		CompanyID: &companyID,
+	}
+	if req.Email != "" {
+		input.Email = &req.Email
+	}
+
+	// Call export service (it will automatically filter to employee's own data based on role)
+	result, appErr := h.service.ExportReport(c.Request.Context(), input)
+	if appErr != nil {
+		c.JSON(appErr.StatusCode, dto.NewErrorResponse(appErr.Code, appErr.Message, appErr.Details))
+		return
+	}
+
+	c.JSON(http.StatusAccepted, dto.NewSuccessResponse(result))
 }

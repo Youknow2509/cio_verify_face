@@ -415,6 +415,25 @@ definitions:
     - date
     - format
     type: object
+  dto.ExportEmployeeMonthlySummaryRequest:
+    properties:
+      email:
+        example: employee@example.com
+        type: string
+      format:
+        enum:
+        - excel
+        - pdf
+        - csv
+        example: excel
+        type: string
+      month:
+        example: 2024-01
+        type: string
+    required:
+    - format
+    - month
+    type: object
   dto.ExportJobResponse:
     properties:
       job_id:
@@ -1409,7 +1428,7 @@ paths:
         name: request
         required: true
         schema:
-          $ref: '#/definitions/dto.ExportEmployeeDailyStatusRequest'
+          $ref: '#/definitions/dto.ExportEmployeeMonthlySummaryRequest'
       produces:
       - application/json
       responses:
@@ -1929,6 +1948,35 @@ paths:
       security:
       - Bearer: []
       summary: Get daily attendance report
+      tags:
+      - Reports
+  /reports/download/{filename}:
+    get:
+      description: Download a previously exported report file
+      parameters:
+      - description: Export filename
+        in: path
+        name: filename
+        required: true
+        type: string
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Download exported report file
       tags:
       - Reports
   /reports/export:
