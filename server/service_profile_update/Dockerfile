@@ -1,5 +1,5 @@
-# docker buildx build --platform linux/amd64,linux/arm64 -t cio_verify_face_service_analytic .
-# docker buildx build -t cio_verify_face_service_analytic .
+# docker buildx build --platform linux/amd64,linux/arm64 -t cio_verify_face_service_profile_update .
+# docker buildx build -t cio_verify_face_service_profile_update .
 # Build stage
 FROM golang:1.24-trixie AS builder
 
@@ -13,7 +13,7 @@ COPY . .
 RUN go mod download
 
 # Build the application
-RUN go build -o service_analytic ./cmd/server/main.go 
+RUN go build -o service_profile_update ./cmd/main.go 
 
 # Production stage
 FROM debian:latest
@@ -21,11 +21,11 @@ FROM debian:latest
 WORKDIR /prod
 
 # Copy the built binary from the builder stage
-COPY --from=builder /build/service_analytic .
+COPY --from=builder /build/service_profile_update .
 
 # Expose the application port
 EXPOSE 8080
 EXPOSE 50051
 
 # Command to run the application
-CMD ["./service_analytic"]     
+CMD ["./service_profile_update"]
