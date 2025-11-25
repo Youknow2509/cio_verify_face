@@ -19,16 +19,12 @@ service AnalyticService {
     rpc GetAttendanceRecordsByTimeRange(GetAttendanceRecordsByTimeRangeRequest) returns (GetAttendanceRecordsResponse);
     // Get attendance records for an employee (uses: attendance_records_by_user table with partition key company_id + employee_id + year_month)
     rpc GetAttendanceRecordsByEmployee(GetAttendanceRecordsByEmployeeRequest) returns (GetAttendanceRecordsResponse);
-    // Create attendance record (writes to both attendance_records and attendance_records_by_user for dual indexing)
-    rpc CreateAttendanceRecord(CreateAttendanceRecordRequest) returns (CreateAttendanceRecordResponse);
 
     // ========== Daily Summaries APIs ==========
     // Get daily summaries for a company (uses: daily_summaries table with partition key company_id + summary_month)
     rpc GetDailySummaries(GetDailySummariesRequest) returns (GetDailySummariesResponse);
     // Get daily summaries for a user (uses: daily_summaries_by_user table with partition key company_id + employee_id + summary_month)
     rpc GetDailySummariesByUser(GetDailySummariesByUserRequest) returns (GetDailySummariesResponse);
-    // Create daily summary (writes to both daily_summaries and daily_summaries_by_user for dual indexing)
-    rpc CreateDailySummary(CreateDailySummaryRequest) returns (CreateDailySummaryResponse);
     // Update daily summary (updates both daily_summaries and daily_summaries_by_user)
     rpc UpdateDailySummary(UpdateDailySummaryRequest) returns (UpdateDailySummaryResponse);
 

@@ -87,3 +87,72 @@ func GetDistributed(ctx context.Context, key string, dst interface{}) (bool, err
 	}
 	return true, json.Unmarshal([]byte(str), dst)
 }
+
+// ============================================
+// Distributed Lock Functions (for scale-out)
+// ============================================
+
+// AcquireLock attempts to acquire a distributed lock using Redis SETNX
+// Returns true if lock was acquired, false if already locked by another instance
+func AcquireLock(ctx context.Context, key string, ttl time.Duration) (bool, error) {
+	rc := redisClient()
+	if rc == nil {
+		return false, fmt.Errorf("redis client not available")
+	}
+	lockKey := "lock:" + key
+	return rc.SetNX(ctx, lockKey, time.Now().Unix(), ttl).Result()
+}
+
+// ReleaseLock releases a distributed lock
+func ReleaseLock(ctx context.Context, key string) error {
+	rc := redisClient()
+	if rc == nil {
+		return nil
+	}
+	lockKey := "lock:" + key
+	return rc.Del(ctx, lockKey).Err()
+}
+
+// ExtendLock extends the TTL of an existing lock (for long-running operations)
+func ExtendLock(ctx context.Context, key string, ttl time.Duration) error {
+	rc := redisClient()
+	if rc == nil {
+		return nil
+	}
+	lockKey := "lock:" + key
+	return rc.Expire(ctx, lockKey, ttl).Err()
+}
+
+// ============================================
+// Redis-Only Cache Functions (Skip Local Cache)
+// For mutable data that changes frequently across instances
+// ============================================
+
+// SetDistributedOnly sets value ONLY in Redis, skipping local cache
+// Use this for mutable data like export job status that changes across instances
+func SetDistributedOnly(ctx context.Context, key string, value interface{}, ttl time.Duration) error {
+	return SetDistributed(ctx, key, value, ttl)
+}
+
+// GetDistributedOnly gets value ONLY from Redis, skipping local cache
+// Use this for mutable data to avoid stale local cache in scale-out scenarios
+func GetDistributedOnly(ctx context.Context, key string, dst interface{}) (bool, error) {
+	return GetDistributed(ctx, key, dst)
+}
+
+// DeleteDistributed removes a key from Redis
+func DeleteDistributed(ctx context.Context, key string) error {
+	rc := redisClient()
+	if rc == nil {
+		return nil
+	}
+	return rc.Del(ctx, key).Err()
+}
+
+// DeleteLocal removes a key from local cache
+func DeleteLocal(key string) {
+	lc := local()
+	if lc != nil {
+		lc.Del(key)
+	}
+}

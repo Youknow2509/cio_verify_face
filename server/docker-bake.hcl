@@ -23,12 +23,31 @@ group "default" {
         "service_workforce",
         "service_ws_delivery",
         "service_ai_with_cpu",
+        "service_analytic",
+        "service_profile_update",
     ]
 }
 
 # ============================================
 # Targets
 # ============================================
+target "service_profile_update" {
+    context = "./service_profile_update"
+    dockerfile = "Dockerfile"
+    tags = [
+        "${docker_hub_info}/${proj_name}_service_profile_update:latest",
+    ]
+  
+}
+
+target "service_analytic" {
+    context = "./service_analytic"
+    dockerfile = "Dockerfile"
+    tags = [
+        "${docker_hub_info}/${proj_name}_service_analytic:latest",
+    ]
+}
+
 target "service_ws_delivery" {
     context = "./service_ws_delivery"
     dockerfile = "Dockerfile"

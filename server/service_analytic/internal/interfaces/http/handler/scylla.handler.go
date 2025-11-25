@@ -7,6 +7,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	applicationErrors "github.com/youknow2509/cio_verify_face/server/service_analytic/internal/application/errors"
 	applicationModel "github.com/youknow2509/cio_verify_face/server/service_analytic/internal/application/model"
 	applicationService "github.com/youknow2509/cio_verify_face/server/service_analytic/internal/application/service"
 	domainModel "github.com/youknow2509/cio_verify_face/server/service_analytic/internal/domain/model"
@@ -1006,15 +1007,28 @@ func (h *ScyllaHandler) ExportDailyStatus(c *gin.Context) {
 		return
 	}
 
-	// In a real implementation, this would queue a background job
-	// For now, return a mock response
-	response := map[string]interface{}{
-		"job_id":  uuid.New().String(),
-		"status":  "processing",
-		"message": "Export job queued successfully for company_id=" + req.CompanyID + ", date=" + req.Date + ", format=" + req.Format,
+	session := authorizeCompanyWide(c, req.CompanyID)
+	if session == nil {
+		return
 	}
 
-	c.JSON(http.StatusAccepted, dto.NewSuccessResponse(response))
+	input := &applicationModel.ExportReportInput{
+		Session:   session,
+		StartDate: req.Date,
+		EndDate:   req.Date,
+		Format:    req.Format,
+		CompanyID: &req.CompanyID,
+	}
+	if req.Email != "" {
+		input.Email = &req.Email
+	}
+
+	out, aerr := h.service.ExportReport(c.Request.Context(), input)
+	if aerr != nil {
+		c.JSON(aerr.StatusCode, dto.NewErrorResponse(aerr.Code, aerr.Message, aerr.Details))
+		return
+	}
+	c.JSON(http.StatusOK, dto.NewSuccessResponse(out))
 }
 
 // ExportMonthlySummary handles POST /api/v1/company/export-monthly-summary
@@ -1043,13 +1057,36 @@ func (h *ScyllaHandler) ExportMonthlySummary(c *gin.Context) {
 		return
 	}
 
-	// In a real implementation, this would queue a background job
-	// For now, return a mock response
-	response := map[string]interface{}{
-		"job_id":  uuid.New().String(),
-		"status":  "processing",
-		"message": "Export job queued successfully for company_id=" + req.CompanyID + ", month=" + req.Month + ", format=" + req.Format,
+	session := authorizeCompanyWide(c, req.CompanyID)
+	if session == nil {
+		return
 	}
 
-	c.JSON(http.StatusAccepted, dto.NewSuccessResponse(response))
+	// Validate month format
+	monthStart, err := time.Parse("2006-01", req.Month)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse(applicationErrors.ErrInvalidDateFormat.Code, "Invalid month format", err.Error()))
+		return
+	}
+	monthEnd := monthStart.AddDate(0, 1, -1)
+	startStr := monthStart.Format("2006-01-02")
+	endStr := monthEnd.Format("2006-01-02")
+
+	input := &applicationModel.ExportReportInput{
+		Session:   session,
+		StartDate: startStr,
+		EndDate:   endStr,
+		Format:    req.Format,
+		CompanyID: &req.CompanyID,
+	}
+	if req.Email != "" {
+		input.Email = &req.Email
+	}
+
+	out, aerr := h.service.ExportReport(c.Request.Context(), input)
+	if aerr != nil {
+		c.JSON(aerr.StatusCode, dto.NewErrorResponse(aerr.Code, aerr.Message, aerr.Details))
+		return
+	}
+	c.JSON(http.StatusOK, dto.NewSuccessResponse(out))
 }

@@ -1,0 +1,508 @@
+basePath: /
+definitions:
+  dto.CreateFaceProfileUpdateRequestDTO:
+    properties:
+      reason:
+        example: Need to update my face photo for better recognition
+        maxLength: 500
+        type: string
+    type: object
+  dto.RejectRequestBodyDTO:
+    properties:
+      reason:
+        example: Photos are not clear enough
+        maxLength: 500
+        type: string
+    type: object
+  dto.ResetPasswordRequestDTO:
+    properties:
+      employee_id:
+        example: EMP001
+        maxLength: 100
+        minLength: 1
+        type: string
+    required:
+    - employee_id
+    type: object
+  model.ApproveRequestOutput:
+    properties:
+      expires_at:
+        type: string
+      message:
+        type: string
+      request_id:
+        type: string
+      update_link:
+        type: string
+    type: object
+  model.CreateFaceProfileUpdateRequestOutput:
+    properties:
+      can_retry:
+        type: boolean
+      message:
+        type: string
+      request_id:
+        type: string
+      requests_remaining_this_month:
+        type: integer
+      retry_after_days:
+        description: Days until can retry
+        type: integer
+      status:
+        type: string
+    type: object
+  model.FaceProfileUpdateRequestDTO:
+    properties:
+      approved_at:
+        type: string
+      approved_by:
+        type: string
+      company_id:
+        type: string
+      created_at:
+        type: string
+      meta_data:
+        additionalProperties: true
+        type: object
+      reason:
+        type: string
+      rejection_reason:
+        type: string
+      request_count_in_month:
+        type: integer
+      request_id:
+        type: string
+      request_month:
+        type: string
+      status:
+        type: string
+      update_link:
+        type: string
+      update_link_expires_at:
+        type: string
+      updated_at:
+        type: string
+      user_email:
+        type: string
+      user_id:
+        type: string
+      user_name:
+        type: string
+    type: object
+  model.GetMyUpdateRequestsOutput:
+    properties:
+      requests:
+        items:
+          $ref: '#/definitions/model.FaceProfileUpdateRequestDTO'
+        type: array
+      total:
+        type: integer
+    type: object
+  model.GetPendingRequestsOutput:
+    properties:
+      requests:
+        items:
+          $ref: '#/definitions/model.FaceProfileUpdateRequestDTO'
+        type: array
+      total:
+        type: integer
+    type: object
+  model.RejectRequestOutput:
+    properties:
+      message:
+        type: string
+      request_id:
+        type: string
+      status:
+        type: string
+    type: object
+  model.ResetEmployeePasswordOutput:
+    properties:
+      message:
+        type: string
+      new_password:
+        description: Only returned to manager, also sent via email
+        type: string
+      success:
+        type: boolean
+    type: object
+  model.UpdateFaceProfileOutput:
+    properties:
+      message:
+        type: string
+      profile_id:
+        type: string
+      quality_score:
+        type: number
+      success:
+        type: boolean
+    type: object
+  model.ValidateUpdateTokenOutput:
+    properties:
+      company_id:
+        type: string
+      expires_at:
+        type: string
+      message:
+        type: string
+      user_id:
+        type: string
+      valid:
+        type: boolean
+    type: object
+  response.Response:
+    properties:
+      code:
+        type: integer
+      data: {}
+      message:
+        type: string
+      success:
+        type: boolean
+    type: object
+host: localhost:8080
+info:
+  contact:
+    email: support@swagger.io
+    name: API Support
+    url: http://www.swagger.io/support
+  description: API for managing face profile updates and password resets
+  license:
+    name: Apache 2.0
+    url: http://www.apache.org/licenses/LICENSE-2.0.html
+  termsOfService: http://swagger.io/terms/
+  title: Face Profile Update Service API
+  version: "1.0"
+paths:
+  /api/v1/password/reset:
+    post:
+      consumes:
+      - application/json
+      description: Manager resets an employee's password
+      parameters:
+      - description: Request body
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ResetPasswordRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ResetEmployeePasswordOutput'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Response'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Reset employee password
+      tags:
+      - Password Reset
+  /api/v1/profile-update/face:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Update face profile using a valid update token
+      parameters:
+      - description: Update token
+        in: formData
+        name: token
+        required: true
+        type: string
+      - description: Face image
+        in: formData
+        name: image
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.UpdateFaceProfileOutput'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Update face profile
+      tags:
+      - Face Profile Update
+  /api/v1/profile-update/requests:
+    post:
+      consumes:
+      - application/json
+      description: Employee creates a request to update their face profile
+      parameters:
+      - description: Request body
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateFaceProfileUpdateRequestDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.CreateFaceProfileUpdateRequestOutput'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "429":
+          description: Too Many Requests
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Create a face profile update request
+      tags:
+      - Face Profile Update
+  /api/v1/profile-update/requests/{id}/approve:
+    post:
+      consumes:
+      - application/json
+      description: Manager approves a pending request
+      parameters:
+      - description: Request ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ApproveRequestOutput'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Approve a face profile update request
+      tags:
+      - Face Profile Update
+  /api/v1/profile-update/requests/{id}/reject:
+    post:
+      consumes:
+      - application/json
+      description: Manager rejects a pending request
+      parameters:
+      - description: Request ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Rejection reason
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.RejectRequestBodyDTO'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.RejectRequestOutput'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Response'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Reject a face profile update request
+      tags:
+      - Face Profile Update
+  /api/v1/profile-update/requests/me:
+    get:
+      description: Employee gets their own update requests
+      parameters:
+      - description: Month filter (YYYY-MM)
+        in: query
+        name: month
+        type: string
+      - default: 50
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetMyUpdateRequestsOutput'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get my face profile update requests
+      tags:
+      - Face Profile Update
+  /api/v1/profile-update/requests/pending:
+    get:
+      description: Manager gets pending requests for their company
+      parameters:
+      - default: 50
+        description: Limit
+        in: query
+        name: limit
+        type: integer
+      - default: 0
+        description: Offset
+        in: query
+        name: offset
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.GetPendingRequestsOutput'
+              type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/response.Response'
+        "403":
+          description: Forbidden
+          schema:
+            $ref: '#/definitions/response.Response'
+      security:
+      - BearerAuth: []
+      summary: Get pending face profile update requests
+      tags:
+      - Face Profile Update
+  /api/v1/profile-update/token/validate:
+    get:
+      description: Validate if an update token is valid
+      parameters:
+      - description: Update token
+        in: query
+        name: token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/response.Response'
+            - properties:
+                data:
+                  $ref: '#/definitions/model.ValidateUpdateTokenOutput'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/response.Response'
+      summary: Validate an update token
+      tags:
+      - Face Profile Update
+securityDefinitions:
+  BearerAuth:
+    description: Type "Bearer" followed by a space and JWT token.
+    in: header
+    name: Authorization
+    type: apiKey
+swagger: "2.0"

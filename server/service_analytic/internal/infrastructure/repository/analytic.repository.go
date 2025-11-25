@@ -63,7 +63,7 @@ func (r *AnalyticRepositoryImpl) GetAttendanceRecordsByEmployee(ctx context.Cont
 	query := `SELECT company_id, year_month, record_time, employee_id, device_id, record_type,
 		verification_method, verification_score, face_image_url, location_coordinates,
 		metadata, sync_status, created_at
-		FROM attendance_records
+		FROM attendance_records_by_user
 		WHERE company_id = ? AND year_month = ? AND employee_id = ?`
 
 	iter := r.scyllaSession.Query(query, uuidToGocql(companyID), yearMonth, uuidToGocql(employeeID)).Iter()
@@ -162,7 +162,7 @@ func (r *AnalyticRepositoryImpl) GetDailySummariesByEmployeeMonth(ctx context.Co
 	query := `SELECT company_id, summary_month, work_date, employee_id, shift_id,
 		actual_check_in, actual_check_out, attendance_status, late_minutes,
 		early_leave_minutes, total_work_minutes, notes, updated_at
-		FROM daily_summaries
+		FROM daily_summaries_by_user
 		WHERE company_id = ? AND summary_month = ? AND employee_id = ?`
 
 	iter := r.scyllaSession.Query(query, uuidToGocql(companyID), month, uuidToGocql(employeeID)).Iter()
@@ -200,7 +200,7 @@ func (r *AnalyticRepositoryImpl) GetDailySummaryByEmployeeDate(ctx context.Conte
 	query := `SELECT company_id, summary_month, work_date, employee_id, shift_id,
 		actual_check_in, actual_check_out, attendance_status, late_minutes,
 		early_leave_minutes, total_work_minutes, notes, updated_at
-		FROM daily_summaries
+		FROM daily_summaries_by_user
 		WHERE company_id = ? AND summary_month = ? AND work_date = ? AND employee_id = ?`
 
 	var summary model.DailySummary

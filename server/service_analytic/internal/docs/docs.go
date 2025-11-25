@@ -1518,7 +1518,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/dto.ExportEmployeeDailyStatusRequest"
+                            "$ref": "#/definitions/dto.ExportEmployeeMonthlySummaryRequest"
                         }
                     }
                 ],
@@ -2370,6 +2370,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/reports/download/{filename}": {
+            "get": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Download a previously exported report file",
+                "produces": [
+                    "application/octet-stream"
+                ],
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Download exported report file",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Export filename",
+                        "name": "filename",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "file"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/dto.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/reports/export": {
             "post": {
                 "security": [
@@ -3045,6 +3091,32 @@ const docTemplate = `{
                         "csv"
                     ],
                     "example": "excel"
+                }
+            }
+        },
+        "dto.ExportEmployeeMonthlySummaryRequest": {
+            "type": "object",
+            "required": [
+                "format",
+                "month"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string",
+                    "example": "employee@example.com"
+                },
+                "format": {
+                    "type": "string",
+                    "enum": [
+                        "excel",
+                        "pdf",
+                        "csv"
+                    ],
+                    "example": "excel"
+                },
+                "month": {
+                    "type": "string",
+                    "example": "2024-01"
                 }
             }
         },
