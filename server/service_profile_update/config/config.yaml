@@ -1,0 +1,141 @@
+server:
+    name: 'cio_verify_face'
+    id: 'service-profile-update-node-0'
+    region: 'us-west-1'
+    shardId: 'shard-1'
+    port: 8085
+    mode: 'debug' # default: dev, options: dev, prod
+    degraded_threshold: 85.0
+    out_of_service_threshold: 95.0
+
+service_auth:
+    enabled: true
+    grpc_addr: 'localhost:50051'
+    keepalive_time_ms: 120000
+    keepalive_timeout_ms: 20000
+    keepalive_permit_without_calls: true
+    http2_max_pings_without_data: 1
+    http2_min_time_between_pings_ms: 60000
+    http2_min_ping_interval_without_data_ms: 60000
+    tls:
+        enabled: false
+        cert_file: ''
+        key_file: ''
+
+grpc:
+    network: 'tcp'
+    port: 50052
+    keepalive_time_ms: 120000
+    keepalive_timeout_ms: 20000
+    http2_min_time_between_pings_ms: 60000
+    keepalive_permit_without_calls: true
+    tls:
+        enabled: false
+        cert_file: ''
+        key_file: ''
+
+policy_rate_limit:
+    - name: 'face_profile_request'
+      limit: 10
+      window: '1m'
+    - name: 'password_reset'
+      limit: 5
+      window: '1h'
+
+postgres:
+    address:
+        - 127.0.0.1:5433
+    database: cio_verify_face
+    username: postgres
+    password: root1234
+    sslmode: disable
+    sslcert: ''
+    sslkey: ''
+    sslrootcert: ''
+    sslpassword: ''
+    appname: cio_verify_face_profile_update
+    connectionTimeout: 5
+    tz: 'UTC'
+    maxConns: 10
+    minConns: 2
+    minIdleConns: 2
+    maxConnIdleTime: 300
+    maxConnLifetimeJitter: 60
+    healthCheckPeriod: 30
+
+redis:
+    type: 1 # 1: standalone, 2: sentinel, 3: cluster
+    use_tls: false
+    cert_path: ''
+    key_path: ''
+    password: 'root1234'
+    db: 0
+    # For standalone type
+    host: 127.0.0.1
+    port: 6379
+    # For sentinel type
+    master_name: mymaster
+    sentinel_addrs:
+        - 127.0.0.1:26379
+        - 127.0.0.1:26380
+        - 127.0.0.1:26381
+    # For cluster type
+    address:
+        - 127.0.0.1:26379
+        - 127.0.0.1:26380
+        - 127.0.0.1:26381
+    route_by_latency: true
+    route_randomly: false
+    pool_size: 10
+    min_idle_conns: 2
+    max_retries: 3
+
+kafka:
+    brokers:
+        - 127.0.0.1:9092
+    sasl:
+        enabled: false
+        mechanism: 0
+        username: ''
+        password: ''
+    tls:
+        enabled: false
+        skip_verify: true
+        ca_file: ''
+    producer:
+        compression_type: 0
+        retries: 3
+        retry_backoff_ms: 100
+        linger_ms: 5
+        batch_size: 100
+        batch_bytes: 1048576
+        max_attempts: 3
+        async: false
+        write_timeout_ms: 30000
+        read_timeout_ms: 30000
+        balancer: 1
+    consumers:
+        group_id: profile_update_service
+        commit_interval_ms: 1000
+        min_bytes: 10240
+        max_bytes: 1048576
+        max_wait_ms: 500
+        read_batch_timeout_ms: 10000
+        heartbeat_interval_ms: 3000
+        session_timeout_ms: 30000
+        rebalance_timeout_ms: 60000
+        join_group_backoff_ms: 5000
+        read_backoff_min_ms: 100
+        read_backoff_max_ms: 1000
+        read_lag_interval_ms: -1
+        max_attempts: 3
+        queue_capacity: 100
+        retention_time_ms: -1
+
+logger:
+    folder_store: './logs'
+    file_max_size: 500
+    file_max_backups: 3
+    file_max_age: 30
+    compress: true
+
