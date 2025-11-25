@@ -18,7 +18,7 @@ func LoadConfig() (*domainConfig.Config, error) {
 
 	configName := os.Getenv("CONFIG_NAME")
 	if configName == "" {
-		configName = "config.dev"
+		configName = "config"
 	}
 
 	// Setup viper

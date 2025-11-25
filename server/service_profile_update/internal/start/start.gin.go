@@ -13,10 +13,12 @@ import (
 
 func initGinRouter(cfg *config.ServerSetting) error {
 	// Set Gin mode
-	gin.SetMode(cfg.Mode)
-
-	// Create router
-	router := gin.Default()
+	router := gin.New()
+	if cfg.Mode != "dev" {
+		gin.SetMode(gin.ReleaseMode)
+	} else {
+		gin.SetMode(gin.DebugMode)
+	}
 
 	// Swagger documentation
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))

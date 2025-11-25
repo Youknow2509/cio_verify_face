@@ -1,0 +1,36 @@
+# -------------------------
+# 1. Builder stage
+# -------------------------
+FROM node:24-alpine AS builder
+
+WORKDIR /app
+
+# Install deps with caching
+COPY package*.json ./
+RUN npm ci --omit=dev=false
+
+# Copy source
+COPY . .
+
+# Build TS → JS
+RUN npm run build
+
+
+
+# -------------------------
+# 2. Production stage
+# -------------------------
+FROM node:24-alpine AS prod
+
+WORKDIR /app
+
+# Install only production deps
+COPY package*.json ./
+RUN npm ci --omit=dev
+
+# Copy compiled JS files from builder
+COPY --from=builder /app/dist ./dist
+COPY --from=builder /app/src/proto ./dist/proto
+
+# Start app
+CMD ["node", "dist/index.js"]
