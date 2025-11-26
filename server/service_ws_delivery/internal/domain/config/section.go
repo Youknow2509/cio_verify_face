@@ -10,6 +10,7 @@ type (
 		GrpcServer        GrpcSetting          `mapstructure:"grpc"`
 		Server            ServerSetting        `mapstructure:"server"`
 		WsServer          WsSetting            `mapstructure:"ws"`
+		Observability     ObservabilitySetting `mapstructure:"observability"`
 		Cassandra         CassandraSetting     `mapstructure:"cassandra"`
 		Elasticsearch     ElasticsearchSetting `mapstructure:"elasticsearch"`
 		Jaeger            JaegerSetting        `mapstructure:"jaeger"`
@@ -34,7 +35,7 @@ type (
 // ==========================================================
 // RateLimitPolicySetting
 type RateLimitPolicySetting struct {
-	Policies []RateLimitPolicy 
+	Policies []RateLimitPolicy
 }
 type RateLimitPolicy struct {
 	Name   string `mapstructure:"name"`
@@ -107,7 +108,16 @@ type ElasticsearchSetting struct {
 	APIKey       string   `mapstructure:"api_key"`       // for auth_type 3F
 }
 
-// jaeger
+// observability (Prometheus + Jaeger)
+type ObservabilitySetting struct {
+	Enabled        bool   `mapstructure:"enabled"`
+	MetricsPath    string `mapstructure:"metrics_path"`
+	MetricsPort    int    `mapstructure:"metrics_port"`
+	TracingEnabled bool   `mapstructure:"tracing_enabled"`
+	OTLPEndpoint   string `mapstructure:"otlp_endpoint"`
+}
+
+// jaeger (legacy - kept for backward compatibility)
 type JaegerSetting struct {
 	ServiceName                         string  `mapstructure:"service_name"`
 	AgentHost                           string  `mapstructure:"agent_host"`

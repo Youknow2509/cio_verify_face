@@ -17,6 +17,13 @@ grpc:
         cert_file: ''
         key_file: ''
 
+observability:
+    enabled: true
+    metrics_path: '/metrics'
+    metrics_port: 9090
+    tracing_enabled: true
+    otlp_endpoint: 'http://jaeger:4318/v1/traces'
+
 ws:
     num_workers: 1
     size_buffer_chan: 256
@@ -33,10 +40,10 @@ ws:
     max_conn_system: 100
 
 policy_rate_limit:
-  - name: "ws_read"
-    # limit: 1000 
-    limit: 5
-    window: "1m"
+    - name: 'ws_read'
+      # limit: 1000
+      limit: 5
+      window: '1m'
 
 logger:
     folder_store: './logs'

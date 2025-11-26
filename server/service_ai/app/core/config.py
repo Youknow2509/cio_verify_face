@@ -24,7 +24,10 @@ class Settings(BaseSettings):
     # Compute mode (cpu or gpu)
     COMPUTE_MODE: str = "cpu"
     
-    # Observability - Jaeger/OTLP
+    # Observability Configuration
+    OBSERVABILITY_ENABLED: bool = True
+    METRICS_PORT: int = 9090
+    METRICS_PATH: str = "/metrics"
     TRACING_ENABLED: bool = True
     OTLP_ENDPOINT: str = "http://jaeger:4318/v1/traces"
     

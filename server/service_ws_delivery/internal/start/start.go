@@ -19,6 +19,10 @@ func StartService() error {
 	if err := initLogger(&setting.Logger); err != nil {
 		return err
 	}
+	// Initialize observability (Prometheus metrics and Jaeger tracing)
+	if err := initObservability(&setting.Observability, setting.Server.Name); err != nil {
+		return err
+	}
 	// Initialize local cache
 	if err := initLocalCache(); err != nil {
 		return err
