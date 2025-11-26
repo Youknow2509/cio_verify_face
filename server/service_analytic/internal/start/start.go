@@ -30,6 +30,11 @@ func StartService() error {
 	global.ZapLogger = zapLogger
 	logger.Info("Logger initialized")
 
+	// Initialize observability (Prometheus metrics and Jaeger tracing)
+	if err := initObservability(&config.Observability, config.Server.Name); err != nil {
+		return err
+	}
+
 	// Initialize local cache
 	if err := infraCache.InitLocalCache(); err != nil {
 		return err

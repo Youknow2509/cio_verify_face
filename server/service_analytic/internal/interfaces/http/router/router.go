@@ -9,6 +9,7 @@ import (
 	"github.com/youknow2509/cio_verify_face/server/service_analytic/internal/global"
 	"github.com/youknow2509/cio_verify_face/server/service_analytic/internal/infrastructure/middleware"
 	"github.com/youknow2509/cio_verify_face/server/service_analytic/internal/interfaces/http/handler"
+	"github.com/youknow2509/cio_verify_face/server/pkg/observability"
 )
 
 // SetupRouter sets up the HTTP router with authentication middleware
@@ -23,6 +24,13 @@ func SetupRouter() *gin.Engine {
 	config.AllowAllOrigins = true
 	config.AllowHeaders = []string{"Origin", "Content-Length", "Content-Type", "Authorization"}
 	router.Use(cors.New(config))
+
+	// Add observability middleware if enabled
+	if global.SettingServer.Observability.Enabled {
+		if metrics := observability.GetHTTPMetrics(); metrics != nil {
+			router.Use(metrics.GinMiddleware())
+		}
+	}
 
 	// Swagger only in dev mode
 	if global.SettingServer.Server.Mode == "dev" {

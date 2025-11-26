@@ -24,6 +24,10 @@ class Settings(BaseSettings):
     # Compute mode (cpu or gpu)
     COMPUTE_MODE: str = "cpu"
     
+    # Observability - Jaeger/OTLP
+    TRACING_ENABLED: bool = True
+    OTLP_ENDPOINT: str = "http://jaeger:4318/v1/traces"
+    
     # GRPC client configuration
     GRPC_CLIENT_KEEPALIVE_TIME_MS: int = 120000
     GRPC_CLIENT_KEEPALIVE_TIMEOUT_MS: int = 20000
@@ -137,7 +141,7 @@ class Settings(BaseSettings):
     
     # Storage
     STORAGE_PATH: str = "./data"
-    MODEL_PATH: str = "./models"
+    MODEL_PATH: str = "~/.insightface"
     INDEX_PATH: str = "./data/indexes"
     
     # Performance

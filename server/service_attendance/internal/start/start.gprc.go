@@ -9,6 +9,7 @@ import (
 	global "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/global"
 	interfaceGrpc "github.com/youknow2509/cio_verify_face/server/service_attendance/internal/interfaces/grpc"
 	pb "github.com/youknow2509/cio_verify_face/server/service_attendance/proto"
+	"github.com/youknow2509/cio_verify_face/server/pkg/observability"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/keepalive"
@@ -21,6 +22,7 @@ var (
 // init server grpc
 func initServerGrpc() error {
 	config := global.SettingServer.Grpc
+	serviceName := global.SettingServer.Server.Name
 
 	// Initialize the gRPC server
 	lis, err := net.Listen(
@@ -70,6 +72,22 @@ func initServerGrpc() error {
 		PermitWithoutStream: config.KeepalivePermitWithoutCalls,
 	})
 	opts = append(opts, kaEnforcement)
+
+	// Add observability interceptors
+	if grpcMetrics := GetGRPCMetrics(); grpcMetrics != nil {
+		opts = append(opts,
+			grpc.ChainUnaryInterceptor(grpcMetrics.UnaryServerInterceptor()),
+			grpc.ChainStreamInterceptor(grpcMetrics.StreamServerInterceptor()),
+		)
+	}
+
+	// Add tracing interceptors if tracing is enabled
+	if GetTracerProvider() != nil {
+		opts = append(opts,
+			grpc.ChainUnaryInterceptor(observability.GRPCTracingUnaryServerInterceptor(serviceName)),
+			grpc.ChainStreamInterceptor(observability.GRPCTracingStreamServerInterceptor(serviceName)),
+		)
+	}
 
 	grpcServer := grpc.NewServer(opts...)
 

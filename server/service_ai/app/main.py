@@ -10,6 +10,7 @@ import logging
 
 from app.core.config import settings
 from app.core.logging_config import setup_logging
+from app.core.tracing import init_tracing, shutdown_tracing
 from app.api import face_routes
 from app.grpc_generated import attendance_pb2
 # Setup logging
@@ -24,6 +25,9 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+# Initialize tracing (before adding middleware)
+init_tracing(app)
 
 # CORS middleware
 app.add_middleware(
@@ -141,6 +145,8 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("Shutting down the Face Verification Service...")
+    # Shutdown tracing
+    shutdown_tracing()
     batching = getattr(app.state, "attendance_batching_service", None)
     attendance_client = getattr(app.state, "attendance_client", None)
     face_service = getattr(app.state, "face_service", None)

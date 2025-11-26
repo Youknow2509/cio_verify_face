@@ -28,7 +28,7 @@ services:
           
     # AI Service
     service-ai:
-        image: someone2509/cio_verify_face_service_ai:cpu
+        image: someone2509/cio_verify_face_service_ai:cpu_test
         networks:
             - nw-dev-0
         volumes:
@@ -44,7 +44,7 @@ services:
     
     # Analytics Service
     service-analytic:
-        image: someone2509/cio_verify_face_service_analytic:latest
+        image: someone2509/cio_verify_face_service_analytic:latest_test
         networks:
             - nw-dev-0
         volumes:
@@ -54,7 +54,7 @@ services:
 
     # Attendance Service
     service-attendance:
-        image: someone2509/cio_verify_face_service_attendance:latest
+        image: someone2509/cio_verify_face_service_attendance:latest_test
         networks:
             - nw-dev-0
         volumes:
@@ -64,7 +64,7 @@ services:
 
     # Auth Service
     service-auth:
-        image: someone2509/cio_verify_face_service_auth:latest
+        image: someone2509/cio_verify_face_service_auth:latest_test
         networks:
             - nw-dev-0
         volumes:
@@ -72,7 +72,7 @@ services:
 
     # Device Service
     service-device:
-        image: someone2509/cio_verify_face_service_device:latest
+        image: someone2509/cio_verify_face_service_device:latest_test
         networks:
             - nw-dev-0
         volumes:
@@ -82,7 +82,7 @@ services:
 
     # Identity Service
     service-identity:
-        image: someone2509/cio_verify_face_service_identity:latest
+        image: someone2509/cio_verify_face_service_identity:latest_test
         networks:
             - nw-dev-0
         volumes:
@@ -92,7 +92,7 @@ services:
     
     # Notification Service
     service-notification:
-        image: someone2509/cio_verify_face_service_notify:latest
+        image: someone2509/cio_verify_face_service_notify:latest_test
         networks:
             - nw-dev-0
         volumes:
@@ -100,7 +100,7 @@ services:
 
     # Profile Upload Service
     service-profile-update:
-        image: someone2509/cio_verify_face_service_profile_update:latest
+        image: someone2509/cio_verify_face_service_profile_update:latest_test
         networks:
             - nw-dev-0
         volumes:
@@ -111,7 +111,7 @@ services:
 
     # Workforce Service
     service-workforce:
-        image: someone2509/cio_verify_face_service_workforce:latest
+        image: someone2509/cio_verify_face_service_workforce:latest_test
         networks:
             - nw-dev-0
         volumes:

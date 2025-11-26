@@ -52,6 +52,15 @@ func initRouter(ginEngine *gin.Engine) error {
 	// global middleware
 	ginEngine.Use(getConfigCors())
 	ginEngine.Use(infraMiddleware.GetValidateMiddleware().Apply())
+	
+	// Add observability middleware (metrics and tracing)
+	if metrics := GetHTTPMetrics(); metrics != nil {
+		ginEngine.Use(metrics.GinMiddleware())
+	}
+	if tp := GetTracerProvider(); tp != nil {
+		ginEngine.Use(tp.GinTracingMiddleware())
+	}
+	
 	// Initialize routes
 	httpRouter := httpRouter.HttpRouterManager{}
 	apiHttpRouter := ginEngine.Group("/api")

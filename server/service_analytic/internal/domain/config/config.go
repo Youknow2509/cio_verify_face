@@ -15,6 +15,16 @@ type Config struct {
 	Export        ExportConfig        `mapstructure:"export"`
 	ObjectStorage ObjectStorageConfig `mapstructure:"object_storage"`
 	Kafka         KafkaConfig         `mapstructure:"kafka"`
+	Observability ObservabilityConfig `mapstructure:"observability"`
+}
+
+// ObservabilityConfig represents observability configuration
+type ObservabilityConfig struct {
+	Enabled        bool   `mapstructure:"enabled"`
+	MetricsPath    string `mapstructure:"metrics_path"`
+	MetricsPort    int    `mapstructure:"metrics_port"`
+	TracingEnabled bool   `mapstructure:"tracing_enabled"`
+	OTLPEndpoint   string `mapstructure:"otlp_endpoint"`
 }
 
 // ServerConfig represents server configuration

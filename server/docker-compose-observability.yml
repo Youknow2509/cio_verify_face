@@ -1,0 +1,106 @@
+# Docker Compose for Observability Stack
+# This file sets up Jaeger, Prometheus, and Grafana for monitoring all services
+
+networks:
+    nw-dev-0:
+        driver: bridge
+
+volumes:
+    prometheus_data:
+    grafana_data:
+
+services:
+    # Jaeger - Distributed Tracing
+    jaeger:
+        image: jaegertracing/all-in-one:1.62.0
+        container_name: jaeger
+        restart: unless-stopped
+        networks:
+            - nw-dev-0
+        ports:
+            - '16686:16686' # Jaeger UI
+            - '4317:4317' # OTLP gRPC
+            - '4318:4318' # OTLP HTTP
+            - '14250:14250' # gRPC spans
+            - '14268:14268' # HTTP thrift
+            - '6831:6831/udp' # UDP thrift compact
+            - '6832:6832/udp' # UDP thrift binary
+        environment:
+            - COLLECTOR_OTLP_ENABLED=true
+            - LOG_LEVEL=info
+        healthcheck:
+            test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:16686']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    # Prometheus - Metrics Collection
+    prometheus:
+        image: prom/prometheus:v2.55.0
+        container_name: prometheus
+        restart: unless-stopped
+        networks:
+            - nw-dev-0
+        ports:
+            - '9091:9090' # Prometheus Web UI
+        volumes:
+            - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+            - ./config/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+            - prometheus_data:/prometheus
+        command:
+            - '--config.file=/etc/prometheus/prometheus.yml'
+            - '--storage.tsdb.path=/prometheus'
+            - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+            - '--web.console.templates=/usr/share/prometheus/consoles'
+            - '--web.enable-lifecycle'
+            - '--storage.tsdb.retention.time=15d'
+        healthcheck:
+            test:
+                [
+                    'CMD',
+                    'wget',
+                    '-q',
+                    '--spider',
+                    'http://localhost:9090/-/healthy',
+                ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    # Grafana - Visualization Dashboard
+    grafana:
+        image: grafana/grafana:11.4.0
+        container_name: grafana
+        restart: unless-stopped
+        networks:
+            - nw-dev-0
+        ports:
+            - '3000:3000' # Grafana Web UI
+        environment:
+            - GF_SECURITY_ADMIN_USER=admin
+            - GF_SECURITY_ADMIN_PASSWORD=admin
+            - GF_USERS_ALLOW_SIGN_UP=false
+            - GF_SERVER_ROOT_URL=http://localhost:3000
+            - GF_INSTALL_PLUGINS=grafana-clock-panel,grafana-simple-json-datasource
+        volumes:
+            - grafana_data:/var/lib/grafana
+            - ./config/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+            - ./config/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+            - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+        depends_on:
+            prometheus:
+                condition: service_healthy
+            jaeger:
+                condition: service_healthy
+        healthcheck:
+            test:
+                [
+                    'CMD',
+                    'wget',
+                    '-q',
+                    '--spider',
+                    'http://localhost:3000/api/health',
+                ]
+            interval: 10s
+            timeout: 5s
+            retries: 5

@@ -60,8 +60,14 @@ help:
 	@echo "\t docker_build_service \t Docker build a specific service and push to registry"
 	@echo "\t docker_run_resource \t Docker run resource containers"
 	@echo "\t docker_nginx_dev \t Docker run nginx in dev mode"
+	@echo "\t docker_observabilities \t Docker run observabilities containers"
 
 	@echo "  help - Show this help message"
+
+# Docker Run Observabilities Containers
+docker_observabilities:
+	@echo "Running observabilities containers"
+	docker compose -p $(PROJECT_NAME) -f docker-compose-observability.yml up -d
 
 # Docker Run Nginx in Dev Mode
 docker_nginx_dev:
@@ -76,13 +82,13 @@ docker_run_resource:
 # Docker build a specific service and push to registry
 docker_build_service:
 	@echo "Building Docker image for service $(SERVICE) and pushing to registry"
-	docker buildx bake --file ${DOCKER_BAKE_FILE} --push $(SERVICE) 
+	docker buildx bake --file ${DOCKER_BAKE_FILE} $(SERVICE) 
 
 # Docker Build All Services
 docker_builds:
 	@echo "Building Docker images for all services and pushing to registry"
-	docker buildx bake --file ${DOCKER_BAKE_FILE} --push
-
+	docker buildx bake --file ${DOCKER_BAKE_FILE}
+	
 # Docker Compose - Down
 docker_compose_down:
 	@echo "Stopping Docker Compose"
