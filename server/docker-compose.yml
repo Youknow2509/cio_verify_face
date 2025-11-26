@@ -5,56 +5,6 @@ networks:
         driver: bridge
 
 services:
-    # Attendance Service
-    service_attendance:
-        image: someone2509/cio_verify_face_service_attendance:latest
-        networks:
-            - nw-dev-0
-        volumes:
-            - ./config/config_service_attendance.yaml:/prod/config/config.yaml:ro
-    
-    # WS Delivery Service
-    service_ws_delivery:
-        image: someone2509/cio_verify_face_service_ws_delivery:latest
-        networks:
-            - nw-dev-0
-        volumes:
-            - ./config/config_service_ws_delivery.yaml:/prod/config/config.yaml:ro
-
-    # Workforce Service
-    service_workforce:
-        image: someone2509/cio_verify_face_service_workforce:latest
-        networks:
-            - nw-dev-0
-        volumes:
-            - ./config/config_service_workforce.yaml:/prod/config/config.yaml:ro
-            
-    # Notification Service
-    service_notification:
-        image: someone2509/cio_verify_face_service_notify:latest
-        networks:
-            - nw-dev-0
-        volumes:
-            - ./config/config_service_notify.yaml:/prod/config/config.yaml:ro
-
-    # Device Service
-    service_device:
-        image: someone2509/cio_verify_face_service_device:latest
-        networks:
-            - nw-dev-0
-        volumes:
-            - ./config/config_service_device.yaml:/prod/config/config.yaml:ro
-            
-    # Authentication Service
-    service_auth:
-        image: someone2509/cio_verify_face_service_auth:latest
-        networks:
-            - nw-dev-0
-        ports:
-            - '50051:50051'
-        volumes:
-            - ./config/config_service_auth.yaml:/prod/config/config.yaml:ro
-
     # NGINX Gateway
     gateway:
         image: nginx:alpine-slim
@@ -63,12 +13,109 @@ services:
         networks:
             - nw-dev-0
         volumes:
-            - ./config/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
-
+            - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+            - ./config/nginx/gateway.conf:/etc/nginx/conf.d/gateway.conf:ro
         depends_on:
-            - service_auth
-            - service_device
-            - service_notification
-            - service_workforce
-            - service_ws_delivery
-            - service_attendance
+            - service-ai
+            - service-analytic
+            - service-attendance
+            - service-auth
+            - service-device
+            - service-identity
+            - service-notification
+            - service-profile-update
+            - service-workforce
+          
+    # AI Service
+    service-ai:
+        image: someone2509/cio_verify_face_service_ai:cpu
+        networks:
+            - nw-dev-0
+        volumes:
+          - ./config/.env.service_ai:/app/.env:ro
+        depends_on:
+            - service-auth
+            - service-attendance
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 5
+    
+    # Analytics Service
+    service-analytic:
+        image: someone2509/cio_verify_face_service_analytic:latest
+        networks:
+            - nw-dev-0
+        volumes:
+          - ./config/config_service_analytic.yaml:/prod/config/config.yaml:ro
+        depends_on:
+            - service-auth
+
+    # Attendance Service
+    service-attendance:
+        image: someone2509/cio_verify_face_service_attendance:latest
+        networks:
+            - nw-dev-0
+        volumes:
+          - ./config/config_service_attendance.yaml:/prod/config/config.yaml:ro
+        depends_on:
+            - service-auth
+
+    # Auth Service
+    service-auth:
+        image: someone2509/cio_verify_face_service_auth:latest
+        networks:
+            - nw-dev-0
+        volumes:
+          - ./config/config_service_auth.yaml:/prod/config/config.yaml:ro
+
+    # Device Service
+    service-device:
+        image: someone2509/cio_verify_face_service_device:latest
+        networks:
+            - nw-dev-0
+        volumes:
+          - ./config/config_service_device.yaml:/prod/config/config.yaml:ro
+        depends_on:
+            - service-auth   
+
+    # Identity Service
+    service-identity:
+        image: someone2509/cio_verify_face_service_identity:latest
+        networks:
+            - nw-dev-0
+        volumes:
+          - ./config/.env.service_identity:/app/.env:ro
+        depends_on:
+            - service-auth
+    
+    # Notification Service
+    service-notification:
+        image: someone2509/cio_verify_face_service_notify:latest
+        networks:
+            - nw-dev-0
+        volumes:
+          - ./config/config_service_notify.yaml:/prod/config/config.yaml:ro
+
+    # Profile Upload Service
+    service-profile-update:
+        image: someone2509/cio_verify_face_service_profile_update:latest
+        networks:
+            - nw-dev-0
+        volumes:
+          - ./config/config_service_profile_update.yaml:/prod/config/config.yaml:ro
+        depends_on:
+            - service-auth
+            - service-notification
+
+    # Workforce Service
+    service-workforce:
+        image: someone2509/cio_verify_face_service_workforce:latest
+        networks:
+            - nw-dev-0
+        volumes:
+          - ./config/config_service_workforce.yaml:/prod/config/config.yaml:ro
+        depends_on:
+            - service-auth
+      

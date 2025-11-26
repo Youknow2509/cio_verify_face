@@ -15,7 +15,9 @@ import (
 func SetupRouter() *gin.Engine {
 	// Create gin router
 	router := gin.Default()
-
+	if global.SettingServer.Server.Mode != "dev" {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	// Setup CORS
 	config := cors.DefaultConfig()
 	config.AllowAllOrigins = true
