@@ -6,8 +6,14 @@ FROM golang:1.24-trixie AS builder
 # Set working directory
 WORKDIR /build
 
-# Copy source code
-COPY . .
+# Copy shared packages first
+COPY pkg/ ./pkg/
+
+# Copy service source code
+COPY service_profile_update/ ./service_profile_update/
+
+# Set working directory to service
+WORKDIR /build/service_profile_update
 
 # Download dependencies
 RUN go mod download
@@ -21,7 +27,7 @@ FROM debian:latest
 WORKDIR /prod
 
 # Copy the built binary from the builder stage
-COPY --from=builder /build/service_profile_update .
+COPY --from=builder /build/service_profile_update/service_profile_update .
 
 # Expose the application port
 EXPOSE 8080
