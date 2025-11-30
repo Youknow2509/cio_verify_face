@@ -1,0 +1,82 @@
+# Prometheus Alert Rules
+groups:
+  - name: service_alerts
+    rules:
+      # High error rate alert
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m])) by (service)
+            /
+            sum(rate(http_requests_total[5m])) by (service)
+          ) * 100 > 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected in {{ $labels.service }}"
+          description: "Error rate is {{ $value | printf \"%.2f\" }}% for service {{ $labels.service }}"
+
+      # High latency alert
+      - alert: HighLatency
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (service, le)
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency detected in {{ $labels.service }}"
+          description: "95th percentile latency is {{ $value | printf \"%.2f\" }}s for service {{ $labels.service }}"
+
+      # Service down alert
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "{{ $labels.job }} has been down for more than 1 minute"
+
+      # High request rate alert
+      - alert: HighRequestRate
+        expr: |
+          sum(rate(http_requests_total[5m])) by (service) > 1000
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High request rate in {{ $labels.service }}"
+          description: "Request rate is {{ $value | printf \"%.2f\" }} req/s for service {{ $labels.service }}"
+
+  - name: grpc_alerts
+    rules:
+      # gRPC high error rate
+      - alert: GRPCHighErrorRate
+        expr: |
+          (
+            sum(rate(grpc_errors_total[5m])) by (service)
+            /
+            sum(rate(grpc_requests_total[5m])) by (service)
+          ) * 100 > 5
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High gRPC error rate in {{ $labels.service }}"
+          description: "gRPC error rate is {{ $value | printf \"%.2f\" }}% for service {{ $labels.service }}"
+
+      # gRPC high latency
+      - alert: GRPCHighLatency
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(grpc_request_duration_seconds_bucket[5m])) by (service, le)
+          ) > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High gRPC latency in {{ $labels.service }}"
+          description: "95th percentile gRPC latency is {{ $value | printf \"%.2f\" }}s for service {{ $labels.service }}"

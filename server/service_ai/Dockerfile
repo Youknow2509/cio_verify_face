@@ -7,7 +7,7 @@
 ##     face-service:cpu
 
 # Builder stage: compile native deps (insightface) with toolchain
-FROM python:3.11-slim AS builder
+FROM python:3.12-slim AS builder
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -32,7 +32,7 @@ RUN python -m pip install --upgrade pip \
     && pip install --no-cache-dir -r ${REQUIREMENTS_FILE}
 
 # Runtime stage: slim image without compiler toolchain
-FROM python:3.11-slim AS runtime
+FROM python:3.12-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -55,6 +55,9 @@ COPY --from=builder /usr/local /usr/local
 
 # Copy application source
 COPY . .
+
+# Regenerate gRPC stubs to match installed protobuf runtime
+RUN bash generate_grpc.sh
 
 # Create non-root user and set permissions for writable dirs
 RUN useradd -m appuser \

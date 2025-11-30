@@ -1,0 +1,253 @@
+# Docker compose with Observability Stack
+# This extends the base docker-compose with Jaeger, Prometheus, and Grafana
+
+networks:
+    nw-dev-0:
+        driver: bridge
+
+volumes:
+    prometheus_data:
+    grafana_data:
+
+services:
+    # ===========================================
+    # OBSERVABILITY STACK
+    # ===========================================
+
+    # Jaeger - Distributed Tracing
+    jaeger:
+        image: jaegertracing/all-in-one:1.62
+        container_name: jaeger
+        restart: unless-stopped
+        networks:
+            - nw-dev-0
+        ports:
+            - '16686:16686' # Jaeger UI
+            - '4317:4317' # OTLP gRPC
+            - '4318:4318' # OTLP HTTP
+            - '14250:14250' # gRPC spans
+            - '14268:14268' # HTTP thrift
+            - '6831:6831/udp' # UDP thrift compact
+        environment:
+            - COLLECTOR_OTLP_ENABLED=true
+            - LOG_LEVEL=info
+        healthcheck:
+            test: ['CMD', 'wget', '-q', '--spider', 'http://localhost:16686']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    # Prometheus - Metrics Collection
+    prometheus:
+        image: prom/prometheus:v2.55.0
+        container_name: prometheus
+        restart: unless-stopped
+        networks:
+            - nw-dev-0
+        ports:
+            - '9091:9090' # Prometheus Web UI
+        volumes:
+            - ./config/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+            - ./config/prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+            - prometheus_data:/prometheus
+        command:
+            - '--config.file=/etc/prometheus/prometheus.yml'
+            - '--storage.tsdb.path=/prometheus'
+            - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+            - '--web.console.templates=/usr/share/prometheus/consoles'
+            - '--web.enable-lifecycle'
+            - '--storage.tsdb.retention.time=15d'
+        healthcheck:
+            test:
+                [
+                    'CMD',
+                    'wget',
+                    '-q',
+                    '--spider',
+                    'http://localhost:9090/-/healthy',
+                ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        depends_on:
+            jaeger:
+                condition: service_healthy
+
+    # Grafana - Visualization Dashboard
+    grafana:
+        image: grafana/grafana:11.4.0
+        container_name: grafana
+        restart: unless-stopped
+        networks:
+            - nw-dev-0
+        ports:
+            - '13000:3000' # Grafana Web UI
+        environment:
+            - GF_SECURITY_ADMIN_USER=admin
+            - GF_SECURITY_ADMIN_PASSWORD=admin
+            - GF_USERS_ALLOW_SIGN_UP=false
+            - GF_SERVER_ROOT_URL=http://localhost:3000
+        volumes:
+            - grafana_data:/var/lib/grafana
+            - ./config/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
+            - ./config/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+            - ./config/grafana/dashboards:/var/lib/grafana/dashboards:ro
+        depends_on:
+            prometheus:
+                condition: service_healthy
+            jaeger:
+                condition: service_healthy
+        healthcheck:
+            test:
+                [
+                    'CMD',
+                    'wget',
+                    '-q',
+                    '--spider',
+                    'http://localhost:3000/api/health',
+                ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+
+    # ===========================================
+    # GATEWAY
+    # ===========================================
+
+    # NGINX Gateway
+    gateway:
+        image: nginx:alpine-slim
+        ports:
+            - '80:80'
+        networks:
+            - nw-dev-0
+        volumes:
+            - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+            - ./config/nginx/gateway.conf:/etc/nginx/conf.d/gateway.conf:ro
+        depends_on:
+            - service-ai
+            - service-analytic
+            - service-attendance
+            - service-auth
+            - service-device
+            - service-identity
+            - service-notification
+            - service-profile-update
+            - service-workforce
+
+    # ===========================================
+    # APPLICATION SERVICES
+    # ===========================================
+
+    # AI Service (Python/FastAPI)
+    service-ai:
+        image: someone2509/cio_verify_face_service_ai:cpu
+        networks:
+            - nw-dev-0
+        ports:
+            - '8080:8080' # Main API & Metrics
+            - '50051:50051' # gRPC
+        volumes:
+            - ./config/.env.service_ai:/app/.env:ro
+        environment:
+            - TRACING_ENABLED=true
+            - OTLP_ENDPOINT=http://jaeger:4318/v1/traces
+        depends_on:
+            - service-auth
+            - service-attendance
+            - jaeger
+        healthcheck:
+            test: ['CMD', 'curl', '-f', 'http://localhost:8080/health']
+            interval: 30s
+            timeout: 10s
+            retries: 5
+
+    # Analytics Service (Go)
+    service-analytic:
+        image: someone2509/cio_verify_face_service_analytic:latest
+        networks:
+            - nw-dev-0
+        volumes:
+            - ./config/config_service_analytic.yaml:/prod/config/config.yaml:ro
+        depends_on:
+            - service-auth
+            - jaeger
+
+    # Attendance Service (Go)
+    service-attendance:
+        image: someone2509/cio_verify_face_service_attendance:latest
+        networks:
+            - nw-dev-0
+        volumes:
+            - ./config/config_service_attendance.yaml:/prod/config/config.yaml:ro
+        depends_on:
+            - service-auth
+            - jaeger
+
+    # Auth Service (Go)
+    service-auth:
+        image: someone2509/cio_verify_face_service_auth:latest
+        networks:
+            - nw-dev-0
+        volumes:
+            - ./config/config_service_auth.yaml:/prod/config/config.yaml:ro
+        depends_on:
+            - jaeger
+
+    # Device Service (Go)
+    service-device:
+        image: someone2509/cio_verify_face_service_device:latest
+        networks:
+            - nw-dev-0
+        volumes:
+            - ./config/config_service_device.yaml:/prod/config/config.yaml:ro
+        depends_on:
+            - service-auth
+            - jaeger
+
+    # Identity Service (Node.js)
+    service-identity:
+        image: someone2509/cio_verify_face_service_identity:latest
+        networks:
+            - nw-dev-0
+        volumes:
+            - ./config/.env.service_identity:/app/.env:ro
+        environment:
+            - TRACING_ENABLED=true
+            - JAEGER_ENDPOINT=http://jaeger:4318/v1/traces
+        depends_on:
+            - service-auth
+            - jaeger
+
+    # Notification Service (Go)
+    service-notification:
+        image: someone2509/cio_verify_face_service_notify:latest
+        networks:
+            - nw-dev-0
+        volumes:
+            - ./config/config_service_notify.yaml:/prod/config/config.yaml:ro
+        depends_on:
+            - jaeger
+
+    # Profile Upload Service (Go)
+    service-profile-update:
+        image: someone2509/cio_verify_face_service_profile_update:latest
+        networks:
+            - nw-dev-0
+        volumes:
+            - ./config/config_service_profile_update.yaml:/prod/config/config.yaml:ro
+        depends_on:
+            - service-auth
+            - service-notification
+            - jaeger
+
+    # Workforce Service (Go)
+    service-workforce:
+        image: someone2509/cio_verify_face_service_workforce:latest
+        networks:
+            - nw-dev-0
+        volumes:
+            - ./config/config_service_workforce.yaml:/prod/config/config.yaml:ro
+        depends_on:
+            - service-auth
+            - jaeger

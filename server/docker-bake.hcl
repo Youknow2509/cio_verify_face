@@ -41,64 +41,64 @@ target "service_ai_with_cpu" {
 
 
 target "service_analytic" {
-    context = "./service_analytic"
-    dockerfile = "Dockerfile"
+    context = "."
+    dockerfile = "service_analytic/Dockerfile"
     tags = [
         "${docker_hub_info}/${proj_name}_service_analytic:latest",
     ]
 }
 
 target "service_attendance" {
-    context = "./service_attendance"
-    dockerfile = "Dockerfile"
+    context = "."
+    dockerfile = "service_attendance/Dockerfile"
     tags = [
         "${docker_hub_info}/${proj_name}_service_attendance:latest",
     ]
 }
 
 target "service_auth" {
-    context = "./service_auth"
-    dockerfile = "Dockerfile"
+    context = "."
+    dockerfile = "service_auth/Dockerfile"
     tags = [
         "${docker_hub_info}/${proj_name}_service_auth:latest",
     ]
 }
 
 target "service_device" {
-    context = "./service_device"
-    dockerfile = "Dockerfile"
+    context = "."
+    dockerfile = "service_device/Dockerfile"
     tags = [
         "${docker_hub_info}/${proj_name}_service_device:latest",
     ]
 }
 
 target "service_identity" {
-    context = "./service_identity"
-    dockerfile = "Dockerfile"
+    context = "."
+    dockerfile = "service_identity/Dockerfile"
     tags = [
         "${docker_hub_info}/${proj_name}_service_identity:latest",
     ]
 }
 
 target "service_notify" {
-    context = "./service_notify"
-    dockerfile = "Dockerfile"
+    context = "."
+    dockerfile = "service_notify/Dockerfile"
     tags = [
         "${docker_hub_info}/${proj_name}_service_notify:latest",
     ]
 }
 
 target "service_profile_update" {
-    context = "./service_profile_update"
-    dockerfile = "Dockerfile"
+    context = "."
+    dockerfile = "service_profile_update/Dockerfile"
     tags = [
         "${docker_hub_info}/${proj_name}_service_profile_update:latest",
     ]
 }
 
 target "service_workforce" {
-    context = "./service_workforce"
-    dockerfile = "Dockerfile"
+    context = "."
+    dockerfile = "service_workforce/Dockerfile"
     tags = [
         "${docker_hub_info}/${proj_name}_service_workforce:latest",
     ]

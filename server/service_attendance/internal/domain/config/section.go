@@ -26,8 +26,18 @@ type (
 		JWT               JWTSetting              `mapstructure:"jwt"`
 		Logger            LoggerSetting           `mapstructure:"logger"`
 		RateLimitPolicies []RateLimitPolicy       `mapstructure:"policy_rate_limit"`
+		Observability     ObservabilitySetting    `mapstructure:"observability"`
 	}
 )
+
+// observability
+type ObservabilitySetting struct {
+	Enabled        bool   `mapstructure:"enabled"`
+	MetricsPath    string `mapstructure:"metrics_path"`
+	MetricsPort    int    `mapstructure:"metrics_port"`
+	TracingEnabled bool   `mapstructure:"tracing_enabled"`
+	OTLPEndpoint   string `mapstructure:"otlp_endpoint"`
+}
 
 // ==========================================================
 //

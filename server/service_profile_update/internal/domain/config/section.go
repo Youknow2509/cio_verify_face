@@ -11,6 +11,7 @@ type (
 		Server            ServerSetting        `mapstructure:"server"`
 		ServiceAuth       ServiceAuthSetting   `mapstructure:"service_auth"`
 		WsServer          WsSetting            `mapstructure:"ws"`
+		Observability     ObservabilitySetting `mapstructure:"observability"`
 		Cassandra         CassandraSetting     `mapstructure:"cassandra"`
 		Elasticsearch     ElasticsearchSetting `mapstructure:"elasticsearch"`
 		Jaeger            JaegerSetting        `mapstructure:"jaeger"`
@@ -112,7 +113,16 @@ type ElasticsearchSetting struct {
 	APIKey       string   `mapstructure:"api_key"`       // for auth_type 3F
 }
 
-// jaeger
+// observability (Prometheus + Jaeger)
+type ObservabilitySetting struct {
+	Enabled        bool   `mapstructure:"enabled"`
+	MetricsPath    string `mapstructure:"metrics_path"`
+	MetricsPort    int    `mapstructure:"metrics_port"`
+	TracingEnabled bool   `mapstructure:"tracing_enabled"`
+	OTLPEndpoint   string `mapstructure:"otlp_endpoint"`
+}
+
+// jaeger (legacy - kept for backward compatibility)
 type JaegerSetting struct {
 	ServiceName                         string  `mapstructure:"service_name"`
 	AgentHost                           string  `mapstructure:"agent_host"`

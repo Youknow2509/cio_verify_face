@@ -7,8 +7,8 @@ cd "$SCRIPT_DIR"
 # Create output directory if it doesn't exist
 mkdir -p app/grpc_generated
 
-# Generate Python gRPC code
-/Users/vinh/code/github.com/youknow2509/cio_verify_face/server/service_ai/.venv/bin/python -m grpc_tools.protoc \
+# Generate Python gRPC code using current Python
+python -m grpc_tools.protoc \
     -I./protos \
     --python_out=./app/grpc_generated \
     --grpc_python_out=./app/grpc_generated \

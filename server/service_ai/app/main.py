@@ -10,6 +10,7 @@ import logging
 
 from app.core.config import settings
 from app.core.logging_config import setup_logging
+from app.core.tracing import init_tracing, shutdown_tracing
 from app.api import face_routes
 from app.grpc_generated import attendance_pb2
 # Setup logging
@@ -25,6 +26,11 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
+# Initialize tracing (before adding middleware)
+if settings.OBSERVABILITY_ENABLED and settings.TRACING_ENABLED:
+    init_tracing(app)
+    logger.info(f"Tracing enabled (OTLP endpoint: {settings.OTLP_ENDPOINT})")
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -34,9 +40,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Mount prometheus metrics
-metrics_app = make_asgi_app()
-app.mount("/metrics", metrics_app)
+# Mount prometheus metrics if enabled
+if settings.OBSERVABILITY_ENABLED:
+    metrics_app = make_asgi_app()
+    app.mount(settings.METRICS_PATH, metrics_app)
+    logger.info(f"Metrics enabled at {settings.METRICS_PATH}")
 
 # Include routers
 app.include_router(face_routes.router, prefix="/api/v1/face", tags=["face"])
@@ -141,6 +149,8 @@ async def startup_event():
 @app.on_event("shutdown")
 async def shutdown_event():
     logger.info("Shutting down the Face Verification Service...")
+    # Shutdown tracing
+    shutdown_tracing()
     batching = getattr(app.state, "attendance_batching_service", None)
     attendance_client = getattr(app.state, "attendance_client", None)
     face_service = getattr(app.state, "face_service", None)
