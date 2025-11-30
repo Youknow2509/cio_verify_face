@@ -75,7 +75,7 @@ services:
         networks:
             - nw-dev-0
         ports:
-            - '3000:3000' # Grafana Web UI
+            - '13000:3000' # Grafana Web UI
         environment:
             - GF_SECURITY_ADMIN_USER=admin
             - GF_SECURITY_ADMIN_PASSWORD=admin

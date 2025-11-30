@@ -202,7 +202,7 @@
                         "type": "prometheus",
                         "uid": "prometheus"
                     },
-                    "expr": "sum(rate(http_requests_total[5m])) by (job)",
+                    "expr": "sum(rate(http_requests_total[$__rate_interval])) by (job)",
                     "legendFormat": "{{job}}",
                     "refId": "A"
                 }
@@ -300,7 +300,7 @@
                         "type": "prometheus",
                         "uid": "prometheus"
                     },
-                    "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[5m])) by (job, le))",
+                    "expr": "histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket[$__rate_interval])) by (job, le))",
                     "legendFormat": "{{job}} - p99",
                     "refId": "A"
                 }
@@ -313,7 +313,34 @@
     "schemaVersion": 39,
     "tags": ["cio-verify-face", "tracing", "jaeger"],
     "templating": {
-        "list": []
+        "list": [
+            {
+                "current": {
+                    "selected": true,
+                    "text": "All",
+                    "value": "$__all"
+                },
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "prometheus"
+                },
+                "definition": "label_values(http_requests_total, job)",
+                "hide": 0,
+                "includeAll": true,
+                "multi": true,
+                "name": "service",
+                "options": [],
+                "query": {
+                    "query": "label_values(http_requests_total, job)",
+                    "refId": "PrometheusVariableQueryEditor-VariableQuery"
+                },
+                "refresh": 1,
+                "regex": "",
+                "skipUrlSync": false,
+                "sort": 1,
+                "type": "query"
+            }
+        ]
     },
     "time": {
         "from": "now-1h",

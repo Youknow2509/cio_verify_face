@@ -112,7 +112,7 @@
                         "type": "prometheus",
                         "uid": "prometheus"
                     },
-                    "expr": "topk(10, sum(rate(http_requests_total[5m])) by (path, method))",
+                    "expr": "topk(10, sum(rate(cio_verify_face_http_requests_total[$__rate_interval])) by (path, method))",
                     "format": "table",
                     "instant": true,
                     "legendFormat": "{{method}} {{path}}",
@@ -223,7 +223,7 @@
                         "type": "prometheus",
                         "uid": "prometheus"
                     },
-                    "expr": "topk(10, histogram_quantile(0.95, sum(rate(http_request_duration_seconds_bucket[5m])) by (path, method, le)))",
+                    "expr": "topk(10, histogram_quantile(0.95, sum(rate(cio_verify_face_http_request_duration_seconds_bucket[$__rate_interval])) by (path, method, le)))",
                     "format": "table",
                     "instant": true,
                     "legendFormat": "{{method}} {{path}}",
@@ -317,7 +317,7 @@
                         "type": "prometheus",
                         "uid": "prometheus"
                     },
-                    "expr": "sum(increase(http_requests_total[1h])) by (job)",
+                    "expr": "sum(increase(cio_verify_face_http_requests_total[$__range])) by (job)",
                     "legendFormat": "{{job}}",
                     "refId": "A"
                 }
@@ -441,7 +441,7 @@
                         "type": "prometheus",
                         "uid": "prometheus"
                     },
-                    "expr": "sum(increase(http_requests_total[1h])) by (method)",
+                    "expr": "sum(increase(cio_verify_face_http_requests_total[$__range])) by (method)",
                     "legendFormat": "{{method}}",
                     "refId": "A"
                 }
@@ -565,7 +565,7 @@
                         "type": "prometheus",
                         "uid": "prometheus"
                     },
-                    "expr": "sum(increase(http_requests_total[1h])) by (status)",
+                    "expr": "sum(increase(cio_verify_face_http_requests_total[$__range])) by (status)",
                     "legendFormat": "HTTP {{status}}",
                     "refId": "A"
                 }
@@ -668,7 +668,7 @@
                         "type": "prometheus",
                         "uid": "prometheus"
                     },
-                    "expr": "sum(rate(grpc_requests_total[5m])) by (job)",
+                    "expr": "sum(rate(cio_verify_face_grpc_requests_total[$__rate_interval])) by (job)",
                     "legendFormat": "{{job}}",
                     "refId": "A"
                 }
@@ -766,7 +766,7 @@
                         "type": "prometheus",
                         "uid": "prometheus"
                     },
-                    "expr": "histogram_quantile(0.95, sum(rate(grpc_request_duration_seconds_bucket[5m])) by (job, le))",
+                    "expr": "histogram_quantile(0.95, sum(rate(cio_verify_face_grpc_request_duration_seconds_bucket[$__rate_interval])) by (job, le))",
                     "legendFormat": "{{job}} - p95",
                     "refId": "A"
                 }
@@ -869,7 +869,7 @@
                         "type": "prometheus",
                         "uid": "prometheus"
                     },
-                    "expr": "histogram_quantile(0.95, sum(rate(http_response_size_bytes_bucket[5m])) by (job, le))",
+                    "expr": "histogram_quantile(0.95, sum(rate(cio_verify_face_http_response_size_bytes_bucket[$__rate_interval])) by (job, le))",
                     "legendFormat": "{{job}} - p95",
                     "refId": "A"
                 }
@@ -959,7 +959,7 @@
                         "type": "prometheus",
                         "uid": "prometheus"
                     },
-                    "expr": "sum(rate(http_response_size_bytes_sum[5m])) by (job)",
+                    "expr": "sum(rate(cio_verify_face_http_response_size_bytes_sum[$__rate_interval])) by (job)",
                     "legendFormat": "{{job}}",
                     "refId": "A"
                 }
@@ -968,11 +968,38 @@
             "type": "timeseries"
         }
     ],
-    "refresh": "10s",
+    "refresh": "30s",
     "schemaVersion": 39,
     "tags": ["cio-verify-face", "api", "performance"],
     "templating": {
-        "list": []
+        "list": [
+            {
+                "current": {
+                    "selected": true,
+                    "text": "All",
+                    "value": "$__all"
+                },
+                "datasource": {
+                    "type": "prometheus",
+                    "uid": "prometheus"
+                },
+                "definition": "label_values(cio_verify_face_http_requests_total, job)",
+                "hide": 0,
+                "includeAll": true,
+                "multi": true,
+                "name": "service",
+                "options": [],
+                "query": {
+                    "query": "label_values(cio_verify_face_http_requests_total, job)",
+                    "refId": "PrometheusVariableQueryEditor-VariableQuery"
+                },
+                "refresh": 1,
+                "regex": "",
+                "skipUrlSync": false,
+                "sort": 1,
+                "type": "query"
+            }
+        ]
     },
     "time": {
         "from": "now-1h",

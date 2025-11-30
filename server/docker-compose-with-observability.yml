@@ -81,7 +81,7 @@ services:
         networks:
             - nw-dev-0
         ports:
-            - '3000:3000' # Grafana Web UI
+            - '13000:3000' # Grafana Web UI
         environment:
             - GF_SECURITY_ADMIN_USER=admin
             - GF_SECURITY_ADMIN_PASSWORD=admin
@@ -144,6 +144,9 @@ services:
         image: someone2509/cio_verify_face_service_ai:cpu
         networks:
             - nw-dev-0
+        ports:
+            - '8080:8080' # Main API & Metrics
+            - '50051:50051' # gRPC
         volumes:
             - ./config/.env.service_ai:/app/.env:ro
         environment:
@@ -154,7 +157,7 @@ services:
             - service-attendance
             - jaeger
         healthcheck:
-            test: ['CMD', 'curl', '-f', 'http://localhost:8000/health']
+            test: ['CMD', 'curl', '-f', 'http://localhost:8080/health']
             interval: 30s
             timeout: 10s
             retries: 5
