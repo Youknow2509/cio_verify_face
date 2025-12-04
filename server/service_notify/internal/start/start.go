@@ -55,8 +55,8 @@ func StartService() error {
 	// 	return err
 	// }
 	// Initialize Gin Engine
-	// if err := initGinRouter(&setting.Server); err != nil {
-	// 	return err
-	// }
+	if err := initGinRouter(&setting.Server); err != nil {
+		return err
+	}
 	return nil
 }
