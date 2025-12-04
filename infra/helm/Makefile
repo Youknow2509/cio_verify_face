@@ -18,8 +18,13 @@ SHELL := /bin/bash
 # Help target
 .DEFAULT_GOAL := help
 
-help: ## Shows this help message
-	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
+# =============================================
+# Command targets
+# =============================================
+
+deploy_service_analytic: ## Deploy Service Analytic
+	@echo "Deploy Service Analytic"
+	$(HELM) upgrade --install service-analytic $(CHARTS_DIR)/service_analytic --namespace $(NAMESPACE) --create-namespace
 
 deploy_service_attendance: ## Deploy Service Attendance
 	@echo "Deploy Service Attendance"
@@ -54,3 +59,5 @@ lint: ## Lint Helm charts
 deploy_environment: ## Deploy environment: databases, monitoring, cache, message queues, etc.
 	$(HELM) install env $(UMBRELLA_DIR) --namespace $(NAMESPACE)
 
+help: ## Shows this help message
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
