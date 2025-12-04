@@ -21,6 +21,10 @@ SHELL := /bin/bash
 help: ## Shows this help message
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
+deploy_service_attendance: ## Deploy Service Attendance
+	@echo "Deploy Service Attendance"
+	$(HELM) upgrade --install service-attendance $(CHARTS_DIR)/service_attendance --namespace $(NAMESPACE) --create-namespace
+
 deploy_service_auth: ## Deploy Service Auth
 	@echo "Deploy Service Auth"
 	$(HELM) upgrade --install service-auth $(CHARTS_DIR)/service_auth --namespace $(NAMESPACE) --create-namespace
@@ -41,22 +45,12 @@ create_config_map_grafana_dashboards: ## Create ConfigMap for Grafana dashboards
         $(foreach f,$(wildcard $(DIR_DASHBOARDS_GRAFANA)/*.json),--from-file=$(notdir $(basename $(f)))=$(f)) \
         --namespace=$(NAMESPACE) --dry-run=client -o yaml | $(KUBECTL) apply -f -
 
-install_dependencies: ## Install Helm chart dependencies
-	$(HELM) dependency update $(UMBRELLA_DIR)
-
 clean: ## Clean Helm chart dependencies
 	$(HELM) dependency clean $(UMBRELLA_DIR)
 
 lint: ## Lint Helm charts
 	$(HELM) lint $(UMBRELLA_DIR)
 
-install_platform: ## Install platform Helm chart
-	$(HELM) install platform $(UMBRELLA_DIR) --namespace $(NAMESPACE) --create-namespace
-
-upgrade_platform: ## Upgrade platform Helm chart
-	$(HELM) upgrade platform $(UMBRELLA_DIR) --namespace $(NAMESPACE) --install --create-namespace
-
-check_release_platform: ## Check release Helm in namespace
-	$(HELM) list --namespace $(NAMESPACE)
-	$(HELM) status platform --namespace $(NAMESPACE)
+deploy_environment: ## Deploy environment: databases, monitoring, cache, message queues, etc.
+	$(HELM) install env $(UMBRELLA_DIR) --namespace $(NAMESPACE)
 

@@ -2,9 +2,9 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "service_attendance.fullname" . }}
+  name: {{ include "service-attendance.fullname" . }}
   labels:
-    {{- include "service_attendance.labels" . | nindent 4 }}
+    {{- include "service-attendance.labels" . | nindent 4 }}
   {{- with .Values.ingress.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
@@ -35,7 +35,7 @@ spec:
             {{- end }}
             backend:
               service:
-                name: {{ include "service_attendance.fullname" $ }}
+                name: {{ include "service-attendance.fullname" $ }}
                 port:
                   number: {{ $.Values.service.port }}
           {{- end }}

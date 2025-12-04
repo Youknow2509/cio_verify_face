@@ -38,14 +38,10 @@ message-queue:
         replicaCount: 1
         persistence:
             enabled: false
-            existingClaim: cio-verify-face-pvc
-            mountPath: /bitnami/kafka/kafka-controller
     broker:
         replicaCount: 1
         persistence:
             enabled: false
-            existingClaim: cio-verify-face-pvc
-            mountPath: /bitnami/kafka/kafka-broker
     service:
         type: ClusterIP
         ports:
@@ -75,8 +71,6 @@ object-storage:
         rootPassword: 'J6cSjtown5yt9XC6'
     persistence:
         enabled: true
-        mountPath: /bitnami/minio/data
-        existingClaim: cio-verify-face-pvc
 
 # ScyllaDB - https://github.com/bitnami/charts/tree/main/bitnami/scylladb
 cql-database:
@@ -105,8 +99,6 @@ cql-database:
         enabled: false
     persistence:
         enabled: true
-        existingClaim: cio-verify-face-pvc
-        mountPath: /bitnami/scylladb/data
 
 # PostgreSQL - https://github.com/bitnami/charts/tree/main/bitnami/postgresql
 main-database:
@@ -121,8 +113,6 @@ main-database:
             port: 5432
         persistence:
             enabled: true
-            existingClaim: cio-verify-face-pvc
-            mountPath: /bitnami/postgresql
 
 # Redis - https://github.com/bitnami/charts/tree/main/bitnami/redis
 distributed-cache:
@@ -136,5 +126,4 @@ distributed-cache:
             redis: 6379
         persistence:
             enabled: true
-            existingClaim: cio-verify-face-pvc
             path: /data/redis-master
