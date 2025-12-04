@@ -110,7 +110,7 @@ export:
     job_timeout_minutes: 30
 
 object_storage:
-    endpoint: 'env-object-storage:9000'
+    endpoint: 'env-object-storage.cio-verify-face-dev.svc.cluster.local:9000'
     access_key: 'admin'
     secret_key: 'J6cSjtown5yt9XC6'
     bucket: 'reports'

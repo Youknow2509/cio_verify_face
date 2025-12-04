@@ -1,8 +1,16 @@
+# Default values for service_ai.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# This will set the replicaset count more information can be found here: https://kubernetes.io/docs/concepts/workloads/controllers/replicaset/
 replicaCount: 1
 
+# This sets the container image more information can be found here: https://kubernetes.io/docs/concepts/containers/images/
 image:
-  repository: docker.io/someone2509/service_ai
-  pullPolicy: IfNotPresent
+  repository: someone2509/cio_verify_face_service_ai 
+  # This sets the pull policy for images.
+  pullPolicy: Always
+  # Overrides the image tag whose default is the chart appVersion.
   tag: "cpu"
 
 # This is for the secrets for pulling an image from a private repository more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/pull-image-private-registry/
@@ -47,8 +55,9 @@ service:
   type: ClusterIP
   # This sets the ports more information can be found here: https://kubernetes.io/docs/concepts/services-networking/service/#field-spec-ports
   port: 8080
-  grpcPort: 50051
+  portGrpc: 50051
 
+# This block is for setting up the ingress for more information can be found here: https://kubernetes.io/docs/concepts/services-networking/ingress/
 ingress:
   enabled: false
   className: ""
@@ -118,11 +127,11 @@ resources: {}
 # This is to setup the liveness and readiness probes more information can be found here: https://kubernetes.io/docs/tasks/configure-pod-container/configure-liveness-readiness-startup-probes/
 livenessProbe:
   httpGet:
-    path: /
+    path: /health
     port: http
 readinessProbe:
   httpGet:
-    path: /
+    path: /health
     port: http
 
 # This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
@@ -133,17 +142,18 @@ autoscaling:
   targetCPUUtilizationPercentage: 80
   # targetMemoryUtilizationPercentage: 80
 
-# Additional volumes on the output Deployment definition.
 volumes:
-  - name: env-service
+  - name: config-volume
     configMap:
-      name: {{ include "service_ai.fullname" . }}-env
+      name: service-ai-config-map
       items:
-        - key: .env.service_ai
+        - key: .env
           path: .env
 
-# Additional volumeMounts on the output Deployment definition.
-volumeMounts: []
+volumeMounts:
+  - name: config-volume
+    mountPath: /app/.env
+    subPath: .env
 
 nodeSelector: {}
 
