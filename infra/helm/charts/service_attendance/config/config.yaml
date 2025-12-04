@@ -4,7 +4,7 @@ server:
     region: 'us-west-1'
     shardId: 'shard-1'
     port: 8080
-    mode: 'prod' # default: dev, options: dev, prod
+    mode: 'dev' # default: dev, options: dev, prod
     degraded_threshold: 85.0
     out_of_service_threshold: 95.0
 
@@ -50,7 +50,7 @@ scylladb:
         username: cassandra
         password: J6cSjtown5yt9XC6
     address:
-        - platform-cql-database.cio-verify-face-dev.svc.cluster.local:9042
+        - env-cql-database.cio-verify-face-dev.svc.cluster.local:9042
         # - v.v
     keyspace: cio_verify_face
     ssl:
@@ -66,7 +66,7 @@ scylladb:
 
 postgres:
     address:
-        - platform-main-database.cio-verify-face-dev.svc.cluster.local:5432
+        - env-main-database.cio-verify-face-dev.svc.cluster.local:5432
         # - v.v
     database: cio_verify_face
     username: postgres
@@ -96,7 +96,7 @@ redis:
     password: 'J6cSjtown5yt9XC6'
     db: 0 # default database
     # For standalone type
-    host: platform-distributed-cache-master.cio-verify-face-dev.svc.cluster.local
+    host: env-distributed-cache-master.cio-verify-face-dev.svc.cluster.local
     port: 6379
     # For sentinel type
     master_name: mymaster
