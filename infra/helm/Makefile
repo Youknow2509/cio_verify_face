@@ -22,6 +22,10 @@ SHELL := /bin/bash
 # Command targets
 # =============================================
 
+deploy_service_notify: ## Deploy Service Notify
+	@echo "Deploy Service Notify"
+	$(HELM) upgrade --install service-notify $(CHARTS_DIR)/service_notify --namespace $(NAMESPACE) --create-namespace
+
 deploy_service_device: ## Deploy Service Device
 	@echo "Deploy Service Device"
 	$(HELM) upgrade --install service-device $(CHARTS_DIR)/service_device --namespace $(NAMESPACE) --create-namespace

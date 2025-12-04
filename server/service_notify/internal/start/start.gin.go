@@ -30,6 +30,12 @@ func initGinRouter(setting *domainConfig.ServerSetting) error {
 	if err := initRouter(ginEngine); err != nil {
 		return err
 	}
+	// Health check endpoint
+	ginEngine.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status": "ok",
+		})
+	})
 	// Start Gin server
 	global.WaitGroup.Add(1)
 	go func() {

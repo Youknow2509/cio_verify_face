@@ -2,46 +2,46 @@ apiVersion: v2
 name: platform
 description: A Helm chart for Kubernetes
 dependencies:
-  # Jeagertracing
+    # Jeagertracing
 
-  # Prometheus chart as a monitoring system
+    # Prometheus chart as a monitoring system
 
-  # Grafana chart as a monitoring dashboard
-  - name: grafana
-    repository: oci://registry-1.docker.io/bitnamicharts
-    version: 12.1.7
-    alias: monitoring-dashboard
-    condition: monitoring-dashboard.enabled
+    # Grafana chart as a monitoring dashboard
+    - name: grafana
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 12.1.7
+      alias: monitoring-dashboard
+      condition: monitoring-dashboard.enabled
 
-  # Redis chart as a distributed cache
-  - name: redis
-    repository: oci://registry-1.docker.io/bitnamicharts
-    version: 24.0.0
-    alias: distributed-cache
+    # Redis chart as a distributed cache
+    - name: redis
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 24.0.0
+      alias: distributed-cache
 
-  # PostgreSQL chart as a database
-  - name: postgresql
-    repository: oci://registry-1.docker.io/bitnamicharts
-    version: 18.1.13
-    alias: main-database
+    # PostgreSQL chart as a database
+    - name: postgresql
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 18.1.13
+      alias: main-database
 
-  # ScyllaDB chart as a NoSQL database
-  - name: scylladb
-    repository: oci://registry-1.docker.io/bitnamicharts
-    version: 5.0.6
-    alias: cql-database
-  
-  # MinIO chart as an object storage
-  - name: minio
-    repository: oci://registry-1.docker.io/bitnamicharts
-    version: 17.0.21
-    alias: object-storage
+    # ScyllaDB chart as a NoSQL database
+    - name: scylladb
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 5.0.6
+      alias: cql-database
 
-  # Kafka chart as a message queue
-  - name: kafka
-    repository: oci://registry-1.docker.io/bitnamicharts
-    version: 32.4.3
-    alias: message-queue 
+    # MinIO chart as an object storage
+    - name: minio
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 17.0.21
+      alias: object-storage
+
+    # Kafka chart as a message queue
+    - name: kafka
+      repository: oci://registry-1.docker.io/bitnamicharts
+      version: 32.4.3
+      alias: message-queue
 
 version: 0.1.0
-appVersion: "1.16.0"
+appVersion: '0.1.0'
