@@ -73,8 +73,8 @@ target "service_device" {
 }
 
 target "service_identity" {
-    context = "."
-    dockerfile = "service_identity/Dockerfile"
+    context = "service_identity"
+    dockerfile = "Dockerfile"
     tags = [
         "${docker_hub_info}/${proj_name}_service_identity:latest",
     ]

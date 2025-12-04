@@ -22,6 +22,13 @@ SHELL := /bin/bash
 # Command targets
 # =============================================
 
+deploy_all_services: deploy_service_identity deploy_service_ai deploy_service_workforce deploy_service_profile_update deploy_service_notify deploy_service_device deploy_service_analytic deploy_service_attendance deploy_service_auth ## Deploy all services
+	@echo "All services deployed"
+
+deploy_service_identity: ## Deploy Service Identity
+	@echo "Deploy Service Identity"
+	$(HELM) upgrade --install service-identity $(CHARTS_DIR)/service_identity --namespace $(NAMESPACE) --create-namespace
+
 deploy_service_ai: ## Deploy Service AI
 	@echo "Deploy Service AI"
 	$(HELM) upgrade --install service-ai $(CHARTS_DIR)/service_ai --namespace $(NAMESPACE) --create-namespace
