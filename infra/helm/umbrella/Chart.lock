@@ -1,0 +1,18 @@
+dependencies:
+- name: redis
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 24.0.0
+- name: postgresql
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 18.1.13
+- name: scylladb
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 5.0.6
+- name: minio
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 17.0.21
+- name: kafka
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 32.4.3
+digest: sha256:ebf6812f835f790be5cf8993bbf304505ce57fc512fbc25a70601ecc192e4838
+generated: "2025-12-03T17:36:30.939094+07:00"
