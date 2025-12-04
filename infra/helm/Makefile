@@ -22,6 +22,10 @@ SHELL := /bin/bash
 # Command targets
 # =============================================
 
+deploy_service_device: ## Deploy Service Device
+	@echo "Deploy Service Device"
+	$(HELM) upgrade --install service-device $(CHARTS_DIR)/service_device --namespace $(NAMESPACE) --create-namespace
+
 deploy_service_analytic: ## Deploy Service Analytic
 	@echo "Deploy Service Analytic"
 	$(HELM) upgrade --install service-analytic $(CHARTS_DIR)/service_analytic --namespace $(NAMESPACE) --create-namespace

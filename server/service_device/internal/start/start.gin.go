@@ -58,6 +58,12 @@ func initRouter(ginEngine *gin.Engine) error {
 	{
 		httpRouter.InitRoutes(apiHttpRouter)
 	}
+	// health check
+	ginEngine.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status": "ok",
+		})
+	})
 	return nil
 }
 
