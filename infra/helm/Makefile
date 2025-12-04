@@ -22,6 +22,10 @@ SHELL := /bin/bash
 # Command targets
 # =============================================
 
+deploy_service_workforce: ## Deploy Service Workforce
+	@echo "Deploy Service Workforce"
+	$(HELM) upgrade --install service-workforce $(CHARTS_DIR)/service_workforce --namespace $(NAMESPACE) --create-namespace
+
 deploy_service_profile_update: ## Deploy Service Profile Update
 	@echo "Deploy Service Profile Update"
 	$(HELM) upgrade --install service-profile-update $(CHARTS_DIR)/service_profile_update --namespace $(NAMESPACE) --create-namespace
