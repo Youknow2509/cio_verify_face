@@ -25,5 +25,3 @@ htmlcov/
 *.log
 data/indexes/*
 !data/indexes/.gitkeep
-models/*
-!models/.gitkeep
