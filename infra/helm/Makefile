@@ -22,8 +22,75 @@ SHELL := /bin/bash
 # Command targets
 # =============================================
 
-deploy_all_services: deploy_service_identity deploy_service_ai deploy_service_workforce deploy_service_profile_update deploy_service_notify deploy_service_device deploy_service_analytic deploy_service_attendance deploy_service_auth ## Deploy all services
+create_all_config_map_for_services: ## Create all config map for services
+	@echo "Create config map for service ai"
+	$(KUBECTL) create configmap service-ai-config-map \
+		--namespace=$(NAMESPACE) \
+		--from-file=./charts/service_ai/config/.env 
+	
+	@echo "Create config map for service analytic"
+	$(KUBECTL) create configmap service-analytic-config-map \
+		--namespace=$(NAMESPACE) \
+		--from-file=./charts/service_analytic/config/config.yaml
+
+	@echo "Create config map for service attendance"
+	$(KUBECTL) create configmap service-attendance-config-map \
+		--namespace=$(NAMESPACE) \
+		--from-file=./charts/service_attendance/config/config.yaml
+
+	@echo "Create config map for service auth"
+	$(KUBECTL) create configmap service-auth-config-map \
+		--namespace=$(NAMESPACE) \
+		--from-file=./charts/service_auth/config/config.yaml
+
+	@echo "Create config map for service device"
+	$(KUBECTL) create configmap service-device-config-map \
+		--namespace=$(NAMESPACE) \
+		--from-file=./charts/service_device/config/config.yaml
+
+	@echo "Create config map for service identity"
+	$(KUBECTL) create configmap service-identity-config-map \
+		--namespace=$(NAMESPACE) \
+		--from-file=./charts/service_identity/config/.env
+	
+	@echo "Create config map for service notify"
+	$(KUBECTL) create configmap service-notify-config-map \
+		--namespace=$(NAMESPACE) \
+		--from-file=./charts/service_notify/config/config.yaml
+	
+	@echo "Create config map for service profile update"
+	$(KUBECTL) create configmap service-profile-update-config-map \
+		--namespace=$(NAMESPACE) \
+		--from-file=./charts/service_profile_update/config/config.yaml
+	
+	@echo "Create config map for service workforce"
+	$(KUBECTL) create configmap service-workforce-config-map \
+		--namespace=$(NAMESPACE) \
+		--from-file=./charts/service_workforce/config/config.yaml
+
+delete_all_config_map_for_services: ## Delete all config map for services
+	LIST_CONFIG_MAPS="service-ai-config-map service-analytic-config-map service-attendance-config-map service-auth-config-map service-device-config-map service-identity-config-map service-notify-config-map service-profile-update-config-map service-workforce-config-map"; \
+	for config_map in $$LIST_CONFIG_MAPS; do \
+		echo "Deleting config map: $$config_map"; \
+		$(KUBECTL) delete configmap $$config_map --namespace=$(NAMESPACE) || echo "Config map $$config_map does not exist"; \
+	done
+
+deploy_all_services: ## Deploy all services
 	@echo "All services deployed"
+	$(MAKE) deploy_gate_way
+	$(MAKE) deploy_service_ai
+	$(MAKE) deploy_service_analytic
+	$(MAKE) deploy_service_attendance
+	$(MAKE) deploy_service_auth
+	$(MAKE) deploy_service_device
+	$(MAKE) deploy_service_identity
+	$(MAKE) deploy_service_notify
+	$(MAKE) deploy_service_profile_update
+	$(MAKE) deploy_service_workforce
+
+deploy_gate_way: ## Deploy Gateway
+	@echo "Deploy Gateway"
+	$(HELM) upgrade --install gateway $(CHARTS_DIR)/gateway --namespace $(NAMESPACE) --create-namespace
 
 deploy_service_identity: ## Deploy Service Identity
 	@echo "Deploy Service Identity"

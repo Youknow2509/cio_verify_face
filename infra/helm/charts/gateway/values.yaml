@@ -1,0 +1,185 @@
+gateway-kong:
+    enable: true
+    # Fix bitnami change repo to legacy
+    image:
+        registry: docker.io
+        repository: bitnamilegacy/kong
+    database: 'off' # 'postgresql', 'cassandra' or 'off'
+    global:
+        security:
+            allowInsecureImages: true
+    replicaCount: 1
+    ingressController:
+        enabled: true
+        # Fix bitnami change repo to legacy
+        image:
+            registry: docker.io
+            repository: bitnamilegacy/kong-ingress-controller
+    kong:
+        containerPorts:
+            proxyHttp: 8000
+            proxyHttps: 8443
+            adminHttp: 8001
+            adminHttps: 8444
+        resourcesPreset: 'small'
+    service:
+        type: ClusterIP
+        ports:
+            proxyHttp: 80
+            proxyHttps: 443
+            adminHttp: 8001
+            adminHttps: 8444
+    ingress:
+        enabled: true
+        extraPaths:
+            # Service: ai (face)
+            - path: /api/v1/face
+              pathType: Prefix
+              backend:
+                  service:
+                      name: service-ai
+                      port:
+                          number: 8080
+
+            # Service: analytic
+            - path: /api/v1/reports
+              pathType: Prefix
+              backend:
+                  service:
+                      name: service-analytic
+                      port:
+                          number: 8080
+            - path: /api/v1/attendance-records
+              pathType: Prefix
+              backend:
+                  service:
+                      name: service-analytic
+                      port:
+                          number: 8080
+            - path: /api/v1/daily-summaries
+              pathType: Prefix
+              backend:
+                  service:
+                      name: service-analytic
+                      port:
+                          number: 8080
+            - path: /api/v1/audit-logs
+              pathType: Prefix
+              backend:
+                  service:
+                      name: service-analytic
+                      port:
+                          number: 8080
+            - path: /api/v1/face-enrollment-logs
+              pathType: Prefix
+              backend:
+                  service:
+                      name: service-analytic
+                      port:
+                          number: 8080
+            - path: /api/v1/attendance-records-no-shift
+              pathType: Prefix
+              backend:
+                  service:
+                      name: service-analytic
+                      port:
+                          number: 8080
+            - path: /api/v1/company
+              pathType: Prefix
+              backend:
+                  service:
+                      name: service-analytic
+                      port:
+                          number: 8080
+            - path: /api/v1/employee
+              pathType: Prefix
+              backend:
+                  service:
+                      name: service-analytic
+                      port:
+                          number: 8080
+
+            # Service: attendance
+            - path: /api/v1/attendance
+              pathType: Prefix
+              backend:
+                  service:
+                      name: service-attendance
+                      port:
+                          number: 8080
+
+            # Service: auth
+            - path: /api/v1/auth
+              pathType: Prefix
+              backend:
+                  service:
+                      name: service-auth
+                      port:
+                          number: 8080
+
+            # Service: device
+            - path: /api/v1/device
+              pathType: Prefix
+              backend:
+                  service:
+                      name: service-device
+                      port:
+                          number: 8080
+
+            # Service: identity
+            - path: /api/v1/companies
+              pathType: Prefix
+              backend:
+                  service:
+                      name: service-identity
+                      port:
+                          number: 8080
+            - path: /api/v1/users
+              pathType: Prefix
+              backend:
+                  service:
+                      name: service-identity
+                      port:
+                          number: 8080
+
+            # Service: profile-update
+            - path: /api/v1/profile-update
+              pathType: Prefix
+              backend:
+                  service:
+                      name: service-profile-update
+                      port:
+                          number: 8080
+            - path: /api/v1/password
+              pathType: Prefix
+              backend:
+                  service:
+                      name: service-profile-update
+                      port:
+                          number: 8080
+
+            # Service: workforce
+            - path: /api/v1/shift
+              pathType: Prefix
+              backend:
+                  service:
+                      name: service-workforce
+                      port:
+                          number: 8080
+            - path: /api/v1/employee/shift
+              pathType: Prefix
+              backend:
+                  service:
+                      name: service-workforce
+                      port:
+                          number: 8080
+    postgresql:
+        enabled: false
+    cassandra:
+        enabled: false
+        dbUser:
+            user: kong
+            password: 'kong12345'
+            existingSecret: ''
+        replicaCount: 1
+        resourcesPreset: 'small'
