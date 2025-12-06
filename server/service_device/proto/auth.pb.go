@@ -2,13 +2,14 @@
 // versions:
 // 	protoc-gen-go v1.36.10
 // 	protoc        v6.33.0
-// source: auth.proto
+// source: proto/auth.proto
 
 package pb
 
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -31,7 +32,7 @@ type CreateUserTokenRequest struct {
 
 func (x *CreateUserTokenRequest) Reset() {
 	*x = CreateUserTokenRequest{}
-	mi := &file_auth_proto_msgTypes[0]
+	mi := &file_proto_auth_proto_msgTypes[0]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -43,7 +44,7 @@ func (x *CreateUserTokenRequest) String() string {
 func (*CreateUserTokenRequest) ProtoMessage() {}
 
 func (x *CreateUserTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[0]
+	mi := &file_proto_auth_proto_msgTypes[0]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -56,7 +57,7 @@ func (x *CreateUserTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateUserTokenRequest.ProtoReflect.Descriptor instead.
 func (*CreateUserTokenRequest) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{0}
+	return file_proto_auth_proto_rawDescGZIP(), []int{0}
 }
 
 func (x *CreateUserTokenRequest) GetUserId() string {
@@ -83,7 +84,7 @@ type CreateUserTokenResponse struct {
 
 func (x *CreateUserTokenResponse) Reset() {
 	*x = CreateUserTokenResponse{}
-	mi := &file_auth_proto_msgTypes[1]
+	mi := &file_proto_auth_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -95,7 +96,7 @@ func (x *CreateUserTokenResponse) String() string {
 func (*CreateUserTokenResponse) ProtoMessage() {}
 
 func (x *CreateUserTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[1]
+	mi := &file_proto_auth_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -108,7 +109,7 @@ func (x *CreateUserTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateUserTokenResponse.ProtoReflect.Descriptor instead.
 func (*CreateUserTokenResponse) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{1}
+	return file_proto_auth_proto_rawDescGZIP(), []int{1}
 }
 
 func (x *CreateUserTokenResponse) GetAccessToken() string {
@@ -135,7 +136,7 @@ type CreateDeviceTokenRequest struct {
 
 func (x *CreateDeviceTokenRequest) Reset() {
 	*x = CreateDeviceTokenRequest{}
-	mi := &file_auth_proto_msgTypes[2]
+	mi := &file_proto_auth_proto_msgTypes[2]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -147,7 +148,7 @@ func (x *CreateDeviceTokenRequest) String() string {
 func (*CreateDeviceTokenRequest) ProtoMessage() {}
 
 func (x *CreateDeviceTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[2]
+	mi := &file_proto_auth_proto_msgTypes[2]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -160,7 +161,7 @@ func (x *CreateDeviceTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateDeviceTokenRequest.ProtoReflect.Descriptor instead.
 func (*CreateDeviceTokenRequest) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{2}
+	return file_proto_auth_proto_rawDescGZIP(), []int{2}
 }
 
 func (x *CreateDeviceTokenRequest) GetDeviceId() string {
@@ -186,7 +187,7 @@ type CreateDeviceTokenResponse struct {
 
 func (x *CreateDeviceTokenResponse) Reset() {
 	*x = CreateDeviceTokenResponse{}
-	mi := &file_auth_proto_msgTypes[3]
+	mi := &file_proto_auth_proto_msgTypes[3]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -198,7 +199,7 @@ func (x *CreateDeviceTokenResponse) String() string {
 func (*CreateDeviceTokenResponse) ProtoMessage() {}
 
 func (x *CreateDeviceTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[3]
+	mi := &file_proto_auth_proto_msgTypes[3]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -211,7 +212,7 @@ func (x *CreateDeviceTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateDeviceTokenResponse.ProtoReflect.Descriptor instead.
 func (*CreateDeviceTokenResponse) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{3}
+	return file_proto_auth_proto_rawDescGZIP(), []int{3}
 }
 
 func (x *CreateDeviceTokenResponse) GetToken() string {
@@ -230,7 +231,7 @@ type CreateServiceTokenRequest struct {
 
 func (x *CreateServiceTokenRequest) Reset() {
 	*x = CreateServiceTokenRequest{}
-	mi := &file_auth_proto_msgTypes[4]
+	mi := &file_proto_auth_proto_msgTypes[4]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -242,7 +243,7 @@ func (x *CreateServiceTokenRequest) String() string {
 func (*CreateServiceTokenRequest) ProtoMessage() {}
 
 func (x *CreateServiceTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[4]
+	mi := &file_proto_auth_proto_msgTypes[4]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -255,7 +256,7 @@ func (x *CreateServiceTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateServiceTokenRequest.ProtoReflect.Descriptor instead.
 func (*CreateServiceTokenRequest) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{4}
+	return file_proto_auth_proto_rawDescGZIP(), []int{4}
 }
 
 func (x *CreateServiceTokenRequest) GetServiceId() string {
@@ -274,7 +275,7 @@ type CreateServiceTokenResponse struct {
 
 func (x *CreateServiceTokenResponse) Reset() {
 	*x = CreateServiceTokenResponse{}
-	mi := &file_auth_proto_msgTypes[5]
+	mi := &file_proto_auth_proto_msgTypes[5]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -286,7 +287,7 @@ func (x *CreateServiceTokenResponse) String() string {
 func (*CreateServiceTokenResponse) ProtoMessage() {}
 
 func (x *CreateServiceTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[5]
+	mi := &file_proto_auth_proto_msgTypes[5]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -299,7 +300,7 @@ func (x *CreateServiceTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateServiceTokenResponse.ProtoReflect.Descriptor instead.
 func (*CreateServiceTokenResponse) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{5}
+	return file_proto_auth_proto_rawDescGZIP(), []int{5}
 }
 
 func (x *CreateServiceTokenResponse) GetToken() string {
@@ -318,7 +319,7 @@ type ParseUserTokenRequest struct {
 
 func (x *ParseUserTokenRequest) Reset() {
 	*x = ParseUserTokenRequest{}
-	mi := &file_auth_proto_msgTypes[6]
+	mi := &file_proto_auth_proto_msgTypes[6]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -330,7 +331,7 @@ func (x *ParseUserTokenRequest) String() string {
 func (*ParseUserTokenRequest) ProtoMessage() {}
 
 func (x *ParseUserTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[6]
+	mi := &file_proto_auth_proto_msgTypes[6]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -343,7 +344,7 @@ func (x *ParseUserTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ParseUserTokenRequest.ProtoReflect.Descriptor instead.
 func (*ParseUserTokenRequest) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{6}
+	return file_proto_auth_proto_rawDescGZIP(), []int{6}
 }
 
 func (x *ParseUserTokenRequest) GetToken() string {
@@ -366,7 +367,7 @@ type ParseUserTokenResponse struct {
 
 func (x *ParseUserTokenResponse) Reset() {
 	*x = ParseUserTokenResponse{}
-	mi := &file_auth_proto_msgTypes[7]
+	mi := &file_proto_auth_proto_msgTypes[7]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -378,7 +379,7 @@ func (x *ParseUserTokenResponse) String() string {
 func (*ParseUserTokenResponse) ProtoMessage() {}
 
 func (x *ParseUserTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[7]
+	mi := &file_proto_auth_proto_msgTypes[7]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -391,7 +392,7 @@ func (x *ParseUserTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ParseUserTokenResponse.ProtoReflect.Descriptor instead.
 func (*ParseUserTokenResponse) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{7}
+	return file_proto_auth_proto_rawDescGZIP(), []int{7}
 }
 
 func (x *ParseUserTokenResponse) GetUserId() string {
@@ -438,7 +439,7 @@ type ParseServiceTokenRequest struct {
 
 func (x *ParseServiceTokenRequest) Reset() {
 	*x = ParseServiceTokenRequest{}
-	mi := &file_auth_proto_msgTypes[8]
+	mi := &file_proto_auth_proto_msgTypes[8]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -450,7 +451,7 @@ func (x *ParseServiceTokenRequest) String() string {
 func (*ParseServiceTokenRequest) ProtoMessage() {}
 
 func (x *ParseServiceTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[8]
+	mi := &file_proto_auth_proto_msgTypes[8]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -463,7 +464,7 @@ func (x *ParseServiceTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ParseServiceTokenRequest.ProtoReflect.Descriptor instead.
 func (*ParseServiceTokenRequest) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{8}
+	return file_proto_auth_proto_rawDescGZIP(), []int{8}
 }
 
 func (x *ParseServiceTokenRequest) GetServiceId() string {
@@ -482,7 +483,7 @@ type ParseServiceTokenResponse struct {
 
 func (x *ParseServiceTokenResponse) Reset() {
 	*x = ParseServiceTokenResponse{}
-	mi := &file_auth_proto_msgTypes[9]
+	mi := &file_proto_auth_proto_msgTypes[9]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -494,7 +495,7 @@ func (x *ParseServiceTokenResponse) String() string {
 func (*ParseServiceTokenResponse) ProtoMessage() {}
 
 func (x *ParseServiceTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[9]
+	mi := &file_proto_auth_proto_msgTypes[9]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -507,7 +508,7 @@ func (x *ParseServiceTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ParseServiceTokenResponse.ProtoReflect.Descriptor instead.
 func (*ParseServiceTokenResponse) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{9}
+	return file_proto_auth_proto_rawDescGZIP(), []int{9}
 }
 
 func (x *ParseServiceTokenResponse) GetServiceId() string {
@@ -527,7 +528,7 @@ type ParseDeviceTokenRequest struct {
 
 func (x *ParseDeviceTokenRequest) Reset() {
 	*x = ParseDeviceTokenRequest{}
-	mi := &file_auth_proto_msgTypes[10]
+	mi := &file_proto_auth_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -539,7 +540,7 @@ func (x *ParseDeviceTokenRequest) String() string {
 func (*ParseDeviceTokenRequest) ProtoMessage() {}
 
 func (x *ParseDeviceTokenRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[10]
+	mi := &file_proto_auth_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -552,7 +553,7 @@ func (x *ParseDeviceTokenRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ParseDeviceTokenRequest.ProtoReflect.Descriptor instead.
 func (*ParseDeviceTokenRequest) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{10}
+	return file_proto_auth_proto_rawDescGZIP(), []int{10}
 }
 
 func (x *ParseDeviceTokenRequest) GetToken() string {
@@ -572,13 +573,16 @@ func (x *ParseDeviceTokenRequest) GetDeviceId() string {
 type ParseDeviceTokenResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	DeviceId      string                 `protobuf:"bytes,1,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
+	TokenId       string                 `protobuf:"bytes,2,opt,name=token_id,json=tokenId,proto3" json:"token_id,omitempty"`
+	CompanyId     string                 `protobuf:"bytes,3,opt,name=company_id,json=companyId,proto3" json:"company_id,omitempty"`
+	ExpiresAt     int64                  `protobuf:"varint,4,opt,name=expires_at,json=expiresAt,proto3" json:"expires_at,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ParseDeviceTokenResponse) Reset() {
 	*x = ParseDeviceTokenResponse{}
-	mi := &file_auth_proto_msgTypes[11]
+	mi := &file_proto_auth_proto_msgTypes[11]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -590,7 +594,7 @@ func (x *ParseDeviceTokenResponse) String() string {
 func (*ParseDeviceTokenResponse) ProtoMessage() {}
 
 func (x *ParseDeviceTokenResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_auth_proto_msgTypes[11]
+	mi := &file_proto_auth_proto_msgTypes[11]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -603,7 +607,7 @@ func (x *ParseDeviceTokenResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ParseDeviceTokenResponse.ProtoReflect.Descriptor instead.
 func (*ParseDeviceTokenResponse) Descriptor() ([]byte, []int) {
-	return file_auth_proto_rawDescGZIP(), []int{11}
+	return file_proto_auth_proto_rawDescGZIP(), []int{11}
 }
 
 func (x *ParseDeviceTokenResponse) GetDeviceId() string {
@@ -613,12 +617,32 @@ func (x *ParseDeviceTokenResponse) GetDeviceId() string {
 	return ""
 }
 
-var File_auth_proto protoreflect.FileDescriptor
+func (x *ParseDeviceTokenResponse) GetTokenId() string {
+	if x != nil {
+		return x.TokenId
+	}
+	return ""
+}
 
-const file_auth_proto_rawDesc = "" +
+func (x *ParseDeviceTokenResponse) GetCompanyId() string {
+	if x != nil {
+		return x.CompanyId
+	}
+	return ""
+}
+
+func (x *ParseDeviceTokenResponse) GetExpiresAt() int64 {
+	if x != nil {
+		return x.ExpiresAt
+	}
+	return 0
+}
+
+var File_proto_auth_proto protoreflect.FileDescriptor
+
+const file_proto_auth_proto_rawDesc = "" +
 	"\n" +
-	"\n" +
-	"auth.proto\x12\x04auth\"G\n" +
+	"\x10proto/auth.proto\x12\x04auth\x1a\x1bgoogle/protobuf/empty.proto\"G\n" +
 	"\x16CreateUserTokenRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
 	"\x05roles\x18\x02 \x01(\x05R\x05roles\"a\n" +
@@ -654,31 +678,37 @@ const file_auth_proto_rawDesc = "" +
 	"service_id\x18\x01 \x01(\tR\tserviceId\"L\n" +
 	"\x17ParseDeviceTokenRequest\x12\x14\n" +
 	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1b\n" +
-	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId\"7\n" +
+	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId\"\x90\x01\n" +
 	"\x18ParseDeviceTokenResponse\x12\x1b\n" +
-	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId2\x82\x04\n" +
+	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12\x19\n" +
+	"\btoken_id\x18\x02 \x01(\tR\atokenId\x12\x1d\n" +
+	"\n" +
+	"company_id\x18\x03 \x01(\tR\tcompanyId\x12\x1d\n" +
+	"\n" +
+	"expires_at\x18\x04 \x01(\x03R\texpiresAt2\xc1\x04\n" +
 	"\vAuthService\x12N\n" +
 	"\x0fCreateUserToken\x12\x1c.auth.CreateUserTokenRequest\x1a\x1d.auth.CreateUserTokenResponse\x12W\n" +
 	"\x12CreateServiceToken\x12\x1f.auth.CreateServiceTokenRequest\x1a .auth.CreateServiceTokenResponse\x12T\n" +
 	"\x11CreateDeviceToken\x12\x1e.auth.CreateDeviceTokenRequest\x1a\x1f.auth.CreateDeviceTokenResponse\x12K\n" +
 	"\x0eParseUserToken\x12\x1b.auth.ParseUserTokenRequest\x1a\x1c.auth.ParseUserTokenResponse\x12T\n" +
 	"\x11ParseServiceToken\x12\x1e.auth.ParseServiceTokenRequest\x1a\x1f.auth.ParseServiceTokenResponse\x12Q\n" +
-	"\x10ParseDeviceToken\x12\x1d.auth.ParseDeviceTokenRequest\x1a\x1e.auth.ParseDeviceTokenResponseBEZCgithub.com/youknow2509/cio_verify_face/server/service_auth/proto/pbb\x06proto3"
+	"\x10ParseDeviceToken\x12\x1d.auth.ParseDeviceTokenRequest\x1a\x1e.auth.ParseDeviceTokenResponse\x12=\n" +
+	"\vHealthCheck\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.EmptyBEZCgithub.com/youknow2509/cio_verify_face/server/service_auth/proto/pbb\x06proto3"
 
 var (
-	file_auth_proto_rawDescOnce sync.Once
-	file_auth_proto_rawDescData []byte
+	file_proto_auth_proto_rawDescOnce sync.Once
+	file_proto_auth_proto_rawDescData []byte
 )
 
-func file_auth_proto_rawDescGZIP() []byte {
-	file_auth_proto_rawDescOnce.Do(func() {
-		file_auth_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_auth_proto_rawDesc), len(file_auth_proto_rawDesc)))
+func file_proto_auth_proto_rawDescGZIP() []byte {
+	file_proto_auth_proto_rawDescOnce.Do(func() {
+		file_proto_auth_proto_rawDescData = protoimpl.X.CompressGZIP(unsafe.Slice(unsafe.StringData(file_proto_auth_proto_rawDesc), len(file_proto_auth_proto_rawDesc)))
 	})
-	return file_auth_proto_rawDescData
+	return file_proto_auth_proto_rawDescData
 }
 
-var file_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
-var file_auth_proto_goTypes = []any{
+var file_proto_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
+var file_proto_auth_proto_goTypes = []any{
 	(*CreateUserTokenRequest)(nil),     // 0: auth.CreateUserTokenRequest
 	(*CreateUserTokenResponse)(nil),    // 1: auth.CreateUserTokenResponse
 	(*CreateDeviceTokenRequest)(nil),   // 2: auth.CreateDeviceTokenRequest
@@ -691,47 +721,50 @@ var file_auth_proto_goTypes = []any{
 	(*ParseServiceTokenResponse)(nil),  // 9: auth.ParseServiceTokenResponse
 	(*ParseDeviceTokenRequest)(nil),    // 10: auth.ParseDeviceTokenRequest
 	(*ParseDeviceTokenResponse)(nil),   // 11: auth.ParseDeviceTokenResponse
+	(*emptypb.Empty)(nil),              // 12: google.protobuf.Empty
 }
-var file_auth_proto_depIdxs = []int32{
+var file_proto_auth_proto_depIdxs = []int32{
 	0,  // 0: auth.AuthService.CreateUserToken:input_type -> auth.CreateUserTokenRequest
 	4,  // 1: auth.AuthService.CreateServiceToken:input_type -> auth.CreateServiceTokenRequest
 	2,  // 2: auth.AuthService.CreateDeviceToken:input_type -> auth.CreateDeviceTokenRequest
 	6,  // 3: auth.AuthService.ParseUserToken:input_type -> auth.ParseUserTokenRequest
 	8,  // 4: auth.AuthService.ParseServiceToken:input_type -> auth.ParseServiceTokenRequest
 	10, // 5: auth.AuthService.ParseDeviceToken:input_type -> auth.ParseDeviceTokenRequest
-	1,  // 6: auth.AuthService.CreateUserToken:output_type -> auth.CreateUserTokenResponse
-	5,  // 7: auth.AuthService.CreateServiceToken:output_type -> auth.CreateServiceTokenResponse
-	3,  // 8: auth.AuthService.CreateDeviceToken:output_type -> auth.CreateDeviceTokenResponse
-	7,  // 9: auth.AuthService.ParseUserToken:output_type -> auth.ParseUserTokenResponse
-	9,  // 10: auth.AuthService.ParseServiceToken:output_type -> auth.ParseServiceTokenResponse
-	11, // 11: auth.AuthService.ParseDeviceToken:output_type -> auth.ParseDeviceTokenResponse
-	6,  // [6:12] is the sub-list for method output_type
-	0,  // [0:6] is the sub-list for method input_type
+	12, // 6: auth.AuthService.HealthCheck:input_type -> google.protobuf.Empty
+	1,  // 7: auth.AuthService.CreateUserToken:output_type -> auth.CreateUserTokenResponse
+	5,  // 8: auth.AuthService.CreateServiceToken:output_type -> auth.CreateServiceTokenResponse
+	3,  // 9: auth.AuthService.CreateDeviceToken:output_type -> auth.CreateDeviceTokenResponse
+	7,  // 10: auth.AuthService.ParseUserToken:output_type -> auth.ParseUserTokenResponse
+	9,  // 11: auth.AuthService.ParseServiceToken:output_type -> auth.ParseServiceTokenResponse
+	11, // 12: auth.AuthService.ParseDeviceToken:output_type -> auth.ParseDeviceTokenResponse
+	12, // 13: auth.AuthService.HealthCheck:output_type -> google.protobuf.Empty
+	7,  // [7:14] is the sub-list for method output_type
+	0,  // [0:7] is the sub-list for method input_type
 	0,  // [0:0] is the sub-list for extension type_name
 	0,  // [0:0] is the sub-list for extension extendee
 	0,  // [0:0] is the sub-list for field type_name
 }
 
-func init() { file_auth_proto_init() }
-func file_auth_proto_init() {
-	if File_auth_proto != nil {
+func init() { file_proto_auth_proto_init() }
+func file_proto_auth_proto_init() {
+	if File_proto_auth_proto != nil {
 		return
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
-			RawDescriptor: unsafe.Slice(unsafe.StringData(file_auth_proto_rawDesc), len(file_auth_proto_rawDesc)),
+			RawDescriptor: unsafe.Slice(unsafe.StringData(file_proto_auth_proto_rawDesc), len(file_proto_auth_proto_rawDesc)),
 			NumEnums:      0,
 			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
-		GoTypes:           file_auth_proto_goTypes,
-		DependencyIndexes: file_auth_proto_depIdxs,
-		MessageInfos:      file_auth_proto_msgTypes,
+		GoTypes:           file_proto_auth_proto_goTypes,
+		DependencyIndexes: file_proto_auth_proto_depIdxs,
+		MessageInfos:      file_proto_auth_proto_msgTypes,
 	}.Build()
-	File_auth_proto = out.File
-	file_auth_proto_goTypes = nil
-	file_auth_proto_depIdxs = nil
+	File_proto_auth_proto = out.File
+	file_proto_auth_proto_goTypes = nil
+	file_proto_auth_proto_depIdxs = nil
 }

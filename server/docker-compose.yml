@@ -67,6 +67,8 @@ services:
         image: someone2509/cio_verify_face_service_auth:latest
         networks:
             - nw-dev-0
+        ports:
+          - '50051:50051'
         volumes:
           - ./config/config_service_auth.yaml:/prod/config/config.yaml:ro
 
