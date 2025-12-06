@@ -4,6 +4,7 @@ import numpy as np
 import json
 import ast
 import cv2
+import warnings
 from typing import Optional, List, Dict
 from uuid import UUID, uuid4
 from datetime import datetime, time, timedelta
@@ -15,7 +16,14 @@ from app.core.face_detector import FaceDetector
 from app.core.face_embedding import FaceEmbedding
 from app.core.liveness_detector import LivenessDetector
 # Database managers
-from app.database.pgvector_manager import PgVectorManager
+from app.database.pgvector_manager import PgVectorManager, VectorDBUnavailable
+
+# Silence upstream rcond FutureWarning from insightface transform
+warnings.filterwarnings(
+    "ignore",
+    category=FutureWarning,
+    module="insightface.utils.transform"
+)
 from app.database.scylladb_manager import ScyllaDBManager
 from app.database.minio_manager import MinIOManager
 # Grpc client
@@ -251,7 +259,11 @@ class FaceService:
                     quality_score=quality
                 )
             # Check duplicate enrollment face for another user
-            matches = self.index_manager.search(str(company_id), embedding, k=5)
+            try:
+                matches = self.index_manager.search(str(company_id), embedding, k=5)
+            except (VectorDBUnavailable, Exception) as e:
+                logger.error(f"Vector search unavailable: {e}")
+                return EnrollResponse(status="failed", message="Vector database unavailable, please retry later")
             logger.info(f"Enroll search found {len(matches)} matches for duplicate check.")
             if matches:
                 best = matches[0]
@@ -382,7 +394,11 @@ class FaceService:
             if embedding is None:
                 return VerifyResponse(status="failed", verified=False, message="No face detected")
             # Search for matches
-            matches = self.index_manager.search(str(company_id), embedding, k=top_k)
+            try:
+                matches = self.index_manager.search(str(company_id), embedding, k=top_k)
+            except (VectorDBUnavailable, Exception) as e:
+                logger.error(f"Vector search unavailable: {e}")
+                return VerifyResponse(status="failed", verified=False, message="Vector database unavailable, please retry later")
             if not matches:
                 logger.warning(
                     f"No matching face found during verification. "
