@@ -6,6 +6,7 @@ import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { EmployeeListPage } from '@/features/employees/EmployeeListPage';
 import { EmployeeFormPage } from '@/features/employees/EmployeeFormPage';
 import { EmployeeFaceDataPage } from '@/features/employees/EmployeeFaceDataPage';
+import { EmployeeDetailPage } from '@/features/employees/EmployeeDetailPage';
 import { DeviceListPage } from '@/features/devices/DeviceListPage';
 import { DeviceFormPage } from '@/features/devices/DeviceFormPage';
 import { DeviceConfigPage } from '@/features/devices/DeviceConfigPage';
@@ -58,6 +59,10 @@ export const router = createBrowserRouter([
             {
                 path: 'employees/:id/face-data',
                 element: <EmployeeFaceDataPage />,
+            },
+            {
+                path: 'employees/:id',
+                element: <EmployeeDetailPage />,
             },
             {
                 path: 'devices',

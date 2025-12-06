@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import {
     Box,
     Card,
+    CardContent,
     TextField,
     Button,
     Table,
@@ -15,7 +16,6 @@ import {
     Grid,
     CircularProgress,
     Alert,
-    Pagination,
     Dialog,
     DialogTitle,
     DialogContent,
@@ -25,54 +25,110 @@ import {
     Select,
     MenuItem,
     Snackbar,
+    ToggleButton,
+    ToggleButtonGroup,
 } from '@mui/material';
-import { Download } from '@mui/icons-material';
+import {
+    Download,
+    People,
+    CheckCircle,
+    Cancel,
+    Schedule,
+    ExitToApp,
+    AccessTime,
+    CalendarMonth,
+    CalendarToday,
+} from '@mui/icons-material';
 import { apiClient } from '@face-attendance/utils';
 
-// Types matching the Go structs
-interface DailyReportDetailEmployee {
-    company_id: string;
-    summary_month: string; // YYYY-MM format
-    work_date: string; // ISO date string
+// Types for Daily Attendance Status API
+interface DailyEmployee {
     employee_id: string;
-    shift_id: string;
-    actual_check_in: string | null; // ISO datetime string or null
-    actual_check_out: string | null; // ISO datetime string or null
-    attendance_status: number;
+    name: string;
+    check_in: string | null; // HH:mm:ss format
+    check_out: string | null; // HH:mm:ss format
+    status: 'on_time' | 'late' | 'early_leave' | 'absent' | 'overtime';
     late_minutes: number;
-    early_leave_minutes: number;
-    total_work_minutes: number;
-    notes: string;
-    updated_at: string; // ISO datetime string
-    overtime_minutes: number;
-    attendance_percentage: number;
+    total_hours: number;
 }
 
-interface DailyReportDetailsResponse {
-    total: number;
-    items: DailyReportDetailEmployee[];
-    next_page?: string;
+interface DailyStatistics {
+    total_employees: number;
+    checked_in: number;
+    not_checked_in: number;
+    on_time: number;
+    late: number;
+    early_leave: number;
+    overtime: number;
 }
 
-// Extended type with employee and shift info (will be fetched separately if needed)
-interface DailyReportRecord extends DailyReportDetailEmployee {
-    employee_name?: string;
-    employee_code?: string;
-    shift_name?: string;
+interface DailyAttendanceStatusResponse {
+    success: boolean;
+    data: {
+        date: string; // YYYY-MM-DD
+        statistics: DailyStatistics;
+        employees: DailyEmployee[];
+    };
 }
+
+// Types for Monthly Summary API
+interface MonthlyEmployeeSummary {
+    employee_id: string;
+    name: string;
+    present_days: number;
+    absent_days: number;
+    late_days: number;
+    total_hours: number;
+    average_hours_per_day: number;
+    overtime_hours: number;
+}
+
+interface MonthlyStatistics {
+    average_attendance_rate: number;
+    total_late_instances: number;
+    total_overtime_hours: number;
+}
+
+interface MonthlySummaryResponse {
+    success: boolean;
+    data: {
+        month: string; // YYYY-MM
+        total_working_days: number;
+        employees_summary: MonthlyEmployeeSummary[];
+        statistics: MonthlyStatistics;
+    };
+}
+
+// Export response type
+interface ExportResponse {
+    success: boolean;
+    data: {
+        file_id: string;
+        download_url: string;
+        expires_at: string;
+    };
+}
+
+type ReportMode = 'daily' | 'monthly';
 
 export const DailyReportPage: React.FC = () => {
+    const [mode, setMode] = useState<ReportMode>('daily');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
-    const [records, setRecords] = useState<DailyReportRecord[]>([]);
+    const [month, setMonth] = useState(
+        new Date().toISOString().slice(0, 7) // YYYY-MM format
+    );
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
-    const [total, setTotal] = useState(0);
-    const [page, setPage] = useState(1);
-    const [nextPage, setNextPage] = useState<string | undefined>(undefined);
-    const [employeeMap, setEmployeeMap] = useState<
-        Map<string, { name: string; code: string }>
-    >(new Map());
-    const [shiftMap, setShiftMap] = useState<Map<string, string>>(new Map());
+
+    // Daily report states
+    const [dailyData, setDailyData] = useState<
+        DailyAttendanceStatusResponse['data'] | null
+    >(null);
+
+    // Monthly report states
+    const [monthlyData, setMonthlyData] = useState<
+        MonthlySummaryResponse['data'] | null
+    >(null);
 
     // Export states
     const [exportDialogOpen, setExportDialogOpen] = useState(false);
@@ -87,192 +143,6 @@ export const DailyReportPage: React.FC = () => {
         severity: 'success' | 'error';
     }>({ open: false, message: '', severity: 'success' });
 
-    // Fetch daily report data
-    const fetchDailyReport = useCallback(
-        async (selectedDate: string, pageToken?: string) => {
-            setLoading(true);
-            setError(null);
-            try {
-                const requestBody: any = {
-                    work_date: selectedDate,
-                };
-                if (pageToken) {
-                    requestBody.next_page = pageToken;
-                }
-
-                const response = await apiClient.post<{
-                    data: DailyReportDetailsResponse;
-                }>('/api/v1/daily-summaries/details', requestBody);
-
-                if (response.data?.data) {
-                    const data = response.data.data;
-                    setTotal(data.total);
-                    setNextPage(data.next_page);
-
-                    // Fetch employee and shift info for all records
-                    const enrichedRecords = await Promise.all(
-                        data.items.map(async (item) => {
-                            // Check cache first
-                            let employeeInfo = employeeMap.get(
-                                item.employee_id
-                            );
-                            let shiftName = shiftMap.get(item.shift_id);
-
-                            // Fetch employee info if not in cache
-                            if (!employeeInfo) {
-                                try {
-                                    const empResponse = await apiClient.get(
-                                        `/api/v1/users/${item.employee_id}`
-                                    );
-                                    if (
-                                        empResponse.status === 200 &&
-                                        empResponse.data?.data
-                                    ) {
-                                        const emp = empResponse.data.data;
-                                        employeeInfo = {
-                                            name: emp.full_name || '',
-                                            code: emp.employee_code || '',
-                                        };
-                                        setEmployeeMap((prev) => {
-                                            const newMap = new Map(prev);
-                                            newMap.set(
-                                                item.employee_id,
-                                                employeeInfo!
-                                            );
-                                            return newMap;
-                                        });
-                                    }
-                                } catch (err) {
-                                    console.error(
-                                        'Failed to fetch employee:',
-                                        err
-                                    );
-                                    employeeInfo = { name: '', code: '' };
-                                }
-                            }
-
-                            // Fetch shift info if not in cache
-                            if (!shiftName) {
-                                try {
-                                    const shiftResponse = await apiClient.get(
-                                        `/api/v1/shift/${item.shift_id}`
-                                    );
-                                    if (
-                                        shiftResponse.status === 200 &&
-                                        shiftResponse.data?.data
-                                    ) {
-                                        shiftName =
-                                            shiftResponse.data.data.name || '';
-                                        setShiftMap((prev) => {
-                                            const newMap = new Map(prev);
-                                            newMap.set(
-                                                item.shift_id,
-                                                shiftName!
-                                            );
-                                            return newMap;
-                                        });
-                                    }
-                                } catch (err) {
-                                    console.error(
-                                        'Failed to fetch shift:',
-                                        err
-                                    );
-                                    shiftName = '';
-                                }
-                            }
-
-                            return {
-                                ...item,
-                                employee_name: employeeInfo?.name || '',
-                                employee_code: employeeInfo?.code || '',
-                                shift_name: shiftName || '',
-                            };
-                        })
-                    );
-
-                    setRecords(enrichedRecords);
-                }
-            } catch (err: any) {
-                console.error('Failed to fetch daily report:', err);
-                setError(
-                    err.response?.data?.message ||
-                        err.response?.data?.error ||
-                        'Không thể tải báo cáo. Vui lòng thử lại.'
-                );
-                setRecords([]);
-            } finally {
-                setLoading(false);
-            }
-        },
-        [employeeMap, shiftMap]
-    );
-
-    useEffect(() => {
-        fetchDailyReport(date);
-    }, [date, fetchDailyReport]);
-
-    const handleDateChange = (newDate: string) => {
-        setDate(newDate);
-        setPage(1);
-        setNextPage(undefined);
-    };
-
-    const handlePageChange = (
-        _event: React.ChangeEvent<unknown>,
-        value: number
-    ) => {
-        setPage(value);
-        if (value > page && nextPage) {
-            fetchDailyReport(date, nextPage);
-        } else if (value < page) {
-            // For previous page, we might need to refetch from the beginning
-            // This is a simplified implementation - adjust based on your API's pagination strategy
-            fetchDailyReport(date);
-        }
-    };
-
-    const getStatusColor = (status: number) => {
-        // attendance_status: 0 = absent, 1 = present, 2 = late, 3 = early leave, etc.
-        switch (status) {
-            case 1:
-                return 'success';
-            case 2:
-                return 'error';
-            case 3:
-                return 'warning';
-            default:
-                return 'default';
-        }
-    };
-
-    const getStatusText = (status: number) => {
-        switch (status) {
-            case 0:
-                return 'Vắng mặt';
-            case 1:
-                return 'Có mặt';
-            case 2:
-                return 'Trễ';
-            case 3:
-                return 'Về sớm';
-            default:
-                return '-';
-        }
-    };
-
-    const formatMinutesToHours = (minutes: number) => {
-        if (!minutes) return '-';
-        const hours = Math.floor(minutes / 60);
-        const mins = minutes % 60;
-        if (hours > 0 && mins > 0) {
-            return `${hours}h${mins}m`;
-        } else if (hours > 0) {
-            return `${hours}h`;
-        } else {
-            return `${mins}m`;
-        }
-    };
-
     // Get company ID from JWT token
     const getCompanyIdFromToken = (token: string): string | null => {
         try {
@@ -280,6 +150,168 @@ export const DailyReportPage: React.FC = () => {
             return payload.company_id || null;
         } catch {
             return null;
+        }
+    };
+
+    // Fetch daily attendance status
+    const fetchDailyReport = useCallback(async (selectedDate: string) => {
+        const accessToken = localStorage.getItem('access_token');
+        if (!accessToken) {
+            setError('Không tìm thấy token xác thực');
+            return;
+        }
+
+        const companyId = getCompanyIdFromToken(accessToken);
+        if (!companyId) {
+            setError('Không tìm thấy company_id trong token');
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await apiClient.get<DailyAttendanceStatusResponse>(
+                '/api/v1/company/daily-attendance-status',
+                {
+                    params: {
+                        company_id: companyId,
+                        date: selectedDate,
+                    },
+                }
+            );
+
+            if (response.data?.success && response.data?.data) {
+                setDailyData(response.data.data);
+            } else {
+                setError('Không thể tải dữ liệu báo cáo');
+            }
+        } catch (err: any) {
+            console.error('Failed to fetch daily report:', err);
+            setError(
+                err.response?.data?.message ||
+                    err.response?.data?.error ||
+                    'Không thể tải báo cáo. Vui lòng thử lại.'
+            );
+            setDailyData(null);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    // Fetch monthly summary
+    const fetchMonthlyReport = useCallback(async (selectedMonth: string) => {
+        const accessToken = localStorage.getItem('access_token');
+        if (!accessToken) {
+            setError('Không tìm thấy token xác thực');
+            return;
+        }
+
+        const companyId = getCompanyIdFromToken(accessToken);
+        if (!companyId) {
+            setError('Không tìm thấy company_id trong token');
+            return;
+        }
+
+        setLoading(true);
+        setError(null);
+        try {
+            const response = await apiClient.get<MonthlySummaryResponse>(
+                '/api/v1/company/monthly-summary',
+                {
+                    params: {
+                        company_id: companyId,
+                        month: selectedMonth,
+                    },
+                }
+            );
+
+            if (response.data?.success && response.data?.data) {
+                setMonthlyData(response.data.data);
+            } else {
+                setError('Không thể tải dữ liệu báo cáo');
+            }
+        } catch (err: any) {
+            console.error('Failed to fetch monthly report:', err);
+            setError(
+                err.response?.data?.message ||
+                    err.response?.data?.error ||
+                    'Không thể tải báo cáo. Vui lòng thử lại.'
+            );
+            setMonthlyData(null);
+        } finally {
+            setLoading(false);
+        }
+    }, []);
+
+    useEffect(() => {
+        if (mode === 'daily') {
+            fetchDailyReport(date);
+        } else {
+            fetchMonthlyReport(month);
+        }
+    }, [mode, date, month, fetchDailyReport, fetchMonthlyReport]);
+
+    const handleModeChange = (
+        _event: React.MouseEvent<HTMLElement>,
+        newMode: ReportMode | null
+    ) => {
+        if (newMode !== null) {
+            setMode(newMode);
+        }
+    };
+
+    const handleDateChange = (newDate: string) => {
+        setDate(newDate);
+    };
+
+    const handleMonthChange = (newMonth: string) => {
+        setMonth(newMonth);
+    };
+
+    const getStatusColor = (status: string) => {
+        switch (status) {
+            case 'on_time':
+                return 'success';
+            case 'late':
+                return 'warning';
+            case 'early_leave':
+                return 'info';
+            case 'absent':
+                return 'error';
+            case 'overtime':
+                return 'secondary';
+            default:
+                return 'default';
+        }
+    };
+
+    const getStatusText = (status: string) => {
+        switch (status) {
+            case 'on_time':
+                return 'Đúng giờ';
+            case 'late':
+                return 'Trễ';
+            case 'early_leave':
+                return 'Về sớm';
+            case 'absent':
+                return 'Vắng mặt';
+            case 'overtime':
+                return 'Tăng ca';
+            default:
+                return '-';
+        }
+    };
+
+    const formatHours = (hours: number) => {
+        if (!hours) return '-';
+        const h = Math.floor(hours);
+        const m = Math.round((hours - h) * 60);
+        if (h > 0 && m > 0) {
+            return `${h}h${m}m`;
+        } else if (h > 0) {
+            return `${h}h`;
+        } else {
+            return `${m}m`;
         }
     };
 
@@ -307,103 +339,110 @@ export const DailyReportPage: React.FC = () => {
 
         setExportLoading(true);
         try {
+            const endpoint =
+                mode === 'daily'
+                    ? '/api/v1/company/export-daily-status'
+                    : '/api/v1/company/export-monthly-summary';
+
             const requestBody: {
                 company_id: string;
-                date: string;
+                date?: string;
+                month?: string;
                 format: string;
                 email?: string;
             } = {
                 company_id: companyId,
-                date: date, // Using YYYY-MM-DD format as shown in example
                 format: exportFormat,
             };
 
-            const hasEmail = exportEmail.trim() !== '';
-            if (hasEmail) {
+            if (mode === 'daily') {
+                requestBody.date = date;
+            } else {
+                requestBody.month = month;
+            }
+
+            if (exportEmail.trim()) {
                 requestBody.email = exportEmail.trim();
             }
 
-            // If email is provided, expect JSON response; otherwise expect blob
-            const response = await apiClient.post(
-                '/api/v1/reports/daily/export',
-                requestBody,
-                hasEmail
-                    ? {} // JSON response when email is provided
-                    : {
-                          responseType: 'blob', // Blob response for file download
-                      }
+            const response = await apiClient.post<ExportResponse>(
+                endpoint,
+                requestBody
             );
 
-            if (hasEmail) {
-                // Server sent email, expect JSON response
-                const message =
-                    response.data?.message ||
-                    `Báo cáo đã được gửi đến email ${exportEmail}`;
-                setSnackbar({
-                    open: true,
-                    message,
-                    severity: 'success',
-                });
+            if (response.data?.success && response.data?.data) {
+                const { download_url } = response.data.data;
+
+                if (exportEmail.trim()) {
+                    // Email sent
+                    setSnackbar({
+                        open: true,
+                        message: `Báo cáo đã được gửi đến email ${exportEmail}`,
+                        severity: 'success',
+                    });
+                } else {
+                    // Download file
+                    try {
+                        const downloadResponse = await apiClient.get(
+                            download_url,
+                            {
+                                responseType: 'blob',
+                            }
+                        );
+
+                        const blob = new Blob([downloadResponse.data], {
+                            type:
+                                downloadResponse.headers['content-type'] ||
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                        });
+
+                        const url = window.URL.createObjectURL(blob);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        const extension =
+                            exportFormat === 'excel' ? 'xlsx' : exportFormat;
+                        const fileName = `${mode}-report-${
+                            mode === 'daily' ? date : month
+                        }.${extension}`;
+                        link.setAttribute('download', fileName);
+                        document.body.appendChild(link);
+                        link.click();
+                        link.remove();
+                        window.URL.revokeObjectURL(url);
+
+                        setSnackbar({
+                            open: true,
+                            message: 'Xuất báo cáo thành công',
+                            severity: 'success',
+                        });
+                    } catch (downloadErr: any) {
+                        console.error('Failed to download file:', downloadErr);
+                        setSnackbar({
+                            open: true,
+                            message:
+                                'Xuất báo cáo thành công nhưng không thể tải xuống. Vui lòng thử lại.',
+                            severity: 'error',
+                        });
+                    }
+                }
+
                 setExportDialogOpen(false);
                 setExportEmail('');
             } else {
-                // Download file directly
-                // Check if response is blob or needs conversion
-                let blob: Blob;
-                if (response.data instanceof Blob) {
-                    blob = response.data;
-                } else {
-                    blob = new Blob([response.data], {
-                        type:
-                            response.headers['content-type'] ||
-                            'application/octet-stream',
-                    });
-                }
-
-                const url = window.URL.createObjectURL(blob);
-                const link = document.createElement('a');
-                link.href = url;
-
-                // Determine file extension based on format
-                const extension =
-                    exportFormat === 'excel' ? 'xlsx' : exportFormat;
-                const fileName = `daily-report-${date}.${extension}`;
-                link.setAttribute('download', fileName);
-                document.body.appendChild(link);
-                link.click();
-                link.remove();
-                window.URL.revokeObjectURL(url);
-
                 setSnackbar({
                     open: true,
-                    message: 'Xuất báo cáo thành công',
-                    severity: 'success',
+                    message: 'Không thể xuất báo cáo. Vui lòng thử lại.',
+                    severity: 'error',
                 });
-                setExportDialogOpen(false);
             }
         } catch (err: any) {
             console.error('Failed to export report:', err);
-
-            // Try to parse error message from blob response if needed
-            let errorMessage =
-                err.response?.data?.message ||
-                err.response?.data?.error ||
-                'Không thể xuất báo cáo. Vui lòng thử lại.';
-
-            // If response is blob but error occurred, try to parse it
-            if (err.response?.data instanceof Blob) {
-                try {
-                    const text = await err.response.data.text();
-                    const json = JSON.parse(text);
-                    errorMessage = json.message || json.error || errorMessage;
-                } catch {
-                    // Ignore parsing errors
-                }
-            }
-
             setSnackbar({
                 open: true,
-                message: errorMessage,
+                message:
+                    err.response?.data?.message ||
+                    err.response?.data?.error ||
+                    'Không thể xuất báo cáo. Vui lòng thử lại.',
                 severity: 'error',
             });
         } finally {
@@ -427,26 +466,67 @@ export const DailyReportPage: React.FC = () => {
     return (
         <Box>
             <Typography variant="h4" fontWeight="bold" mb={3}>
-                Báo cáo Chấm công Hàng ngày
+                Báo cáo Chấm công
             </Typography>
+
+            {/* Mode Toggle */}
             <Card sx={{ mb: 3, p: 2 }}>
                 <Grid container spacing={2} alignItems="center">
                     <Grid item xs={12} md={4}>
-                        <TextField
-                            fullWidth
-                            label="Ngày"
-                            type="date"
-                            value={date}
-                            onChange={(e) => handleDateChange(e.target.value)}
-                            InputLabelProps={{ shrink: true }}
-                        />
+                        <FormControl fullWidth>
+                            <ToggleButtonGroup
+                                value={mode}
+                                exclusive
+                                onChange={handleModeChange}
+                                aria-label="report mode"
+                                fullWidth
+                            >
+                                <ToggleButton value="daily" aria-label="daily">
+                                    <CalendarToday sx={{ mr: 1 }} />
+                                    Theo ngày
+                                </ToggleButton>
+                                <ToggleButton
+                                    value="monthly"
+                                    aria-label="monthly"
+                                >
+                                    <CalendarMonth sx={{ mr: 1 }} />
+                                    Theo tháng
+                                </ToggleButton>
+                            </ToggleButtonGroup>
+                        </FormControl>
                     </Grid>
-                    <Grid item xs={12} md={8}>
+                    <Grid item xs={12} md={4}>
+                        {mode === 'daily' ? (
+                            <TextField
+                                fullWidth
+                                label="Ngày"
+                                type="date"
+                                value={date}
+                                onChange={(e) =>
+                                    handleDateChange(e.target.value)
+                                }
+                                InputLabelProps={{ shrink: true }}
+                            />
+                        ) : (
+                            <TextField
+                                fullWidth
+                                label="Tháng"
+                                type="month"
+                                value={month}
+                                onChange={(e) =>
+                                    handleMonthChange(e.target.value)
+                                }
+                                InputLabelProps={{ shrink: true }}
+                            />
+                        )}
+                    </Grid>
+                    <Grid item xs={12} md={4}>
                         <Button
                             variant="contained"
                             startIcon={<Download />}
                             onClick={handleOpenExportDialog}
                             disabled={loading}
+                            fullWidth
                         >
                             Xuất báo cáo
                         </Button>
@@ -464,178 +544,633 @@ export const DailyReportPage: React.FC = () => {
                 </Alert>
             )}
 
-            <Card>
-                {loading ? (
-                    <Box
-                        display="flex"
-                        justifyContent="center"
-                        alignItems="center"
-                        minHeight="200px"
-                    >
-                        <CircularProgress />
-                    </Box>
-                ) : (
-                    <>
-                        <TableContainer>
-                            <Table>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Nhân viên</TableCell>
-                                        <TableCell>Ca làm việc</TableCell>
-                                        <TableCell>Giờ vào</TableCell>
-                                        <TableCell>Giờ ra</TableCell>
-                                        <TableCell>Tổng giờ làm</TableCell>
-                                        <TableCell>Trễ (phút)</TableCell>
-                                        <TableCell>Về sớm (phút)</TableCell>
-                                        <TableCell>Tăng ca (phút)</TableCell>
-                                        <TableCell>Trạng thái</TableCell>
-                                        <TableCell>Tỷ lệ chính xác</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {records.length === 0 ? (
-                                        <TableRow>
-                                            <TableCell
-                                                colSpan={10}
-                                                align="center"
+            {loading ? (
+                <Box
+                    display="flex"
+                    justifyContent="center"
+                    alignItems="center"
+                    minHeight="200px"
+                >
+                    <CircularProgress />
+                </Box>
+            ) : (
+                <>
+                    {/* Daily Report View */}
+                    {mode === 'daily' && dailyData && dailyData.statistics && (
+                        <>
+                            {/* Statistics Cards */}
+                            <Grid container spacing={2} sx={{ mb: 3 }}>
+                                <Grid item xs={12} sm={6} md={2.4}>
+                                    <Card>
+                                        <CardContent>
+                                            <Box
+                                                display="flex"
+                                                justifyContent="space-between"
+                                                alignItems="center"
                                             >
-                                                <Typography
-                                                    color="textSecondary"
-                                                    py={2}
-                                                >
-                                                    Không có dữ liệu cho ngày đã
-                                                    chọn
-                                                </Typography>
-                                            </TableCell>
-                                        </TableRow>
-                                    ) : (
-                                        records.map((record, index) => (
-                                            <TableRow
-                                                key={`${record.employee_id}-${record.shift_id}-${record.work_date}-${index}`}
+                                                <Box>
+                                                    <Typography
+                                                        color="textSecondary"
+                                                        variant="body2"
+                                                    >
+                                                        Tổng nhân viên
+                                                    </Typography>
+                                                    <Typography
+                                                        variant="h5"
+                                                        fontWeight="bold"
+                                                    >
+                                                        {dailyData.statistics
+                                                            ?.total_employees ??
+                                                            0}
+                                                    </Typography>
+                                                </Box>
+                                                <People
+                                                    sx={{
+                                                        fontSize: 40,
+                                                        color: 'primary.main',
+                                                    }}
+                                                />
+                                            </Box>
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={2.4}>
+                                    <Card>
+                                        <CardContent>
+                                            <Box
+                                                display="flex"
+                                                justifyContent="space-between"
+                                                alignItems="center"
                                             >
+                                                <Box>
+                                                    <Typography
+                                                        color="textSecondary"
+                                                        variant="body2"
+                                                    >
+                                                        Đã chấm công
+                                                    </Typography>
+                                                    <Typography
+                                                        variant="h5"
+                                                        fontWeight="bold"
+                                                        color="success.main"
+                                                    >
+                                                        {dailyData.statistics
+                                                            ?.checked_in ?? 0}
+                                                    </Typography>
+                                                </Box>
+                                                <CheckCircle
+                                                    sx={{
+                                                        fontSize: 40,
+                                                        color: 'success.main',
+                                                    }}
+                                                />
+                                            </Box>
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={2.4}>
+                                    <Card>
+                                        <CardContent>
+                                            <Box
+                                                display="flex"
+                                                justifyContent="space-between"
+                                                alignItems="center"
+                                            >
+                                                <Box>
+                                                    <Typography
+                                                        color="textSecondary"
+                                                        variant="body2"
+                                                    >
+                                                        Chưa chấm công
+                                                    </Typography>
+                                                    <Typography
+                                                        variant="h5"
+                                                        fontWeight="bold"
+                                                        color="error.main"
+                                                    >
+                                                        {dailyData.statistics
+                                                            ?.not_checked_in ??
+                                                            0}
+                                                    </Typography>
+                                                </Box>
+                                                <Cancel
+                                                    sx={{
+                                                        fontSize: 40,
+                                                        color: 'error.main',
+                                                    }}
+                                                />
+                                            </Box>
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={2.4}>
+                                    <Card>
+                                        <CardContent>
+                                            <Box
+                                                display="flex"
+                                                justifyContent="space-between"
+                                                alignItems="center"
+                                            >
+                                                <Box>
+                                                    <Typography
+                                                        color="textSecondary"
+                                                        variant="body2"
+                                                    >
+                                                        Đúng giờ
+                                                    </Typography>
+                                                    <Typography
+                                                        variant="h5"
+                                                        fontWeight="bold"
+                                                        color="success.main"
+                                                    >
+                                                        {dailyData.statistics
+                                                            ?.on_time ?? 0}
+                                                    </Typography>
+                                                </Box>
+                                                <CheckCircle
+                                                    sx={{
+                                                        fontSize: 40,
+                                                        color: 'success.main',
+                                                    }}
+                                                />
+                                            </Box>
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={2.4}>
+                                    <Card>
+                                        <CardContent>
+                                            <Box
+                                                display="flex"
+                                                justifyContent="space-between"
+                                                alignItems="center"
+                                            >
+                                                <Box>
+                                                    <Typography
+                                                        color="textSecondary"
+                                                        variant="body2"
+                                                    >
+                                                        Đi trễ
+                                                    </Typography>
+                                                    <Typography
+                                                        variant="h5"
+                                                        fontWeight="bold"
+                                                        color="warning.main"
+                                                    >
+                                                        {dailyData.statistics
+                                                            ?.late ?? 0}
+                                                    </Typography>
+                                                </Box>
+                                                <Schedule
+                                                    sx={{
+                                                        fontSize: 40,
+                                                        color: 'warning.main',
+                                                    }}
+                                                />
+                                            </Box>
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={2.4}>
+                                    <Card>
+                                        <CardContent>
+                                            <Box
+                                                display="flex"
+                                                justifyContent="space-between"
+                                                alignItems="center"
+                                            >
+                                                <Box>
+                                                    <Typography
+                                                        color="textSecondary"
+                                                        variant="body2"
+                                                    >
+                                                        Về sớm
+                                                    </Typography>
+                                                    <Typography
+                                                        variant="h5"
+                                                        fontWeight="bold"
+                                                        color="info.main"
+                                                    >
+                                                        {dailyData.statistics
+                                                            ?.early_leave ?? 0}
+                                                    </Typography>
+                                                </Box>
+                                                <ExitToApp
+                                                    sx={{
+                                                        fontSize: 40,
+                                                        color: 'info.main',
+                                                    }}
+                                                />
+                                            </Box>
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+                                <Grid item xs={12} sm={6} md={2.4}>
+                                    <Card>
+                                        <CardContent>
+                                            <Box
+                                                display="flex"
+                                                justifyContent="space-between"
+                                                alignItems="center"
+                                            >
+                                                <Box>
+                                                    <Typography
+                                                        color="textSecondary"
+                                                        variant="body2"
+                                                    >
+                                                        Tăng ca
+                                                    </Typography>
+                                                    <Typography
+                                                        variant="h5"
+                                                        fontWeight="bold"
+                                                        color="secondary.main"
+                                                    >
+                                                        {dailyData.statistics
+                                                            ?.overtime ?? 0}
+                                                    </Typography>
+                                                </Box>
+                                                <AccessTime
+                                                    sx={{
+                                                        fontSize: 40,
+                                                        color: 'secondary.main',
+                                                    }}
+                                                />
+                                            </Box>
+                                        </CardContent>
+                                    </Card>
+                                </Grid>
+                            </Grid>
+
+                            {/* Employees Table */}
+                            <Card>
+                                <TableContainer>
+                                    <Table>
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell>Nhân viên</TableCell>
+                                                <TableCell>Giờ vào</TableCell>
+                                                <TableCell>Giờ ra</TableCell>
                                                 <TableCell>
-                                                    <Box>
-                                                        <Typography fontWeight="bold">
-                                                            {record.employee_name ||
-                                                                record.employee_id}
-                                                        </Typography>
-                                                        {record.employee_code && (
-                                                            <Typography
-                                                                variant="caption"
-                                                                color="textSecondary"
-                                                            >
-                                                                {
-                                                                    record.employee_code
-                                                                }
-                                                            </Typography>
-                                                        )}
-                                                    </Box>
+                                                    Tổng giờ làm
                                                 </TableCell>
                                                 <TableCell>
-                                                    {record.shift_name ||
-                                                        record.shift_id}
+                                                    Trễ (phút)
                                                 </TableCell>
                                                 <TableCell>
-                                                    {record.actual_check_in
-                                                        ? new Date(
-                                                              record.actual_check_in
-                                                          ).toLocaleTimeString(
-                                                              'vi-VN',
-                                                              {
-                                                                  hour: '2-digit',
-                                                                  minute: '2-digit',
-                                                              }
-                                                          )
-                                                        : '-'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {record.actual_check_out
-                                                        ? new Date(
-                                                              record.actual_check_out
-                                                          ).toLocaleTimeString(
-                                                              'vi-VN',
-                                                              {
-                                                                  hour: '2-digit',
-                                                                  minute: '2-digit',
-                                                              }
-                                                          )
-                                                        : '-'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {formatMinutesToHours(
-                                                        record.total_work_minutes
-                                                    )}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {record.late_minutes > 0
-                                                        ? `${record.late_minutes}`
-                                                        : '-'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {record.early_leave_minutes >
-                                                    0
-                                                        ? `${record.early_leave_minutes}`
-                                                        : '-'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {record.overtime_minutes > 0
-                                                        ? formatMinutesToHours(
-                                                              record.overtime_minutes
-                                                          )
-                                                        : '-'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Chip
-                                                        label={getStatusText(
-                                                            record.attendance_status
-                                                        )}
-                                                        color={getStatusColor(
-                                                            record.attendance_status
-                                                        )}
-                                                        size="small"
-                                                    />
-                                                </TableCell>
-                                                <TableCell>
-                                                    {record.attendance_percentage >
-                                                    0
-                                                        ? `${(
-                                                              record.attendance_percentage *
-                                                              100
-                                                          ).toFixed(1)}%`
-                                                        : '-'}
+                                                    Trạng thái
                                                 </TableCell>
                                             </TableRow>
-                                        ))
-                                    )}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                        {total > 0 && (
+                                        </TableHead>
+                                        <TableBody>
+                                            {!dailyData.employees ||
+                                            dailyData.employees.length === 0 ? (
+                                                <TableRow>
+                                                    <TableCell
+                                                        colSpan={6}
+                                                        align="center"
+                                                    >
+                                                        <Typography
+                                                            color="textSecondary"
+                                                            py={2}
+                                                        >
+                                                            Không có dữ liệu cho
+                                                            ngày đã chọn
+                                                        </Typography>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ) : (
+                                                dailyData.employees.map(
+                                                    (employee) => (
+                                                        <TableRow
+                                                            key={
+                                                                employee.employee_id
+                                                            }
+                                                        >
+                                                            <TableCell>
+                                                                <Typography fontWeight="bold">
+                                                                    {
+                                                                        employee.name
+                                                                    }
+                                                                </Typography>
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {employee.check_in ||
+                                                                    '-'}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {employee.check_out ||
+                                                                    '-'}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {formatHours(
+                                                                    employee.total_hours
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {employee.late_minutes >
+                                                                0
+                                                                    ? `${employee.late_minutes}`
+                                                                    : '-'}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Chip
+                                                                    label={getStatusText(
+                                                                        employee.status
+                                                                    )}
+                                                                    color={getStatusColor(
+                                                                        employee.status
+                                                                    )}
+                                                                    size="small"
+                                                                />
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )
+                                                )
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            </Card>
+                        </>
+                    )}
+
+                    {/* Monthly Report View */}
+                    {mode === 'monthly' &&
+                        monthlyData &&
+                        monthlyData.statistics && (
+                            <>
+                                {/* Statistics Cards */}
+                                <Grid container spacing={2} sx={{ mb: 3 }}>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Card>
+                                            <CardContent>
+                                                <Box
+                                                    display="flex"
+                                                    justifyContent="space-between"
+                                                    alignItems="center"
+                                                >
+                                                    <Box>
+                                                        <Typography
+                                                            color="textSecondary"
+                                                            variant="body2"
+                                                        >
+                                                            Tổng ngày làm việc
+                                                        </Typography>
+                                                        <Typography
+                                                            variant="h5"
+                                                            fontWeight="bold"
+                                                        >
+                                                            {monthlyData.total_working_days ??
+                                                                0}
+                                                        </Typography>
+                                                    </Box>
+                                                    <CalendarMonth
+                                                        sx={{
+                                                            fontSize: 40,
+                                                            color: 'primary.main',
+                                                        }}
+                                                    />
+                                                </Box>
+                                            </CardContent>
+                                        </Card>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Card>
+                                            <CardContent>
+                                                <Box
+                                                    display="flex"
+                                                    justifyContent="space-between"
+                                                    alignItems="center"
+                                                >
+                                                    <Box>
+                                                        <Typography
+                                                            color="textSecondary"
+                                                            variant="body2"
+                                                        >
+                                                            Tỷ lệ chấm công TB
+                                                        </Typography>
+                                                        <Typography
+                                                            variant="h5"
+                                                            fontWeight="bold"
+                                                            color="success.main"
+                                                        >
+                                                            {(
+                                                                monthlyData
+                                                                    .statistics
+                                                                    ?.average_attendance_rate ??
+                                                                0
+                                                            ).toFixed(1)}
+                                                            %
+                                                        </Typography>
+                                                    </Box>
+                                                    <CheckCircle
+                                                        sx={{
+                                                            fontSize: 40,
+                                                            color: 'success.main',
+                                                        }}
+                                                    />
+                                                </Box>
+                                            </CardContent>
+                                        </Card>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Card>
+                                            <CardContent>
+                                                <Box
+                                                    display="flex"
+                                                    justifyContent="space-between"
+                                                    alignItems="center"
+                                                >
+                                                    <Box>
+                                                        <Typography
+                                                            color="textSecondary"
+                                                            variant="body2"
+                                                        >
+                                                            Tổng lần đi trễ
+                                                        </Typography>
+                                                        <Typography
+                                                            variant="h5"
+                                                            fontWeight="bold"
+                                                            color="warning.main"
+                                                        >
+                                                            {monthlyData
+                                                                .statistics
+                                                                ?.total_late_instances ??
+                                                                0}
+                                                        </Typography>
+                                                    </Box>
+                                                    <Schedule
+                                                        sx={{
+                                                            fontSize: 40,
+                                                            color: 'warning.main',
+                                                        }}
+                                                    />
+                                                </Box>
+                                            </CardContent>
+                                        </Card>
+                                    </Grid>
+                                    <Grid item xs={12} sm={6} md={3}>
+                                        <Card>
+                                            <CardContent>
+                                                <Box
+                                                    display="flex"
+                                                    justifyContent="space-between"
+                                                    alignItems="center"
+                                                >
+                                                    <Box>
+                                                        <Typography
+                                                            color="textSecondary"
+                                                            variant="body2"
+                                                        >
+                                                            Tổng giờ tăng ca
+                                                        </Typography>
+                                                        <Typography
+                                                            variant="h5"
+                                                            fontWeight="bold"
+                                                            color="secondary.main"
+                                                        >
+                                                            {formatHours(
+                                                                monthlyData
+                                                                    .statistics
+                                                                    ?.total_overtime_hours ??
+                                                                    0
+                                                            )}
+                                                        </Typography>
+                                                    </Box>
+                                                    <AccessTime
+                                                        sx={{
+                                                            fontSize: 40,
+                                                            color: 'secondary.main',
+                                                        }}
+                                                    />
+                                                </Box>
+                                            </CardContent>
+                                        </Card>
+                                    </Grid>
+                                </Grid>
+
+                                {/* Employees Summary Table */}
+                                <Card>
+                                    <TableContainer>
+                                        <Table>
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell>
+                                                        Nhân viên
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        Ngày có mặt
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        Ngày vắng mặt
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        Ngày đi trễ
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        Tổng giờ làm
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        TB giờ/ngày
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        Giờ tăng ca
+                                                    </TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {!monthlyData.employees_summary ||
+                                                monthlyData.employees_summary
+                                                    .length === 0 ? (
+                                                    <TableRow>
+                                                        <TableCell
+                                                            colSpan={7}
+                                                            align="center"
+                                                        >
+                                                            <Typography
+                                                                color="textSecondary"
+                                                                py={2}
+                                                            >
+                                                                Không có dữ liệu
+                                                                cho tháng đã
+                                                                chọn
+                                                            </Typography>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ) : (
+                                                    monthlyData.employees_summary.map(
+                                                        (employee) => (
+                                                            <TableRow
+                                                                key={
+                                                                    employee.employee_id
+                                                                }
+                                                            >
+                                                                <TableCell>
+                                                                    <Typography fontWeight="bold">
+                                                                        {
+                                                                            employee.name
+                                                                        }
+                                                                    </Typography>
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    {
+                                                                        employee.present_days
+                                                                    }
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    {
+                                                                        employee.absent_days
+                                                                    }
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    {
+                                                                        employee.late_days
+                                                                    }
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    {formatHours(
+                                                                        employee.total_hours
+                                                                    )}
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    {formatHours(
+                                                                        employee.average_hours_per_day
+                                                                    )}
+                                                                </TableCell>
+                                                                <TableCell>
+                                                                    {formatHours(
+                                                                        employee.overtime_hours
+                                                                    )}
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        )
+                                                    )
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </Card>
+                            </>
+                        )}
+
+                    {/* No data message */}
+                    {((mode === 'daily' && !dailyData) ||
+                        (mode === 'monthly' && !monthlyData)) && (
+                        <Card>
                             <Box
                                 display="flex"
-                                justifyContent="space-between"
+                                justifyContent="center"
                                 alignItems="center"
-                                p={2}
+                                minHeight="200px"
                             >
-                                <Typography
-                                    variant="body2"
-                                    color="textSecondary"
-                                >
-                                    Tổng: {total} bản ghi
+                                <Typography color="textSecondary">
+                                    Không có dữ liệu để hiển thị
                                 </Typography>
-                                {nextPage && (
-                                    <Pagination
-                                        count={Math.ceil(total / 10)} // Assuming 10 items per page, adjust as needed
-                                        page={page}
-                                        onChange={handlePageChange}
-                                        color="primary"
-                                    />
-                                )}
                             </Box>
-                        )}
-                    </>
-                )}
-            </Card>
+                        </Card>
+                    )}
+                </>
+            )}
 
             {/* Export Dialog */}
             <Dialog
@@ -683,7 +1218,9 @@ export const DailyReportPage: React.FC = () => {
                             helperText="Để trống nếu muốn tải xuống trực tiếp"
                         />
                         <Typography variant="body2" color="textSecondary">
-                            Ngày: {date}
+                            {mode === 'daily'
+                                ? `Ngày: ${date}`
+                                : `Tháng: ${month}`}
                         </Typography>
                     </Box>
                 </DialogContent>

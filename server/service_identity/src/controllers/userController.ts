@@ -22,6 +22,7 @@ export class UserController {
     async getUserById(req: Request, res: Response) {
         try {
             const { user_id } = req.params;
+            console.log('Fetching user with ID:', user_id);
             const user = await userService.getUserById(user_id);
 
             if (!user) {

@@ -354,7 +354,19 @@ export const EmployeeListPage: React.FC = () => {
                             </TableHead>
                             <TableBody>
                                 {filteredEmployees.map((employee) => (
-                                    <TableRow key={employee.id}>
+                                    <TableRow
+                                        key={employee.id}
+                                        hover
+                                        sx={{
+                                            cursor: 'pointer',
+                                            '&:hover': {
+                                                backgroundColor: 'action.hover',
+                                            },
+                                        }}
+                                        onClick={() =>
+                                            navigate(`/employees/${employee.id}`)
+                                        }
+                                    >
                                         <TableCell>
                                             <Box
                                                 display="flex"
@@ -403,7 +415,7 @@ export const EmployeeListPage: React.FC = () => {
                                                 size="small"
                                             />
                                         </TableCell>
-                                        <TableCell align="right">
+                                        <TableCell align="right" onClick={(e) => e.stopPropagation()}>
                                             <IconButton
                                                 size="small"
                                                 onClick={() =>
@@ -427,14 +439,11 @@ export const EmployeeListPage: React.FC = () => {
                                             <IconButton
                                                 size="small"
                                                 color="error"
+                                                onClick={() =>
+                                                    handleDelete(employee.id)
+                                                }
                                             >
-                                                <Delete
-                                                    onClick={() =>
-                                                        handleDelete(
-                                                            employee.id
-                                                        )
-                                                    }
-                                                />
+                                                <Delete />
                                             </IconButton>
                                         </TableCell>
                                     </TableRow>
