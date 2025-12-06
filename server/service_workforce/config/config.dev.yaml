@@ -17,6 +17,20 @@ grpc:
         cert_file: ''
         key_file: ''
 
+service_auth:
+    enabled: true
+    grpc_addr: '127.0.0.1:50051' # service_auth gRPC address
+    keepalive_time_ms: 120000
+    keepalive_timeout_ms: 20000
+    keepalive_permit_without_calls: true
+    http2_max_pings_without_data: 1
+    http2_min_time_between_pings_ms: 60000
+    http2_min_ping_interval_without_data_ms: 60000
+    tls:
+        enabled: false
+        cert_file: ''
+        key_file: ''
+
 policy_rate_limit:
     - name: 'ws_read'
       # limit: 1000
