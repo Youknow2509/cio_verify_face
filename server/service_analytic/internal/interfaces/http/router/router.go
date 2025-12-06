@@ -5,11 +5,11 @@ import (
 	"github.com/gin-gonic/gin"
 	swaggerFiles "github.com/swaggo/files"
 	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/youknow2509/cio_verify_face/server/pkg/observability"
 	"github.com/youknow2509/cio_verify_face/server/service_analytic/internal/docs"
 	"github.com/youknow2509/cio_verify_face/server/service_analytic/internal/global"
 	"github.com/youknow2509/cio_verify_face/server/service_analytic/internal/infrastructure/middleware"
 	"github.com/youknow2509/cio_verify_face/server/service_analytic/internal/interfaces/http/handler"
-	"github.com/youknow2509/cio_verify_face/server/pkg/observability"
 )
 
 // SetupRouter sets up the HTTP router with authentication middleware
@@ -66,6 +66,7 @@ func SetupRouter() *gin.Engine {
 			reports.GET("/daily", analyticHandler.GetDailyReport)
 			reports.GET("/summary", analyticHandler.GetSummaryReport)
 			reports.POST("/export", analyticHandler.ExportReport)
+			reports.POST("/daily/export", analyticHandler.ExportDailyReportDetail)
 			reports.GET("/download/:filename", analyticHandler.DownloadExport)
 		}
 
@@ -85,6 +86,7 @@ func SetupRouter() *gin.Engine {
 		dailySummaries := v1.Group("/daily-summaries")
 		{
 			dailySummaries.GET("", scyllaHandler.GetDailySummaries)
+			dailySummaries.POST("/details", scyllaHandler.GetDailyReportDetails)
 			dailySummaries.GET("/user/:employee_id", scyllaHandler.GetDailySummariesByUser)
 		}
 

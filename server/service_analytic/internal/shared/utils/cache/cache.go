@@ -26,6 +26,12 @@ func BuildDailyByDateKey(companyID uuid.UUID, date time.Time, deviceID *uuid.UUI
 	return base
 }
 
+// BuildDailyDetailByDateKey builds cache key for detailed daily report by date
+func BuildDailyDetailByDateKey(companyID uuid.UUID, date time.Time) string {
+	return fmt.Sprintf("%s:daily_detail:%s", companyID.String(), date.Format("2006-01-02"))
+}
+
+
 // BuildDailyByMonthKey builds cache key for daily summaries by month
 func BuildDailyByMonthKey(companyID uuid.UUID, month string) string {
 	return fmt.Sprintf(constants.CacheKeyDailyByMonth, companyID.String(), month)

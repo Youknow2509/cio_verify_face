@@ -40,6 +40,14 @@ type ExportDailyStatusRequest struct {
 	Email     string `json:"email,omitempty" binding:"omitempty,email" example:"admin@example.com"`
 }
 
+// ExportDailyReportDetailRequest represents request to export detailed daily report
+type ExportDailyReportDetailRequest struct {
+	CompanyID string `json:"company_id" binding:"required,uuid" example:"550e8400-e29b-41d4-a716-446655440000"`
+	Date      string `json:"date" binding:"required" example:"2024-01-15"`
+	Format    string `json:"format" binding:"required,oneof=excel pdf csv" example:"excel"`
+	Email     string `json:"email,omitempty" binding:"omitempty,email" example:"admin@example.com"`
+}
+
 // ExportMonthlySummaryRequest represents request to export monthly summary
 type ExportMonthlySummaryRequest struct {
 	CompanyID string `json:"company_id" binding:"required,uuid" example:"550e8400-e29b-41d4-a716-446655440000"`

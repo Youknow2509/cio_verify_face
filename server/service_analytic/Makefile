@@ -20,7 +20,7 @@ build: deps ## Build the application
 	$(GO) build -o $(BUILD_DIR)/$(BINARY_NAME) $(CMD_DIR)/main.go
 
 run: ## Run the application
-	CONFIG_NAME=config.dev $(GO) run $(CMD_DIR)/main.go
+	$(GO) run $(CMD_DIR)/main.go
 
 test: ## Run tests
 	$(GO) test -v -race -coverprofile=coverage.out ./...
@@ -36,7 +36,7 @@ docker-build: ## Build Docker image
 	docker build -t $(DOCKER_IMAGE):$(DOCKER_TAG) .
 
 docker-run: ## Run Docker container
-	docker run -p 8086:8086 --env-file .env $(DOCKER_IMAGE):$(DOCKER_TAG)
+	docker run -p 8080:8080 --env-file .env $(DOCKER_IMAGE):$(DOCKER_TAG)
 
 fmt: ## Format code
 	$(GO) fmt ./...

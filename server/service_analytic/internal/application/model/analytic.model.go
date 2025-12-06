@@ -1,6 +1,10 @@
 package model
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 // SessionInfo represents authenticated session information
 type SessionInfo struct {
@@ -12,12 +16,64 @@ type SessionInfo struct {
 	CompanyID   string `json:"company_id"`
 }
 
+// ExportDailyReportDetailInput represents input for exporting detailed daily report
+type ExportDailyReportDetailInput struct {
+	Session   *SessionInfo `json:"-"` // Session info for authorization
+	Date      time.Time    `json:"date" binding:"required"`
+	CompanyID uuid.UUID    `json:"company_id,omitempty"`
+	Format    string       `json:"format" binding:"required,oneof=excel pdf csv"`
+	Email     *string      `json:"email,omitempty"`
+}
+
+// ExportDailyReportDetailOutput represents output for exporting detailed daily report
+type ExportDailyReportDetailOutput struct {
+	JobID       string  `json:"job_id"`
+	Status      string  `json:"status"`
+	Message     string  `json:"message"`
+	DownloadURL *string `json:"download_url,omitempty"`
+}
+
+// DailyReportDetailOutput represents output for detailed daily report
+type DailyReportDetailOutput struct {
+	Total    int                            `json:"total"`
+	Items    []DailyReportDetailEmployeeRow `json:"items"`
+	NextPage []byte                         `json:"next_page,omitempty"`
+}
+
+type DailyReportDetailEmployeeRow struct {
+	CompanyID         uuid.UUID  `db:"company_id"`
+	SummaryMonth      string     `db:"summary_month"` // YYYY-MM format
+	WorkDate          time.Time  `db:"work_date"`
+	EmployeeID        uuid.UUID  `db:"employee_id"`
+	ShiftID           uuid.UUID  `db:"shift_id"`
+	ActualCheckIn     *time.Time `db:"actual_check_in"`
+	ActualCheckOut    *time.Time `db:"actual_check_out"`
+	AttendanceStatus  int        `db:"attendance_status"`
+	LateMinutes       int        `db:"late_minutes"`
+	EarlyLeaveMinutes int        `db:"early_leave_minutes"`
+	TotalWorkMinutes  int        `db:"total_work_minutes"`
+	Notes             string     `db:"notes"`
+	UpdatedAt         time.Time  `db:"updated_at"`
+	// Calculated fields (not in ScyllaDB, computed on demand)
+	OvertimeMinutes      int     `db:"-"` // Calculated field
+	AttendancePercentage float64 `db:"-"` // Calculated field
+}
+
 // DailyReportInput represents input for daily report
 type DailyReportInput struct {
 	Session   *SessionInfo `json:"-"` // Session info for authorization
 	Date      time.Time    `json:"date" binding:"required"`
 	CompanyID *string      `json:"company_id,omitempty"`
 	DeviceID  *string      `json:"device_id,omitempty"`
+}
+
+// DailyReportInput represents input for daily report
+type DailyDetailReportInput struct {
+	Session   *SessionInfo `json:"-"` // Session info for authorization
+	Date      time.Time    `json:"date" binding:"required"`
+	CompanyID uuid.UUID    `json:"company_id,omitempty"`
+	Limit     *int         `json:"limit,omitempty"`
+	PageToken []byte       `json:"page_token,omitempty"`
 }
 
 // DailyReportOutput represents output for daily report
@@ -53,7 +109,7 @@ type ShiftReport struct {
 
 // SummaryReportInput represents input for summary report
 type SummaryReportInput struct {
-	Session   *SessionInfo `json:"-"` // Session info for authorization
+	Session   *SessionInfo `json:"-"`                        // Session info for authorization
 	Month     string       `json:"month" binding:"required"` // Format: YYYY-MM
 	CompanyID *string      `json:"company_id,omitempty"`
 }

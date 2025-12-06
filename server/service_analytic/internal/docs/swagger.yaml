@@ -10,6 +10,30 @@ definitions:
       success:
         type: boolean
     type: object
+  dto.AttendanceRecordNoShiftResponse:
+    properties:
+      company_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      department:
+        example: IT Department
+        type: string
+      employee_id:
+        example: 660e8400-e29b-41d4-a716-446655440001
+        type: string
+      employee_name:
+        example: Nguyen Van A
+        type: string
+      record_time:
+        example: "2024-01-15T09:00:00Z"
+        type: string
+      record_type:
+        example: check_in
+        type: string
+      year_month:
+        example: 2024-01
+        type: string
+    type: object
   dto.AttendanceRecordResponse:
     properties:
       company_id:
@@ -54,6 +78,53 @@ definitions:
       year_month:
         example: 2024-01
         type: string
+    type: object
+  dto.AttendanceRecordsNoShiftResponse:
+    properties:
+      records:
+        items:
+          $ref: '#/definitions/dto.AttendanceRecordNoShiftResponse'
+        type: array
+      total_records:
+        type: integer
+      year_month:
+        example: 2024-01
+        type: string
+    type: object
+  dto.AttendanceRecordsResponse:
+    properties:
+      records:
+        items:
+          $ref: '#/definitions/dto.AttendanceRecordResponse'
+        type: array
+      total_records:
+        type: integer
+      year_month:
+        example: 2024-01
+        type: string
+    type: object
+  dto.AttendanceStatusRangeResponse:
+    properties:
+      attendance_records:
+        items:
+          $ref: '#/definitions/dto.AttendanceRecordResponse'
+        type: array
+      daily_summaries:
+        items:
+          $ref: '#/definitions/dto.DailySummaryResponse'
+        type: array
+      end_date:
+        example: "2024-01-31"
+        type: string
+      start_date:
+        example: "2024-01-01"
+        type: string
+      total_days:
+        example: 31
+        type: integer
+      total_records:
+        example: 2500
+        type: integer
     type: object
   dto.AuditLogRequest:
     properties:
@@ -125,6 +196,147 @@ definitions:
       year_month:
         example: 2024-01
         type: string
+    type: object
+  dto.AuditLogsResponse:
+    properties:
+      logs:
+        items:
+          $ref: '#/definitions/dto.AuditLogResponse'
+        type: array
+      total_logs:
+        type: integer
+      year_month:
+        example: 2024-01
+        type: string
+    type: object
+  dto.CompanyStatistics:
+    properties:
+      avg_attendance_rate:
+        example: 90.91
+        type: number
+      avg_punctuality_rate:
+        example: 85
+        type: number
+      avg_work_hours_per_employee:
+        example: 160
+        type: number
+      total_absent_days:
+        example: 150
+        type: integer
+      total_early_leave_minutes:
+        example: 2250
+        type: integer
+      total_late_days:
+        example: 225
+        type: integer
+      total_late_minutes:
+        example: 3375
+        type: integer
+      total_present_days:
+        example: 1500
+        type: integer
+      total_work_minutes:
+        example: 720000
+        type: integer
+    type: object
+  dto.DailyAttendanceStatusResponse:
+    properties:
+      attendance_records:
+        items:
+          $ref: '#/definitions/dto.AttendanceRecordResponse'
+        type: array
+      daily_summaries:
+        items:
+          $ref: '#/definitions/dto.DailySummaryResponse'
+        type: array
+      date:
+        example: "2024-01-15"
+        type: string
+      total_employees:
+        example: 75
+        type: integer
+      total_records:
+        example: 150
+        type: integer
+    type: object
+  dto.DailyReportDetailEmployee:
+    properties:
+      actual_check_in:
+        type: string
+      actual_check_out:
+        type: string
+      attendance_percentage:
+        description: Calculated field
+        type: number
+      attendance_status:
+        type: integer
+      company_id:
+        type: string
+      early_leave_minutes:
+        type: integer
+      employee_id:
+        type: string
+      late_minutes:
+        type: integer
+      notes:
+        type: string
+      overtime_minutes:
+        description: Calculated field
+        type: integer
+      shift_id:
+        type: string
+      summary_month:
+        description: YYYY-MM format
+        type: string
+      total_work_minutes:
+        type: integer
+      updated_at:
+        type: string
+      work_date:
+        type: string
+    type: object
+  dto.DailyReportDetailsRequest:
+    properties:
+      company_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      date:
+        example: "2024-01-15"
+        type: string
+      page_size:
+        example: 20
+        maximum: 100
+        minimum: 1
+        type: integer
+      page_state:
+        example: eyJQYWdlTnV4dCI6IjIifQ==
+        type: string
+    required:
+    - company_id
+    - date
+    type: object
+  dto.DailyReportDetailsResponse:
+    properties:
+      items:
+        items:
+          $ref: '#/definitions/dto.DailyReportDetailEmployee'
+        type: array
+      next_page:
+        type: string
+      total:
+        type: integer
+    type: object
+  dto.DailySummariesResponse:
+    properties:
+      summaries:
+        items:
+          $ref: '#/definitions/dto.DailySummaryResponse'
+        type: array
+      summary_month:
+        example: 2024-01
+        type: string
+      total_days:
+        type: integer
     type: object
   dto.DailySummaryRequest:
     properties:
@@ -293,6 +505,45 @@ definitions:
         example: 9600
         type: integer
     type: object
+  dto.EmployeeStatistics:
+    properties:
+      absent_days:
+        example: 2
+        type: integer
+      attendance_rate:
+        example: 90.91
+        type: number
+      avg_work_hours_per_day:
+        example: 8
+        type: number
+      employee_id:
+        example: 660e8400-e29b-41d4-a716-446655440001
+        type: string
+      employee_name:
+        example: Nguyen Van A
+        type: string
+      late_days:
+        example: 3
+        type: integer
+      present_days:
+        example: 20
+        type: integer
+      punctuality_rate:
+        example: 85
+        type: number
+      total_days:
+        example: 22
+        type: integer
+      total_early_leave_minutes:
+        example: 30
+        type: integer
+      total_late_minutes:
+        example: 45
+        type: integer
+      total_work_minutes:
+        example: 9600
+        type: integer
+    type: object
   dto.EmployeeStatsResponse:
     properties:
       absent_days:
@@ -372,6 +623,29 @@ definitions:
         type: string
       message:
         type: string
+    type: object
+  dto.ExportDailyReportDetailRequest:
+    properties:
+      company_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      date:
+        example: "2024-01-15"
+        type: string
+      email:
+        example: admin@example.com
+        type: string
+      format:
+        enum:
+        - excel
+        - pdf
+        - csv
+        example: excel
+        type: string
+    required:
+    - company_id
+    - date
+    - format
     type: object
   dto.ExportDailyStatusRequest:
     properties:
@@ -496,6 +770,85 @@ definitions:
     - format
     - start_date
     type: object
+  dto.FaceEnrollmentLogResponse:
+    properties:
+      company_id:
+        example: 550e8400-e29b-41d4-a716-446655440000
+        type: string
+      created_at:
+        example: "2024-01-15T09:00:00Z"
+        type: string
+      employee_id:
+        example: 660e8400-e29b-41d4-a716-446655440001
+        type: string
+      enrollment_type:
+        example: initial
+        type: string
+      error_message:
+        example: ""
+        type: string
+      face_embeddings:
+        example: '[0.123, 0.456, ...]'
+        type: string
+      face_image_urls:
+        example:
+        - https://storage.example.com/faces/img1.jpg
+        - https://storage.example.com/faces/img2.jpg
+        items:
+          type: string
+        type: array
+      notes:
+        example: Initial face enrollment for new employee
+        type: string
+      performed_by:
+        example: 990e8400-e29b-41d4-a716-446655440004
+        type: string
+      quality:
+        example: 0.95
+        type: number
+      status:
+        example: success
+        type: string
+      year_month:
+        example: 2024-01
+        type: string
+    type: object
+  dto.FaceEnrollmentLogsResponse:
+    properties:
+      logs:
+        items:
+          $ref: '#/definitions/dto.FaceEnrollmentLogResponse'
+        type: array
+      total_logs:
+        type: integer
+      year_month:
+        example: 2024-01
+        type: string
+    type: object
+  dto.MonthlySummaryResponse:
+    properties:
+      company_statistics:
+        $ref: '#/definitions/dto.CompanyStatistics'
+      employee_statistics:
+        items:
+          $ref: '#/definitions/dto.EmployeeStatistics'
+        type: array
+      month:
+        example: 2024-01
+        type: string
+      total_attendance_records:
+        example: 2500
+        type: integer
+      total_employees:
+        example: 75
+        type: integer
+      total_no_shift_records:
+        example: 15
+        type: integer
+      total_working_days:
+        example: 22
+        type: integer
+    type: object
 externalDocs:
   description: OpenAPI
   url: https://swagger.io/resources/open-api/
@@ -590,9 +943,7 @@ paths:
             - $ref: '#/definitions/dto.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/dto.AttendanceRecordResponse'
-                  type: array
+                  $ref: '#/definitions/dto.AttendanceRecordsNoShiftResponse'
               type: object
         "400":
           description: Bad Request
@@ -743,9 +1094,7 @@ paths:
             - $ref: '#/definitions/dto.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/dto.AttendanceRecordResponse'
-                  type: array
+                  $ref: '#/definitions/dto.AttendanceRecordsResponse'
               type: object
         "400":
           description: Bad Request
@@ -789,9 +1138,7 @@ paths:
             - $ref: '#/definitions/dto.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/dto.AttendanceRecordResponse'
-                  type: array
+                  $ref: '#/definitions/dto.AuditLogsResponse'
               type: object
         "400":
           description: Bad Request
@@ -878,9 +1225,7 @@ paths:
             - $ref: '#/definitions/dto.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/dto.AttendanceRecordResponse'
-                  type: array
+                  $ref: '#/definitions/dto.AuditLogsResponse'
               type: object
         "400":
           description: Bad Request
@@ -926,9 +1271,7 @@ paths:
             - $ref: '#/definitions/dto.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/dto.AttendanceRecordResponse'
-                  type: array
+                  $ref: '#/definitions/dto.AttendanceStatusRangeResponse'
               type: object
         "400":
           description: Bad Request
@@ -970,9 +1313,7 @@ paths:
             - $ref: '#/definitions/dto.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/dto.AttendanceRecordResponse'
-                  type: array
+                  $ref: '#/definitions/dto.DailyAttendanceStatusResponse'
               type: object
         "400":
           description: Bad Request
@@ -1088,9 +1429,7 @@ paths:
             - $ref: '#/definitions/dto.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/dto.AttendanceRecordResponse'
-                  type: array
+                  $ref: '#/definitions/dto.MonthlySummaryResponse'
               type: object
         "400":
           description: Bad Request
@@ -1131,9 +1470,7 @@ paths:
             - $ref: '#/definitions/dto.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/dto.AttendanceRecordResponse'
-                  type: array
+                  $ref: '#/definitions/dto.DailySummariesResponse'
               type: object
         "400":
           description: Bad Request
@@ -1192,9 +1529,7 @@ paths:
             - $ref: '#/definitions/dto.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/dto.AttendanceRecordResponse'
-                  type: array
+                  $ref: '#/definitions/dto.DailySummariesResponse'
               type: object
         "201":
           description: Created
@@ -1266,9 +1601,7 @@ paths:
             - $ref: '#/definitions/dto.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/dto.AttendanceRecordResponse'
-                  type: array
+                  $ref: '#/definitions/dto.DailySummariesResponse'
               type: object
         "201":
           description: Created
@@ -1295,6 +1628,43 @@ paths:
       tags:
       - Daily Summaries
       - Daily Summaries
+      - Daily Summaries
+  /daily-summaries/details:
+    post:
+      consumes:
+      - application/json
+      description: Get detailed daily report for a specific employee and date
+      parameters:
+      - description: Daily Report Details Request
+        in: body
+        name: details
+        required: true
+        schema:
+          $ref: '#/definitions/dto.DailyReportDetailsRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            allOf:
+            - $ref: '#/definitions/dto.APIResponse'
+            - properties:
+                data:
+                  $ref: '#/definitions/dto.DailyReportDetailsResponse'
+              type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Get daily report details
+      tags:
       - Daily Summaries
   /daily-summaries/user/{employee_id}:
     get:
@@ -1346,9 +1716,7 @@ paths:
             - $ref: '#/definitions/dto.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/dto.AttendanceRecordResponse'
-                  type: array
+                  $ref: '#/definitions/dto.DailySummariesResponse'
               type: object
         "201":
           description: Created
@@ -1830,9 +2198,7 @@ paths:
             - $ref: '#/definitions/dto.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/dto.AttendanceRecordResponse'
-                  type: array
+                  $ref: '#/definitions/dto.FaceEnrollmentLogsResponse'
               type: object
         "400":
           description: Bad Request
@@ -1878,9 +2244,7 @@ paths:
             - $ref: '#/definitions/dto.APIResponse'
             - properties:
                 data:
-                  items:
-                    $ref: '#/definitions/dto.AttendanceRecordResponse'
-                  type: array
+                  $ref: '#/definitions/dto.FaceEnrollmentLogsResponse'
               type: object
         "400":
           description: Bad Request
@@ -1948,6 +2312,39 @@ paths:
       security:
       - Bearer: []
       summary: Get daily attendance report
+      tags:
+      - Reports
+  /reports/daily/export:
+    post:
+      consumes:
+      - application/json
+      description: Export detailed daily attendance report with employee-level data
+        to Excel/PDF/CSV
+      parameters:
+      - description: Export daily detail request
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ExportDailyReportDetailRequest'
+      produces:
+      - application/json
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/dto.APIResponse'
+      security:
+      - Bearer: []
+      summary: Export detailed daily attendance report
       tags:
       - Reports
   /reports/download/{filename}:

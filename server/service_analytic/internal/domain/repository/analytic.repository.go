@@ -28,6 +28,7 @@ type IAnalyticRepository interface {
 	// ============================================
 
 	GetDailySummariesByDate(ctx context.Context, companyID uuid.UUID, workDate time.Time) ([]*model.DailySummary, error)
+	GetDailySummariesByDatePage(ctx context.Context, companyID uuid.UUID, workDate time.Time, pageState []byte, limit int) ([]*model.DailySummary, []byte, error)
 	GetDailySummariesByMonth(ctx context.Context, companyID uuid.UUID, month string) ([]*model.DailySummary, error)
 	GetDailySummariesByDateRange(ctx context.Context, companyID uuid.UUID, startDate, endDate time.Time) ([]*model.DailySummary, error)
 	GetDailySummariesByEmployeeDateRange(ctx context.Context, companyID, employeeID uuid.UUID, startDate, endDate time.Time) ([]*model.DailySummary, error)

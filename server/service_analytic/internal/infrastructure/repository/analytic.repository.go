@@ -3,14 +3,14 @@ package repository
 import (
 	"context"
 	"fmt"
-	"time"
-
 	"github.com/gocql/gocql"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/youknow2509/cio_verify_face/server/service_analytic/internal/domain/model"
+	domainRepo "github.com/youknow2509/cio_verify_face/server/service_analytic/internal/domain/repository"
 	database "github.com/youknow2509/cio_verify_face/server/service_analytic/internal/infrastructure/gen"
+	"time"
 )
 
 // AnalyticRepositoryImpl implements IAnalyticRepository
@@ -20,8 +20,31 @@ type AnalyticRepositoryImpl struct {
 	queries       *database.Queries
 }
 
+// GetDailySummariesByDatePage implements repository.IAnalyticRepository.
+func (r *AnalyticRepositoryImpl) GetDailySummariesByDatePage(ctx context.Context, companyID uuid.UUID, workDate time.Time, pageState []byte, limit int) ([]*model.DailySummary, []byte, error) {
+	month := workDate.Format("2006-01")
+	query := `SELECT company_id, summary_month, work_date, employee_id, shift_id,
+		actual_check_in, actual_check_out, attendance_status, late_minutes,
+		early_leave_minutes, total_work_minutes, notes, updated_at
+		FROM daily_summaries
+		WHERE company_id = ? AND summary_month = ? AND work_date = ?`
+	if pageState != nil {
+		// Get first page
+		iter := r.scyllaSession.Query(query, uuidToGocql(companyID), month, workDate).PageSize(limit).Iter()
+		nextPage := iter.PageState()
+		summaries, err := scanDailySummaries(iter)
+		return summaries, nextPage, err
+	} else {
+		// Get subsequent pages
+		iter := r.scyllaSession.Query(query, uuidToGocql(companyID), month, workDate).PageSize(limit).PageState(pageState).Iter()
+		nextPage := iter.PageState()
+		summaries, err := scanDailySummaries(iter)
+		return summaries, nextPage, err
+	}
+}
+
 // NewAnalyticRepository creates a new analytics repository instance
-func NewAnalyticRepository(scyllaSession *gocql.Session, pgPool *pgxpool.Pool) *AnalyticRepositoryImpl {
+func NewAnalyticRepository(scyllaSession *gocql.Session, pgPool *pgxpool.Pool) domainRepo.IAnalyticRepository {
 	return &AnalyticRepositoryImpl{
 		scyllaSession: scyllaSession,
 		pgPool:        pgPool,

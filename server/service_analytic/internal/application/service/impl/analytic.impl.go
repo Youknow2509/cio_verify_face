@@ -15,6 +15,7 @@ import (
 	"github.com/minio/minio-go/v7/pkg/credentials"
 	applicationErrors "github.com/youknow2509/cio_verify_face/server/service_analytic/internal/application/errors"
 	model "github.com/youknow2509/cio_verify_face/server/service_analytic/internal/application/model"
+	"github.com/youknow2509/cio_verify_face/server/service_analytic/internal/application/service"
 	constants "github.com/youknow2509/cio_verify_face/server/service_analytic/internal/constants"
 	domainModel "github.com/youknow2509/cio_verify_face/server/service_analytic/internal/domain/model"
 	"github.com/youknow2509/cio_verify_face/server/service_analytic/internal/domain/repository"
@@ -27,8 +28,472 @@ type AnalyticServiceImpl struct {
 	repo repository.IAnalyticRepository
 }
 
+// ExportDailyReportDetail implements service.IAnalyticService.
+func (s *AnalyticServiceImpl) ExportDailyReportDetail(ctx context.Context, input *model.ExportDailyReportDetailInput) (*model.ExportDailyReportDetailOutput, *applicationErrors.Error) {
+	// Authorization check: Require CompanyAdmin role minimum, no employee self-access for company-wide reports
+	requestedCompanyID := input.CompanyID.String()
+	if err := s.checkAuthorization(input.Session, &requestedCompanyID, domainModel.RoleCompanyAdmin, false); err != nil {
+		return nil, err
+	}
+
+	// Validate date
+	if input.Date.IsZero() {
+		return nil, applicationErrors.ErrInvalidInput.WithDetails("date is required")
+	}
+
+	// Validate MinIO configuration (required for export)
+	objCfg := global.SettingServer.ObjectStorage
+	if objCfg.Endpoint == "" || objCfg.Bucket == "" {
+		if global.Logger != nil {
+			global.Logger.Error("ExportDailyReportDetail: Object storage not configured")
+		}
+		return nil, applicationErrors.ErrExportFailed.WithDetails("Object storage (MinIO/S3) must be configured for export functionality")
+	}
+
+	// Normalize format (excel -> csv, pdf stays as pdf)
+	exportFormat := input.Format
+	if exportFormat == "excel" {
+		exportFormat = "csv"
+	}
+
+	// Build cache key for export
+	exportKey := cacheutil.BuildExportKey(input.CompanyID, input.Date.Format("2006-01-02"), input.Date.Format("2006-01-02"), exportFormat+"_detail")
+
+	type exportCacheEntry struct {
+		JobID     string `json:"job_id,omitempty"`
+		Status    string `json:"status"`  // processing | completed
+		Storage   string `json:"storage"` // object | local
+		ObjectKey string `json:"object_key,omitempty"`
+		LocalPath string `json:"local_path,omitempty"`
+		Format    string `json:"format"`
+		Rows      int    `json:"rows"`
+	}
+
+	// Check Redis cache first
+	var ec exportCacheEntry
+	if hit, _ := cacheutil.GetDistributedOnly(ctx, exportKey, &ec); hit {
+		if ec.Status == "processing" {
+			jobID := ec.JobID
+			if jobID == "" {
+				jobID = "processing"
+			}
+			return &model.ExportDailyReportDetailOutput{JobID: jobID, Status: "processing", Message: "Export is processing"}, nil
+		}
+		if ec.Status == "completed" {
+			if ec.Storage == "object" && ec.ObjectKey != "" {
+				objCfg := global.SettingServer.ObjectStorage
+				if objCfg.Endpoint != "" && objCfg.Bucket != "" {
+					cli, cerr := minio.New(objCfg.Endpoint, &minio.Options{Creds: credentials.NewStaticV4(objCfg.AccessKey, objCfg.SecretKey, ""), Secure: objCfg.UseSSL, Region: objCfg.Region})
+					if cerr == nil {
+						// Generate 7-day presigned URL
+						expireDuration := 7 * 24 * time.Hour // 7 days
+						presigned, perr := cli.PresignedGetObject(ctx, objCfg.Bucket, ec.ObjectKey, expireDuration, nil)
+						if perr == nil {
+							urlStr := presigned.String()
+							return &model.ExportDailyReportDetailOutput{
+								JobID:       ec.JobID,
+								Status:      "completed",
+								Message:     fmt.Sprintf("Export completed with %d rows (cached, expires in 7 days)", ec.Rows),
+								DownloadURL: &urlStr,
+							}, nil
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// Prepare object key
+	objectKey := fmt.Sprintf("reports/%s/%s_daily_detail_%s.%s", time.Now().Format("2006/01/02"), input.CompanyID.String(), input.Date.Format("2006-01-02"), exportFormat)
+
+	// Check if object exists in storage
+	cli, cerr := minio.New(objCfg.Endpoint, &minio.Options{Creds: credentials.NewStaticV4(objCfg.AccessKey, objCfg.SecretKey, ""), Secure: objCfg.UseSSL, Region: objCfg.Region})
+	if cerr != nil {
+		if global.Logger != nil {
+			global.Logger.Error("ExportDailyReportDetail: Failed to connect to object storage", "error", cerr.Error())
+		}
+		return nil, applicationErrors.ErrExportFailed.WithDetails(fmt.Sprintf("Failed to connect to object storage: %v", cerr))
+	}
+
+	// Ensure bucket exists
+	exists, eerr := cli.BucketExists(ctx, objCfg.Bucket)
+	if eerr != nil {
+		if global.Logger != nil {
+			global.Logger.Error("ExportDailyReportDetail: Failed to check bucket", "error", eerr.Error())
+		}
+		return nil, applicationErrors.ErrExportFailed.WithDetails(fmt.Sprintf("Failed to check bucket: %v", eerr))
+	}
+	if !exists {
+		if err := cli.MakeBucket(ctx, objCfg.Bucket, minio.MakeBucketOptions{Region: objCfg.Region}); err != nil {
+			if global.Logger != nil {
+				global.Logger.Error("ExportDailyReportDetail: Failed to create bucket", "error", err.Error())
+			}
+			return nil, applicationErrors.ErrExportFailed.WithDetails(fmt.Sprintf("Failed to create bucket: %v", err))
+		}
+	}
+
+	// Try stat existing object to avoid regeneration
+	if _, statErr := cli.StatObject(ctx, objCfg.Bucket, objectKey, minio.StatObjectOptions{}); statErr == nil {
+		// Object exists, generate 7-day presigned URL
+		expireDuration := 7 * 24 * time.Hour // 7 days
+		presigned, perr := cli.PresignedGetObject(ctx, objCfg.Bucket, objectKey, expireDuration, nil)
+		if perr == nil {
+			jobID := fmt.Sprintf("export_%d_%s", time.Now().Unix(), uuid.New().String()[:8])
+			urlStr := presigned.String()
+			entry := &exportCacheEntry{JobID: jobID, Status: "completed", Storage: "object", ObjectKey: objectKey, Format: exportFormat}
+			_ = cacheutil.SetDistributedOnly(ctx, exportKey, entry, time.Duration(constants.CacheTTLMidSeconds)*time.Second)
+			if global.Logger != nil {
+				global.Logger.Info("ExportDailyReportDetail: Returning existing object", "job_id", jobID, "object_key", objectKey)
+			}
+			return &model.ExportDailyReportDetailOutput{
+				JobID:       jobID,
+				Status:      "completed",
+				Message:     "Export completed (existing file, expires in 7 days)",
+				DownloadURL: &urlStr,
+			}, nil
+		}
+	}
+
+	// Decide async vs sync: async if email provided
+	isAsync := input.Email != nil && *input.Email != ""
+	if isAsync {
+		lockAcquired, lockErr := cacheutil.AcquireLock(ctx, exportKey, 15*time.Minute)
+		if lockErr != nil {
+			if global.Logger != nil {
+				global.Logger.Error("ExportDailyReportDetail: Failed to acquire lock", "error", lockErr.Error())
+			}
+			return nil, applicationErrors.ErrExportFailed.WithDetails("failed to acquire export lock")
+		}
+
+		if !lockAcquired {
+			// Another instance is already processing this export
+			var ecAsync exportCacheEntry
+			if hitAsync, _ := cacheutil.GetDistributedOnly(ctx, exportKey, &ecAsync); hitAsync && ecAsync.Status == "processing" {
+				jobID := ecAsync.JobID
+				if jobID == "" {
+					jobID = "processing"
+				}
+				return &model.ExportDailyReportDetailOutput{JobID: jobID, Status: "processing", Message: "Export is processing"}, nil
+			}
+			// Fallback: lock exists but no status found
+			return &model.ExportDailyReportDetailOutput{JobID: "processing", Status: "processing", Message: "Export is processing"}, nil
+		}
+
+		// Lock acquired, proceed with async export
+		jobID := fmt.Sprintf("job_%s", uuid.New().String())
+		procEntry := &exportCacheEntry{JobID: jobID, Status: "processing", Storage: "", Format: exportFormat}
+		_ = cacheutil.SetDistributedOnly(ctx, exportKey, procEntry, 15*time.Minute)
+
+		go func(job string, compID uuid.UUID, date time.Time, exportFmt, objectK, exportK string, emailPtr *string) {
+			bgCtx := context.Background()
+			// Ensure lock is released when goroutine exits
+			defer func() {
+				cacheutil.ReleaseLock(bgCtx, exportK)
+			}()
+
+			// Fetch data from ScyllaDB
+			summaries, derr := s.repo.GetDailySummariesByDate(bgCtx, compID, date)
+			if derr != nil {
+				failEntry := &exportCacheEntry{JobID: job, Status: "failed", Storage: "local", LocalPath: "", Format: exportFmt, Rows: 0}
+				_ = cacheutil.SetDistributedOnly(bgCtx, exportK, failEntry, 2*time.Minute)
+				return
+			}
+
+			// Ensure export directory exists
+			exportDir := "exports"
+			_ = os.MkdirAll(exportDir, 0o755)
+			baseName := fmt.Sprintf("%s_daily_detail_%s", job, date.Format("2006-01-02"))
+			filePath := filepath.Join(exportDir, baseName+".csv")
+
+			if werr := s.writeCSV(filePath, summaries); werr != nil {
+				failEntry := &exportCacheEntry{JobID: job, Status: "failed", Storage: "local", LocalPath: "", Format: exportFmt, Rows: 0}
+				_ = cacheutil.SetDistributedOnly(bgCtx, exportK, failEntry, 2*time.Minute)
+				return
+			}
+
+			// Upload to object storage (required)
+			objCfgA := global.SettingServer.ObjectStorage
+			cliA, cerrA := minio.New(objCfgA.Endpoint, &minio.Options{Creds: credentials.NewStaticV4(objCfgA.AccessKey, objCfgA.SecretKey, ""), Secure: objCfgA.UseSSL, Region: objCfgA.Region})
+			if cerrA != nil {
+				if global.Logger != nil {
+					global.Logger.Error("ExportDailyReportDetail async: Failed to connect to object storage", "error", cerrA.Error())
+				}
+				failEntry := &exportCacheEntry{JobID: job, Status: "failed", Storage: "", LocalPath: "", Format: exportFmt, Rows: 0}
+				_ = cacheutil.SetDistributedOnly(bgCtx, exportK, failEntry, 2*time.Minute)
+				return
+			}
+
+			// Upload file to MinIO
+			_, uerr := cliA.FPutObject(bgCtx, objCfgA.Bucket, objectK, filePath, minio.PutObjectOptions{ContentType: "text/csv"})
+			if uerr != nil {
+				if global.Logger != nil {
+					global.Logger.Error("ExportDailyReportDetail async: Failed to upload to object storage", "error", uerr.Error())
+				}
+				failEntry := &exportCacheEntry{JobID: job, Status: "failed", Storage: "", LocalPath: "", Format: exportFmt, Rows: 0}
+				_ = cacheutil.SetDistributedOnly(bgCtx, exportK, failEntry, 2*time.Minute)
+				return
+			}
+
+			// Generate 7-day presigned URL
+			expireDuration := 7 * 24 * time.Hour // 7 days
+			presigned, perr := cliA.PresignedGetObject(bgCtx, objCfgA.Bucket, objectK, expireDuration, nil)
+			if perr != nil {
+				if global.Logger != nil {
+					global.Logger.Error("ExportDailyReportDetail async: Failed to generate presigned URL", "error", perr.Error())
+				}
+				failEntry := &exportCacheEntry{JobID: job, Status: "failed", Storage: "", LocalPath: "", Format: exportFmt, Rows: 0}
+				_ = cacheutil.SetDistributedOnly(bgCtx, exportK, failEntry, 2*time.Minute)
+				return
+			}
+
+			download := presigned.String()
+			// Remove local file after successful upload
+			_ = os.Remove(filePath)
+			entry := &exportCacheEntry{JobID: job, Status: "completed", Storage: "object", ObjectKey: objectK, Format: exportFmt, Rows: len(summaries)}
+			_ = cacheutil.SetDistributedOnly(bgCtx, exportK, entry, time.Duration(constants.CacheTTLMidSeconds)*time.Second)
+
+			// Send email notification via Kafka
+			if emailPtr != nil && *emailPtr != "" {
+				_ = s.publishExportEmail(bgCtx, *emailPtr, download, exportFmt, date, date, compID.String())
+			}
+			if global.Logger != nil {
+				global.Logger.Info("ExportDailyReportDetail async: Completed", "job_id", job, "rows", len(summaries))
+			}
+		}(jobID, input.CompanyID, input.Date, exportFormat, objectKey, exportKey, input.Email)
+
+		return &model.ExportDailyReportDetailOutput{JobID: jobID, Status: "processing", Message: "Export scheduled. Email will be sent when completed."}, nil
+	}
+
+	// Sync path below
+	if global.Logger != nil {
+		global.Logger.Info("ExportDailyReportDetail: Starting sync export",
+			"company_id", input.CompanyID.String(),
+			"date", input.Date.Format("2006-01-02"),
+			"format", exportFormat)
+	}
+
+	// Generate job ID for sync export
+	syncJobID := fmt.Sprintf("export_%d_%s", time.Now().Unix(), uuid.New().String()[:8])
+
+	lockAcquired, lockErr := cacheutil.AcquireLock(ctx, exportKey, 5*time.Minute)
+	if lockErr != nil {
+		if global.Logger != nil {
+			global.Logger.Error("ExportDailyReportDetail: Failed to acquire lock", "error", lockErr.Error())
+		}
+		return nil, applicationErrors.ErrExportFailed.WithDetails("failed to acquire export lock")
+	}
+	if !lockAcquired {
+		// Another instance is processing, check status
+		var ecSync exportCacheEntry
+		if hitSync, _ := cacheutil.GetDistributedOnly(ctx, exportKey, &ecSync); hitSync && ecSync.Status == "processing" {
+			jobID := ecSync.JobID
+			if jobID == "" {
+				jobID = "processing"
+			}
+			return &model.ExportDailyReportDetailOutput{JobID: jobID, Status: "processing", Message: "Export is processing"}, nil
+		}
+	}
+	defer cacheutil.ReleaseLock(ctx, exportKey)
+
+	procEntry := &exportCacheEntry{JobID: syncJobID, Status: "processing", Storage: "", Format: exportFormat}
+	_ = cacheutil.SetDistributedOnly(ctx, exportKey, procEntry, 5*time.Minute)
+
+	// Fetch data from ScyllaDB synchronously
+	summaries, derr := s.repo.GetDailySummariesByDate(ctx, input.CompanyID, input.Date)
+	if derr != nil {
+		if global.Logger != nil {
+			global.Logger.Error("GetDailySummariesByDate failed", "error", derr.Error())
+		}
+		return nil, applicationErrors.ErrDatabaseError.WithDetails(derr.Error())
+	}
+
+	if global.Logger != nil {
+		global.Logger.Info("ExportDailyReportDetail: Fetched data", "rows", len(summaries))
+	}
+
+	// Ensure export directory exists
+	exportDir := "exports"
+	if err := os.MkdirAll(exportDir, 0o755); err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("Failed to create export directory", "error", err.Error())
+		}
+		return nil, applicationErrors.ErrExportFailed.WithDetails("failed to create export directory")
+	}
+
+	jobID := fmt.Sprintf("export_%d_%s", time.Now().Unix(), uuid.New().String()[:8])
+	baseName := fmt.Sprintf("%s_daily_detail_%s", jobID, input.Date.Format("2006-01-02"))
+
+	var filePath string
+	switch input.Format {
+	case "csv", "excel":
+		filePath = filepath.Join(exportDir, baseName+".csv")
+		if err := s.writeCSV(filePath, summaries); err != nil {
+			if global.Logger != nil {
+				global.Logger.Error("Failed to write CSV", "error", err.Error())
+			}
+			return nil, applicationErrors.ErrExportFailed.WithDetails("failed to write CSV file")
+		}
+	case "pdf":
+		// For PDF, you would implement a writePDF method similar to writeCSV
+		return nil, applicationErrors.ErrInvalidInput.WithDetails("PDF export not yet implemented")
+	default:
+		return nil, applicationErrors.ErrInvalidInput.WithDetails("unsupported format")
+	}
+
+	if global.Logger != nil {
+		global.Logger.Info("ExportDailyReportDetail: File created",
+			"path", filePath,
+			"format", exportFormat,
+			"rows", len(summaries))
+	}
+
+	// Upload to object storage (MinIO/S3-compatible) - REQUIRED
+	_, uerr := cli.FPutObject(ctx, objCfg.Bucket, objectKey, filePath, minio.PutObjectOptions{ContentType: "text/csv"})
+	if uerr != nil {
+		if global.Logger != nil {
+			global.Logger.Error("ExportDailyReportDetail: Failed to upload to object storage", "error", uerr.Error())
+		}
+		// Clean up local file
+		_ = os.Remove(filePath)
+		return nil, applicationErrors.ErrExportFailed.WithDetails(fmt.Sprintf("Failed to upload to object storage: %v", uerr))
+	}
+
+	if global.Logger != nil {
+		global.Logger.Info("ExportDailyReportDetail: Uploaded to object storage", "bucket", objCfg.Bucket, "key", objectKey)
+	}
+
+	// Generate 7-day presigned URL
+	expireDuration := 7 * 24 * time.Hour // 7 days
+	presigned, perr := cli.PresignedGetObject(ctx, objCfg.Bucket, objectKey, expireDuration, nil)
+	if perr != nil {
+		if global.Logger != nil {
+			global.Logger.Error("ExportDailyReportDetail: Failed to generate presigned URL", "error", perr.Error())
+		}
+		// Clean up local file
+		_ = os.Remove(filePath)
+		return nil, applicationErrors.ErrExportFailed.WithDetails(fmt.Sprintf("Failed to generate presigned URL: %v", perr))
+	}
+
+	urlStr := presigned.String()
+	// Remove local file after successful upload
+	_ = os.Remove(filePath)
+
+	// Cache the result
+	entry := &exportCacheEntry{JobID: jobID, Status: "completed", Storage: "object", ObjectKey: objectKey, Format: exportFormat, Rows: len(summaries)}
+	_ = cacheutil.SetDistributedOnly(ctx, exportKey, entry, time.Duration(constants.CacheTTLMidSeconds)*time.Second)
+
+	// Send email notification via Kafka if email provided
+	if input.Email != nil && *input.Email != "" {
+		_ = s.publishExportEmail(ctx, *input.Email, urlStr, exportFormat, input.Date, input.Date, input.CompanyID.String())
+	}
+
+	if global.Logger != nil {
+		global.Logger.Info("ExportDailyReportDetail: Completed", "job_id", jobID, "rows", len(summaries), "expires", "7 days")
+	}
+
+	return &model.ExportDailyReportDetailOutput{
+		JobID:       jobID,
+		Status:      "completed",
+		Message:     fmt.Sprintf("Exported %d rows (download link expires in 7 days)", len(summaries)),
+		DownloadURL: &urlStr,
+	}, nil
+}
+
+// GetDailyReportDetail implements service.IAnalyticService.
+func (s *AnalyticServiceImpl) GetDailyReportDetail(ctx context.Context, input *model.DailyDetailReportInput) (*model.DailyReportDetailOutput, *applicationErrors.Error) {
+	// Log entry
+	if global.Logger != nil {
+		global.Logger.Info("GetDailyReport start",
+			"company_id", input.CompanyID.String(),
+			"date", input.Date.Format("2006-01-02"),
+		)
+	}
+
+	// Authorization check: Require CompanyAdmin role minimum, no employee self-access for company-wide reports
+	requestedCompanyID := input.CompanyID.String()
+	if err := s.checkAuthorization(input.Session, &requestedCompanyID, domainModel.RoleCompanyAdmin, false); err != nil {
+		return nil, err
+	}
+	companyID, err := uuid.Parse(requestedCompanyID)
+	if err != nil {
+		return nil, applicationErrors.ErrInvalidInput.WithDetails("invalid company_id")
+	}
+
+	// Cache key for daily report (includes device filter when provided)
+	cacheKey := cacheutil.BuildDailyDetailByDateKey(companyID, input.Date)
+
+	// Try local cache first
+	if v, ok := cacheutil.GetLocal(cacheKey); ok {
+		if out, ok2 := v.(*model.DailyReportDetailOutput); ok2 {
+			if global.Logger != nil {
+				global.Logger.Debug("GetDailyReport cache hit (local)", "key", cacheKey)
+			}
+			return out, nil
+		}
+	}
+
+	var cachedOut model.DailyReportDetailOutput
+	if hit, _ := cacheutil.GetDistributed(ctx, cacheKey, &cachedOut); hit {
+		// backfill local cache with slightly shorter TTL than distributed
+		cacheutil.SetLocal(cacheKey, &cachedOut, localTTLFrom(constants.CacheTTLMidSeconds))
+		if global.Logger != nil {
+			global.Logger.Debug("GetDailyReport cache hit (redis)", "key", cacheKey)
+		}
+		return &cachedOut, nil
+	}
+
+	// Validate data querying parameters
+	if input.Limit == nil || *input.Limit <= 0 {
+		return nil, applicationErrors.ErrInvalidInput.WithDetails("limit must be greater than 0")
+	}
+	resp, nextPage, err := s.repo.GetDailySummariesByDatePage(ctx, companyID, input.Date, input.PageToken, *input.Limit)
+	if err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("GetDailySummariesByDatePage failed", "error", err.Error())
+		}
+		return nil, applicationErrors.ErrDatabaseError.WithDetails(err.Error())
+	}
+	if resp == nil {
+		return nil, applicationErrors.ErrNotFound.WithDetails("no daily summaries found")
+	}
+	out := &model.DailyReportDetailOutput{
+		Total:    len(resp),
+		Items:    make([]model.DailyReportDetailEmployeeRow, 0, len(resp)),
+		NextPage: nextPage,
+	}
+	// Map domain models to output models
+	for _, item := range resp {
+		row := model.DailyReportDetailEmployeeRow{
+			CompanyID:            item.CompanyID,
+			SummaryMonth:         item.SummaryMonth,
+			WorkDate:             item.WorkDate,
+			EmployeeID:           item.EmployeeID,
+			ShiftID:              item.ShiftID,
+			ActualCheckIn:        item.ActualCheckIn,
+			ActualCheckOut:       item.ActualCheckOut,
+			AttendanceStatus:     item.AttendanceStatus,
+			LateMinutes:          item.LateMinutes,
+			EarlyLeaveMinutes:    item.EarlyLeaveMinutes,
+			TotalWorkMinutes:     item.TotalWorkMinutes,
+			Notes:                item.Notes,
+			UpdatedAt:            item.UpdatedAt,
+			OvertimeMinutes:      item.OvertimeMinutes,
+			AttendancePercentage: item.AttendancePercentage,
+		}
+		out.Items = append(out.Items, row)
+	}
+
+	// Cache the result
+	_ = cacheutil.SetDistributed(ctx, cacheKey, out, time.Duration(constants.CacheTTLMidSeconds)*time.Second)
+	_ = cacheutil.SetLocal(cacheKey, out, localTTLFrom(constants.CacheTTLMidSeconds))
+	if global.Logger != nil {
+		global.Logger.Info("GetDailyReportDetail computed", "key", cacheKey, "total_rows", len(resp))
+	}
+	return out, nil
+}
+
 // NewAnalyticService creates a new analytics service instance
-func NewAnalyticService(repo repository.IAnalyticRepository) *AnalyticServiceImpl {
+func NewAnalyticService(repo repository.IAnalyticRepository) service.IAnalyticService {
 	return &AnalyticServiceImpl{
 		repo: repo,
 	}

@@ -16,6 +16,15 @@ import {
     CircularProgress,
     Alert,
     Pagination,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    FormControl,
+    InputLabel,
+    Select,
+    MenuItem,
+    Snackbar,
 } from '@mui/material';
 import { Download } from '@mui/icons-material';
 import { apiClient } from '@face-attendance/utils';
@@ -64,6 +73,19 @@ export const DailyReportPage: React.FC = () => {
         Map<string, { name: string; code: string }>
     >(new Map());
     const [shiftMap, setShiftMap] = useState<Map<string, string>>(new Map());
+
+    // Export states
+    const [exportDialogOpen, setExportDialogOpen] = useState(false);
+    const [exportFormat, setExportFormat] = useState<'excel' | 'pdf' | 'csv'>(
+        'excel'
+    );
+    const [exportEmail, setExportEmail] = useState('');
+    const [exportLoading, setExportLoading] = useState(false);
+    const [snackbar, setSnackbar] = useState<{
+        open: boolean;
+        message: string;
+        severity: 'success' | 'error';
+    }>({ open: false, message: '', severity: 'success' });
 
     // Fetch daily report data
     const fetchDailyReport = useCallback(
@@ -251,6 +273,157 @@ export const DailyReportPage: React.FC = () => {
         }
     };
 
+    // Get company ID from JWT token
+    const getCompanyIdFromToken = (token: string): string | null => {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return payload.company_id || null;
+        } catch {
+            return null;
+        }
+    };
+
+    // Handle export report
+    const handleExportReport = async () => {
+        const accessToken = localStorage.getItem('access_token');
+        if (!accessToken) {
+            setSnackbar({
+                open: true,
+                message: 'Không tìm thấy token xác thực',
+                severity: 'error',
+            });
+            return;
+        }
+
+        const companyId = getCompanyIdFromToken(accessToken);
+        if (!companyId) {
+            setSnackbar({
+                open: true,
+                message: 'Không tìm thấy company_id trong token',
+                severity: 'error',
+            });
+            return;
+        }
+
+        setExportLoading(true);
+        try {
+            const requestBody: {
+                company_id: string;
+                date: string;
+                format: string;
+                email?: string;
+            } = {
+                company_id: companyId,
+                date: date, // Using YYYY-MM-DD format as shown in example
+                format: exportFormat,
+            };
+
+            const hasEmail = exportEmail.trim() !== '';
+            if (hasEmail) {
+                requestBody.email = exportEmail.trim();
+            }
+
+            // If email is provided, expect JSON response; otherwise expect blob
+            const response = await apiClient.post(
+                '/api/v1/reports/daily/export',
+                requestBody,
+                hasEmail
+                    ? {} // JSON response when email is provided
+                    : {
+                          responseType: 'blob', // Blob response for file download
+                      }
+            );
+
+            if (hasEmail) {
+                // Server sent email, expect JSON response
+                const message =
+                    response.data?.message ||
+                    `Báo cáo đã được gửi đến email ${exportEmail}`;
+                setSnackbar({
+                    open: true,
+                    message,
+                    severity: 'success',
+                });
+                setExportDialogOpen(false);
+                setExportEmail('');
+            } else {
+                // Download file directly
+                // Check if response is blob or needs conversion
+                let blob: Blob;
+                if (response.data instanceof Blob) {
+                    blob = response.data;
+                } else {
+                    blob = new Blob([response.data], {
+                        type:
+                            response.headers['content-type'] ||
+                            'application/octet-stream',
+                    });
+                }
+
+                const url = window.URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+
+                // Determine file extension based on format
+                const extension =
+                    exportFormat === 'excel' ? 'xlsx' : exportFormat;
+                const fileName = `daily-report-${date}.${extension}`;
+                link.setAttribute('download', fileName);
+                document.body.appendChild(link);
+                link.click();
+                link.remove();
+                window.URL.revokeObjectURL(url);
+
+                setSnackbar({
+                    open: true,
+                    message: 'Xuất báo cáo thành công',
+                    severity: 'success',
+                });
+                setExportDialogOpen(false);
+            }
+        } catch (err: any) {
+            console.error('Failed to export report:', err);
+
+            // Try to parse error message from blob response if needed
+            let errorMessage =
+                err.response?.data?.message ||
+                err.response?.data?.error ||
+                'Không thể xuất báo cáo. Vui lòng thử lại.';
+
+            // If response is blob but error occurred, try to parse it
+            if (err.response?.data instanceof Blob) {
+                try {
+                    const text = await err.response.data.text();
+                    const json = JSON.parse(text);
+                    errorMessage = json.message || json.error || errorMessage;
+                } catch {
+                    // Ignore parsing errors
+                }
+            }
+
+            setSnackbar({
+                open: true,
+                message: errorMessage,
+                severity: 'error',
+            });
+        } finally {
+            setExportLoading(false);
+        }
+    };
+
+    const handleOpenExportDialog = () => {
+        setExportDialogOpen(true);
+        setExportFormat('excel');
+        setExportEmail('');
+    };
+
+    const handleCloseExportDialog = () => {
+        if (!exportLoading) {
+            setExportDialogOpen(false);
+            setExportEmail('');
+        }
+    };
+
     return (
         <Box>
             <Typography variant="h4" fontWeight="bold" mb={3}>
@@ -269,8 +442,13 @@ export const DailyReportPage: React.FC = () => {
                         />
                     </Grid>
                     <Grid item xs={12} md={8}>
-                        <Button variant="contained" startIcon={<Download />}>
-                            Xuất Excel
+                        <Button
+                            variant="contained"
+                            startIcon={<Download />}
+                            onClick={handleOpenExportDialog}
+                            disabled={loading}
+                        >
+                            Xuất báo cáo
                         </Button>
                     </Grid>
                 </Grid>
@@ -311,7 +489,7 @@ export const DailyReportPage: React.FC = () => {
                                         <TableCell>Về sớm (phút)</TableCell>
                                         <TableCell>Tăng ca (phút)</TableCell>
                                         <TableCell>Trạng thái</TableCell>
-                                        <TableCell>Tỷ lệ chấm công</TableCell>
+                                        <TableCell>Tỷ lệ chính xác</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -458,6 +636,96 @@ export const DailyReportPage: React.FC = () => {
                     </>
                 )}
             </Card>
+
+            {/* Export Dialog */}
+            <Dialog
+                open={exportDialogOpen}
+                onClose={handleCloseExportDialog}
+                maxWidth="sm"
+                fullWidth
+            >
+                <DialogTitle>Xuất báo cáo chấm công</DialogTitle>
+                <DialogContent>
+                    <Box
+                        sx={{
+                            display: 'flex',
+                            flexDirection: 'column',
+                            gap: 2,
+                            pt: 2,
+                        }}
+                    >
+                        <FormControl fullWidth>
+                            <InputLabel>Định dạng</InputLabel>
+                            <Select
+                                value={exportFormat}
+                                label="Định dạng"
+                                onChange={(e) =>
+                                    setExportFormat(
+                                        e.target.value as
+                                            | 'excel'
+                                            | 'pdf'
+                                            | 'csv'
+                                    )
+                                }
+                            >
+                                <MenuItem value="excel">Excel (.xlsx)</MenuItem>
+                                <MenuItem value="pdf">PDF (.pdf)</MenuItem>
+                                <MenuItem value="csv">CSV (.csv)</MenuItem>
+                            </Select>
+                        </FormControl>
+                        <TextField
+                            fullWidth
+                            label="Email (tùy chọn)"
+                            type="email"
+                            value={exportEmail}
+                            onChange={(e) => setExportEmail(e.target.value)}
+                            placeholder="Nhập email để nhận báo cáo qua email"
+                            helperText="Để trống nếu muốn tải xuống trực tiếp"
+                        />
+                        <Typography variant="body2" color="textSecondary">
+                            Ngày: {date}
+                        </Typography>
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button
+                        onClick={handleCloseExportDialog}
+                        disabled={exportLoading}
+                    >
+                        Hủy
+                    </Button>
+                    <Button
+                        onClick={handleExportReport}
+                        variant="contained"
+                        disabled={exportLoading}
+                        startIcon={
+                            exportLoading ? (
+                                <CircularProgress size={20} />
+                            ) : (
+                                <Download />
+                            )
+                        }
+                    >
+                        {exportLoading ? 'Đang xử lý...' : 'Xuất báo cáo'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Snackbar for notifications */}
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={6000}
+                onClose={() => setSnackbar({ ...snackbar, open: false })}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+            >
+                <Alert
+                    onClose={() => setSnackbar({ ...snackbar, open: false })}
+                    severity={snackbar.severity}
+                    sx={{ width: '100%' }}
+                >
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 };
