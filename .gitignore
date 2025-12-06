@@ -10,3 +10,5 @@ server/config/*.yaml
 server/config/*.env
 server/config/env.*
 server/config/.env.*
+
+infra/terraform/environments/*/secrets.auto.tfvars
