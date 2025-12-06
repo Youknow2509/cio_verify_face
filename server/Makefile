@@ -82,12 +82,12 @@ docker_run_resource:
 # Docker build a specific service and push to registry
 docker_build_service:
 	@echo "Building Docker image for service $(SERVICE) and pushing to registry"
-	docker buildx bake --file ${DOCKER_BAKE_FILE} $(SERVICE) 
+	docker buildx bake --file ${DOCKER_BAKE_FILE} $(SERVICE) --push
 
 # Docker Build All Services
 docker_builds:
 	@echo "Building Docker images for all services and pushing to registry"
-	docker buildx bake --file ${DOCKER_BAKE_FILE}
+	docker buildx bake --file ${DOCKER_BAKE_FILE} --push
 	
 # Docker Compose - Down
 docker_compose_down:

@@ -1,0 +1,129 @@
+# Grafana - https://github.com/bitnami/charts/tree/main/bitnami/grafana
+monitoring-dashboard:
+    enabled: false
+    admin:
+        user: 'admin'
+        password: 'J6cSjtown5yt9XC6'
+    dashboardsProvider:
+        enabled: false
+        configMapName: 'grafana-dashboards'
+    dashboardsConfigMaps:
+        [
+            'api-performance.json',
+            'service-health.json',
+            'services-dashboard.json',
+            'system-overview.json',
+            'tracing-dashboard.json',
+        ]
+    datasources:
+        secretName: "grafana-datasource-secret"
+
+# Kafka - https://github.com/bitnami/charts/tree/main/bitnami/kafka
+message-queue:
+    image:
+        registry: docker.io
+        repository: bitnamilegacy/kafka
+    clusterId: 'cio-verify-face-cluster'
+    listeners:
+        client:
+            protocol: PLAINTEXT
+        controller:
+            protocol: PLAINTEXT
+        interbroker:
+            protocol: PLAINTEXT
+        external:
+            protocol: PLAINTEXT
+
+    controller:
+        replicaCount: 1
+        persistence:
+            enabled: false
+    broker:
+        replicaCount: 1
+        persistence:
+            enabled: false
+    service:
+        type: ClusterIP
+        ports:
+            client: 9092
+            controller: 9093
+            interbroker: 9094
+            external: 9095
+
+# MinIO - https://github.com/bitnami/charts/tree/main/bitnami/minio
+object-storage:
+    image:
+        registry: docker.io
+        repository: bitnamilegacy/minio
+
+    mode: standalone
+    containerPorts:
+        api: 9000
+    console:
+        enabled: true
+        image:
+            registry: docker.io
+            repository: bitnamilegacy/minio-object-browser
+        containerPorts:
+            http: 9090
+    auth:
+        rootUser: 'admin'
+        rootPassword: 'J6cSjtown5yt9XC6'
+    persistence:
+        enabled: true
+
+# ScyllaDB - https://github.com/bitnami/charts/tree/main/bitnami/scylladb
+cql-database:
+    image:
+        registry: docker.io
+        repository: bitnamilegacy/scylladb
+
+    dbUser:
+        user: 'cassandra'
+        password: 'J6cSjtown5yt9XC6'
+    cluster:
+        name: scylladb
+        seedCount: 1
+        numTokens: 256
+        datacenter: dc1
+        rack: rack1
+    containerPorts:
+        intra: 7000
+        tls: 7001
+        jmx: 7199
+        cql: 9042
+        cqlShard: 19042
+        api: 10000
+        metrics: 9180
+    autoscaling:
+        enabled: false
+    persistence:
+        enabled: true
+
+# PostgreSQL - https://github.com/bitnami/charts/tree/main/bitnami/postgresql
+main-database:
+    architecture: standalone
+    auth:
+        user: 'postgres'
+        postgresPassword: 'J6cSjtown5yt9XC6'
+        password: 'J6cSjtown5yt9XC6'
+        database: 'cio_verify_face'
+    primary:
+        service:
+            port: 5432
+        persistence:
+            enabled: true
+
+# Redis - https://github.com/bitnami/charts/tree/main/bitnami/redis
+distributed-cache:
+    architecture: standalone
+    auth:
+        enabled: true
+        password: 'J6cSjtown5yt9XC6'
+    master:
+        count: 1
+        containerPorts:
+            redis: 6379
+        persistence:
+            enabled: true
+            path: /data/redis-master

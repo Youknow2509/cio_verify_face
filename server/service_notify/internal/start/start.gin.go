@@ -26,6 +26,12 @@ func initGinRouter(setting *domainConfig.ServerSetting) error {
 	// Set port for Gin
 	portGin := fmt.Sprintf(":%d", setting.Port)
 
+	// Health check endpoint
+	ginEngine.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{
+			"status": "ok",
+		})
+	})
 	// Initialize routes
 	if err := initRouter(ginEngine); err != nil {
 		return err

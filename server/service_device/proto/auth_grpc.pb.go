@@ -2,7 +2,7 @@
 // versions:
 // - protoc-gen-go-grpc v1.5.1
 // - protoc             v6.33.0
-// source: auth.proto
+// source: proto/auth.proto
 
 package pb
 
@@ -11,6 +11,7 @@ import (
 	grpc "google.golang.org/grpc"
 	codes "google.golang.org/grpc/codes"
 	status "google.golang.org/grpc/status"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 )
 
 // This is a compile-time assertion to ensure that this generated file
@@ -25,6 +26,7 @@ const (
 	AuthService_ParseUserToken_FullMethodName     = "/auth.AuthService/ParseUserToken"
 	AuthService_ParseServiceToken_FullMethodName  = "/auth.AuthService/ParseServiceToken"
 	AuthService_ParseDeviceToken_FullMethodName   = "/auth.AuthService/ParseDeviceToken"
+	AuthService_HealthCheck_FullMethodName        = "/auth.AuthService/HealthCheck"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -39,6 +41,7 @@ type AuthServiceClient interface {
 	ParseUserToken(ctx context.Context, in *ParseUserTokenRequest, opts ...grpc.CallOption) (*ParseUserTokenResponse, error)
 	ParseServiceToken(ctx context.Context, in *ParseServiceTokenRequest, opts ...grpc.CallOption) (*ParseServiceTokenResponse, error)
 	ParseDeviceToken(ctx context.Context, in *ParseDeviceTokenRequest, opts ...grpc.CallOption) (*ParseDeviceTokenResponse, error)
+	HealthCheck(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type authServiceClient struct {
@@ -109,6 +112,16 @@ func (c *authServiceClient) ParseDeviceToken(ctx context.Context, in *ParseDevic
 	return out, nil
 }
 
+func (c *authServiceClient) HealthCheck(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, AuthService_HealthCheck_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthServiceServer is the server API for AuthService service.
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
@@ -121,6 +134,7 @@ type AuthServiceServer interface {
 	ParseUserToken(context.Context, *ParseUserTokenRequest) (*ParseUserTokenResponse, error)
 	ParseServiceToken(context.Context, *ParseServiceTokenRequest) (*ParseServiceTokenResponse, error)
 	ParseDeviceToken(context.Context, *ParseDeviceTokenRequest) (*ParseDeviceTokenResponse, error)
+	HealthCheck(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -148,6 +162,9 @@ func (UnimplementedAuthServiceServer) ParseServiceToken(context.Context, *ParseS
 }
 func (UnimplementedAuthServiceServer) ParseDeviceToken(context.Context, *ParseDeviceTokenRequest) (*ParseDeviceTokenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ParseDeviceToken not implemented")
+}
+func (UnimplementedAuthServiceServer) HealthCheck(context.Context, *emptypb.Empty) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method HealthCheck not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
@@ -278,6 +295,24 @@ func _AuthService_ParseDeviceToken_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_HealthCheck_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).HealthCheck(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_HealthCheck_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).HealthCheck(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -309,7 +344,11 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 			MethodName: "ParseDeviceToken",
 			Handler:    _AuthService_ParseDeviceToken_Handler,
 		},
+		{
+			MethodName: "HealthCheck",
+			Handler:    _AuthService_HealthCheck_Handler,
+		},
 	},
 	Streams:  []grpc.StreamDesc{},
-	Metadata: "auth.proto",
+	Metadata: "proto/auth.proto",
 }

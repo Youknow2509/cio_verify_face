@@ -1,0 +1,6 @@
+dependencies:
+- name: kong
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 15.4.21
+digest: sha256:e3167a97491afdc610b7960c4df2c0de6eabb42bfb3697034f7b3f66c88f9c25
+generated: "2025-12-05T16:17:21.287761+07:00"

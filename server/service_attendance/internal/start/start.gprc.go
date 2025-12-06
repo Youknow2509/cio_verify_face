@@ -128,10 +128,10 @@ func initClientGrpc() error {
 	})
 	opts = append(opts, kaParams)
 	// HTTP/2 Ping Policy
-	http2PingPolicy := grpc.WithDefaultCallOptions(
-		grpc.MaxCallRecvMsgSize(config.Http2MaxPingsWithoutData),
-	)
-	opts = append(opts, http2PingPolicy)
+	// http2PingPolicy := grpc.WithDefaultCallOptions(
+	// 	grpc.MaxCallRecvMsgSize(config.Http2MaxPingsWithoutData),
+	// )
+	// opts = append(opts, http2PingPolicy)
 	// create connection
 	conn, err := grpc.Dial(config.GrpcAddr, opts...)
 	if err != nil {
