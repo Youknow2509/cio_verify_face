@@ -19,9 +19,9 @@ type EditShiftReq struct {
 	Description           string `json:"description"`
 	StartTime             int64  `json:"start_time" validate:"required"`
 	EndTime               int64  `json:"end_time" validate:"required"`
-	BreakDurationMinutes  int    `json:"break_duration_minutes" validate:"required"`
-	GracePeriodMinutes    int    `json:"grace_period_minutes" validate:"required"`
-	EarlyDepartureMinutes int    `json:"early_departure_minutes" validate:"required"`
+	BreakDurationMinutes  int    `json:"break_duration_minutes" validate:"gte=0"`
+	GracePeriodMinutes    int    `json:"grace_period_minutes" validate:"gte=0"`
+	EarlyDepartureMinutes int    `json:"early_departure_minutes" validate:"gte=0"`
 	WorkDays              []int  `json:"work_days" validate:"required"`
 }
 
@@ -36,9 +36,9 @@ type CreateShiftReq struct {
 	Description           string `json:"description"`
 	StartTime             int64  `json:"start_time" validate:"required"`
 	EndTime               int64  `json:"end_time" validate:"required"`
-	BreakDurationMinutes  int    `json:"break_duration_minutes" validate:"required"`
-	GracePeriodMinutes    int    `json:"grace_period_minutes" validate:"required"`
-	EarlyDepartureMinutes int    `json:"early_departure_minutes" validate:"required"`
+	BreakDurationMinutes  int    `json:"break_duration_minutes" validate:"gte=0"`
+	GracePeriodMinutes    int    `json:"grace_period_minutes" validate:"gte=0"`
+	EarlyDepartureMinutes int    `json:"early_departure_minutes" validate:"gte=0"`
 	WorkDays              []int  `json:"work_days" validate:"required"`
 }
 

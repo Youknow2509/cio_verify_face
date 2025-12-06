@@ -57,7 +57,7 @@ type Handler struct{}
 // @Router       /v1/employee/shift/not_in [post]
 func (h *Handler) GetInfoEmployeeDonotInShift(g *gin.Context) {
 	var req dto.GetInfoEmployeeDonotInShiftReq
-	if err := g.ShouldBind(&req); err != nil {
+	if err := g.ShouldBindJSON(&req); err != nil {
 		response.ErrorResponse(g, 400, "Data input error")
 		return
 	}
@@ -133,7 +133,7 @@ func (h *Handler) GetInfoEmployeeDonotInShift(g *gin.Context) {
 // @Router       /v1/employee/shift/in [post]
 func (h *Handler) GetInfoEmployeeInShift(g *gin.Context) {
 	var req dto.GetInfoEmployeeInShiftReq
-	if err := g.ShouldBind(&req); err != nil {
+	if err := g.ShouldBindJSON(&req); err != nil {
 		response.ErrorResponse(g, 400, "Data input error")
 		return
 	}
@@ -210,7 +210,7 @@ func (h *Handler) GetInfoEmployeeInShift(g *gin.Context) {
 func (h *Handler) AddShiftEmployeeList(g *gin.Context) {
 	// get req
 	var req dto.AddShiftEmployeeListReq
-	if err := g.ShouldBind(&req); err != nil {
+	if err := g.ShouldBindJSON(&req); err != nil {
 		response.ErrorResponse(g, 400, "Data input error")
 		return
 	}
@@ -306,7 +306,7 @@ func (h *Handler) AddShiftEmployeeList(g *gin.Context) {
 func (h *Handler) ChangeStatusShift(g *gin.Context) {
 	// Get req
 	var req dto.ChangeStatusShiftReq
-	if err := g.ShouldBind(&req); err != nil {
+	if err := g.ShouldBindJSON(&req); err != nil {
 		response.ErrorResponse(g, 400, "Data input error")
 		return
 	}
@@ -447,7 +447,7 @@ func (h *Handler) GetListShift(g *gin.Context) {
 func (h *Handler) AddShiftEmployee(c *gin.Context) {
 	// Get req
 	var req dto.AddShiftEmployeeReq
-	if err := c.ShouldBind(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.ErrorResponse(c, 400, "Data input error")
 		return
 	}
@@ -533,7 +533,7 @@ func (h *Handler) AddShiftEmployee(c *gin.Context) {
 func (h *Handler) CreateShift(c *gin.Context) {
 	// Binding data req
 	var req dto.CreateShiftReq
-	if err := c.ShouldBind(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.ErrorResponse(c, 400, "Data input error")
 		return
 	}
@@ -674,7 +674,7 @@ func (h *Handler) DeleteShift(c *gin.Context) {
 func (h *Handler) DeleteShiftUser(c *gin.Context) {
 	// Get req
 	var req dto.DeleteShiftUserReq
-	if err := c.ShouldBind(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.ErrorResponse(c, 400, "Data input error")
 		return
 	}
@@ -762,7 +762,7 @@ func (h *Handler) DeleteShiftUser(c *gin.Context) {
 func (h *Handler) DisableShiftUser(c *gin.Context) {
 	// Get req
 	var req dto.DisableShiftUserReq
-	if err := c.ShouldBind(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.ErrorResponse(c, 400, "Data input error")
 		return
 	}
@@ -841,7 +841,7 @@ func (h *Handler) DisableShiftUser(c *gin.Context) {
 func (h *Handler) EditShift(c *gin.Context) {
 	// Get req
 	var req dto.EditShiftReq
-	if err := c.ShouldBind(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.ErrorResponse(c, 400, "Data input error")
 		return
 	}
@@ -932,7 +932,7 @@ func (h *Handler) EditShift(c *gin.Context) {
 func (h *Handler) EditShiftUserWithEffectiveDate(c *gin.Context) {
 	// Get req
 	var req dto.ShiftEmployeeEditEffectiveDateReq
-	if err := c.ShouldBind(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.ErrorResponse(c, 400, "Data input error")
 		return
 	}
@@ -1013,7 +1013,7 @@ func (h *Handler) EditShiftUserWithEffectiveDate(c *gin.Context) {
 // @Router       /v1/employee/shift/enable [post]
 func (h *Handler) EnableShiftUser(c *gin.Context) {
 	var req dto.EnableShiftUserReq
-	if err := c.ShouldBind(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.ErrorResponse(c, 400, "Data input error")
 		return
 	}
@@ -1151,7 +1151,7 @@ func (h *Handler) GetDetailShift(c *gin.Context) {
 func (h *Handler) GetShiftUserWithEffectiveDate(c *gin.Context) {
 	// Get req
 	var req dto.ShiftEmployeeEffectiveDateReq
-	if err := c.ShouldBind(&req); err != nil {
+	if err := c.ShouldBindJSON(&req); err != nil {
 		response.ErrorResponse(c, 400, "Data input error")
 		return
 	}

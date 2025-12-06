@@ -29,7 +29,6 @@ import {
     editShift,
     getShiftDetail,
     timeStringToTimestamp,
-    timestampToTimeString,
 } from '@face-attendance/utils';
 
 const DAYS_OF_WEEK = [
@@ -89,6 +88,7 @@ export const ShiftFormPage: React.FC = () => {
             const response = await getShiftDetail(shiftId);
             if (response.code === 200 && response.data) {
                 const shift = response.data;
+                console.log('Fetched shift data:', shift);
                 setFormData({
                     name: shift.name,
                     description: shift.description || '',
@@ -123,6 +123,14 @@ export const ShiftFormPage: React.FC = () => {
         }
     };
 
+    // Foramt time from "2025-12-06T13:30:00Z" to "13:30"
+    const formatTime = (timeStr: string): string => {
+        const {h, m} = extractHM(timeStr);
+        return `${h.toString().padStart(2, '0')}:${m
+            .toString()
+            .padStart(2, '0')}`;
+    };
+
     const handleChange =
         (field: keyof ShiftFormData) =>
         (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
@@ -131,7 +139,26 @@ export const ShiftFormPage: React.FC = () => {
                     ? (e.target as HTMLInputElement).checked
                     : e.target.value;
 
-            setFormData({ ...formData, [field]: value });
+            console.log(`Field changed: ${field}, New value: ${value}`);
+            if (field === 'start_time' || field === 'end_time') {
+                console.log(
+                    `Time field changed: ${field}, New value: ${value}`
+                );
+                // convert time fields to "HH:MM" format to "2025-12-06T13:30:00Z"
+                const today = new Date();
+                const [hours, minutes] = (value as string).split(':');
+                const timeIsoString = new Date(
+                    today.getFullYear(),
+                    today.getMonth(),
+                    today.getDate(),
+                    parseInt(hours),
+                    parseInt(minutes)
+                ).toISOString();
+                setFormData({ ...formData, [field]: timeIsoString });
+            } else {
+                setFormData({ ...formData, [field]: value });
+            }
+
             // Clear error when user starts typing
             if (errors[field]) {
                 setErrors({ ...errors, [field]: undefined });
@@ -177,13 +204,36 @@ export const ShiftFormPage: React.FC = () => {
             newErrors.end_time = 'Giờ kết thúc là bắt buộc';
         }
 
-        if (
-            formData.start_time &&
-            formData.end_time &&
-            formData.start_time >= formData.end_time
-        ) {
-            newErrors.end_time = 'Giờ kết thúc phải sau giờ bắt đầu';
+        // Ép end_time về đúng ngày start_time, chỉ giữ giờ/phút
+        const normalizeTimes = (startISO: string, endISO: string) => {
+            const start = new Date(startISO);
+            const { h, m } = extractHM(endISO);
+
+            const fixedEnd = new Date(start);
+            fixedEnd.setHours(h);
+            fixedEnd.setMinutes(m);
+            fixedEnd.setSeconds(0);
+            fixedEnd.setMilliseconds(0);
+
+            // Nếu end < start ⇒ ca qua ngày
+            if (fixedEnd.getTime() <= start.getTime()) {
+                fixedEnd.setDate(fixedEnd.getDate() + 1);
+            }
+
+            return { start, end: fixedEnd };
+        };
+        // ---- Fix validate thời gian lệch ngày ----
+        if (formData.start_time && formData.end_time) {
+            const { start, end } = normalizeTimes(
+                formData.start_time,
+                formData.end_time
+            );
+
+            if (end.getTime() <= start.getTime()) {
+                newErrors.end_time = 'Giờ kết thúc phải sau giờ bắt đầu';
+            }
         }
+        // ------------------------------------------
 
         if (formData.work_days.length === 0) {
             newErrors.work_days = 'Phải chọn ít nhất một ngày làm việc';
@@ -217,38 +267,83 @@ export const ShiftFormPage: React.FC = () => {
         e.preventDefault();
 
         if (!validateForm()) {
+            console.log('Form validation failed:', errors);
             return;
         }
 
         handleSaveShift();
     };
 
+    // Get company ID from JWT token
+    const getCompanyIdFromToken = (token: string): string | null => {
+        try {
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            return payload.company_id || null;
+        } catch {
+            return null;
+        }
+    };
+
+    // convert time to int64
+    const timeStringToInt64 = (iso: string): number => {
+        return new Date(iso).getTime();
+    };
+
+    // convert time start hour:minute to int64
+    const timeHMToInt64 = (hour: number, minute: number): number => {
+        const now = new Date();
+        now.setHours(hour);
+        now.setMinutes(minute);
+        now.setSeconds(0);
+        now.setMilliseconds(0);
+        return now.getTime();
+    };
+
     const handleSaveShift = async () => {
         try {
             setLoading(true);
 
-            // Get company_id from localStorage or auth store
-            const companyId = localStorage.getItem('company_id') || '1';
-
+            // Get company_id from access token jwt
+            const accessToken = localStorage.getItem('access_token');
+            if (!accessToken) {
+                throw new Error('No access token found');
+            }
+            const companyId = getCompanyIdFromToken(accessToken);
+            if (!companyId) {
+                throw new Error('Invalid access token: no company_id');
+            }
+            const startTime = timeHMToInt64(
+                extractHM(formData.start_time).h,
+                extractHM(formData.start_time).m
+            );
+            console.log("Start time hour-minute", extractHM(formData.start_time));
+            const endTime = timeHMToInt64(
+                extractHM(formData.end_time).h,
+                extractHM(formData.end_time).m
+            );
+            console.log("End time hour-minute", extractHM(formData.end_time));
+            console.log("Start time int64:", startTime);
+            console.log("End time int64:", endTime);
             // Convert time strings to timestamps
             const requestData = {
+                shift_id: id,
                 company_id: companyId,
                 name: formData.name,
                 description: formData.description,
-                start_time: timeStringToTimestamp(formData.start_time),
-                end_time: timeStringToTimestamp(formData.end_time),
+                start_time: startTime,
+                end_time: endTime,
                 break_duration_minutes: formData.break_duration_minutes,
                 grace_period_minutes: formData.grace_period_minutes,
                 early_departure_minutes: formData.early_departure_minutes,
                 work_days: formData.work_days,
             };
+            console.log('Submitting shift data:', requestData);
 
             let response;
             if (id) {
                 // Edit existing shift
                 response = await editShift({
                     ...requestData,
-                    shift_id: id,
                 });
             } else {
                 // Create new shift
@@ -289,19 +384,50 @@ export const ShiftFormPage: React.FC = () => {
         setSnackbar({ ...snackbar, open: false });
     };
 
+    const extractHM = (iso: string) => {
+        const d = new Date(iso);
+        return {
+            h: d.getHours(),
+            m: d.getMinutes(),
+        };
+    };
+
+    const normalizeEndTime = (startISO: string, endISO: string) => {
+        const start = new Date(startISO);
+        const { h, m } = extractHM(endISO);
+
+        const fixedEnd = new Date(start);
+        fixedEnd.setHours(h);
+        fixedEnd.setMinutes(m);
+        fixedEnd.setSeconds(0);
+        fixedEnd.setMilliseconds(0);
+
+        return fixedEnd;
+    };
+
     const calculateWorkHours = () => {
         if (!formData.start_time || !formData.end_time) return 0;
 
-        const [startHour, startMin] = formData.start_time
-            .split(':')
-            .map(Number);
-        const [endHour, endMin] = formData.end_time.split(':').map(Number);
+        const startDate = new Date(formData.start_time);
+
+        // end_time bị lệch ngày → ép về đúng ngày start
+        const fixedEnd = normalizeEndTime(
+            formData.start_time,
+            formData.end_time
+        );
+
+        // xử lý trường hợp qua ngày (làm ca đêm)
+        if (fixedEnd < startDate) {
+            fixedEnd.setDate(fixedEnd.getDate() + 1);
+        }
+
+        const startTimestamp = startDate.getTime();
+        const endTimestamp = fixedEnd.getTime();
+        const breakMinutes = Number(formData.break_duration_minutes || 0);
 
         const totalMinutes =
-            endHour * 60 +
-            endMin -
-            (startHour * 60 + startMin) -
-            formData.break_duration_minutes;
+            (endTimestamp - startTimestamp) / (1000 * 60) - breakMinutes;
+
         return Math.max(0, totalMinutes / 60);
     };
 
@@ -411,7 +537,7 @@ export const ShiftFormPage: React.FC = () => {
                                         type="time"
                                         required
                                         InputLabelProps={{ shrink: true }}
-                                        value={formData.start_time}
+                                        value={formatTime(formData.start_time)}
                                         onChange={handleChange('start_time')}
                                         error={!!errors.start_time}
                                         helperText={errors.start_time}
@@ -425,7 +551,7 @@ export const ShiftFormPage: React.FC = () => {
                                         type="time"
                                         required
                                         InputLabelProps={{ shrink: true }}
-                                        value={formData.end_time}
+                                        value={formatTime(formData.end_time)}
                                         onChange={handleChange('end_time')}
                                         error={!!errors.end_time}
                                         helperText={errors.end_time}
@@ -456,8 +582,8 @@ export const ShiftFormPage: React.FC = () => {
                                             Tổng thời gian làm việc:
                                         </strong>{' '}
                                         {calculateWorkHours().toFixed(1)} giờ (
-                                        {formData.start_time} -{' '}
-                                        {formData.end_time}, nghỉ{' '}
+                                        {formatTime(formData.start_time)} -{' '}
+                                        {formatTime(formData.end_time)}, nghỉ{' '}
                                         {formData.break_duration_minutes} phút)
                                     </Alert>
                                 </Grid>
@@ -630,6 +756,7 @@ export const ShiftFormPage: React.FC = () => {
                                             <Save />
                                         )
                                     }
+                                    onClick={handleSubmit}
                                     size="large"
                                     disabled={loading}
                                 >

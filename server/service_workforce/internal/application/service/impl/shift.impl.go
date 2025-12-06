@@ -277,6 +277,17 @@ func (s *ShiftService) CreateShift(ctx context.Context, input *applicationModel.
 	}
 
 	s.logger.Info("CreateShift - Success", "shift_id", shiftID.String())
+	// Rm cache
+	cacheKeyListShiftPrefix := utilsCache.GetKeyListShiftInCompanyPrefix(
+		utilsCrypto.GetHash(companyId.String()),
+	)
+	// Delete shift list in company cache
+	if delErr := s.distributedCache.DeleteByPrefix(ctx, cacheKeyListShiftPrefix); delErr != nil {
+		s.logger.Warn("CreateShift - Failed to delete list shift cache from distributed cache", "error", delErr)
+	}
+	if delErr := s.localCache.Delete(ctx, cacheKeyListShiftPrefix); delErr != nil {
+		s.logger.Warn("CreateShift - Failed to delete list shift cache from local cache", "error", delErr)
+	}
 
 	return &applicationModel.CreateShiftOutput{
 		ShiftId: shiftID.String(),

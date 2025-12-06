@@ -56,45 +56,52 @@ export const DeviceListPage: React.FC = () => {
     // Get devices from API
     useEffect(() => {
         const fetchDevices = async () => {
-            try {
-                const response = await apiClient.get('/api/v1/device');
-                if (response.status === 200) {
-                    console.log('Fetched devices:', response.data);
+            const accessToken = localStorage.getItem('access_token');
+            if (accessToken) {
+                try {
+                    const response = await apiClient.get('/api/v1/device');
+                    const settingConfig = {
+                        allow_check_in: true,
+                        allow_check_out: true,
+                        timeout: 30,
+                        recognition_threshold: 0.8,
+                        sound_enabled: true,
+                    };
+                    const repsData = response.data.data.devices;
+                    console.log('Raw devices data:', repsData);
+                    if (!Array.isArray(repsData)) {
+                        console.error(
+                            'Invalid data format for devices:',
+                            repsData
+                        );
+                        setDevices([]);
+                        return;
+                    }
+                    const listDevices: Device[] = repsData.map(
+                        (device: any) => ({
+                            id: device.device_id,
+                            company_id: device.company_id,
+                            name: device.name,
+                            serial_number: device.serial_number,
+                            location: device.address,
+                            status: device.status == 1 ? 'online' : 'offline',
+                            settings: settingConfig,
+                            created_at: device.created_at,
+                            updated_at: device.update_at,
+                            mac_address: device.mac_address,
+                            token: device.token,
+                        })
+                    );
+                    setDevices(listDevices);
+                } catch (error) {
+                    console.error('Failed to fetch stats:', error);
+                } finally {
+                    setLoading(false);
                 }
-                const settingConfig = {
-                    allow_check_in: true,
-                    allow_check_out: true,
-                    timeout: 30,
-                    recognition_threshold: 0.8,
-                    sound_enabled: true,
-                };
-                const repsData = response.data.data.devices;
-                if (!Array.isArray(repsData)) {
-                    console.error('Invalid data format for devices:', repsData);
-                    setDevices([]);
-                    return;
-                }
-                const listDevices: Device[] = repsData.map((device: any) => ({
-                    id: device.device_id,
-                    company_id: device.company_id,
-                    name: device.name,
-                    serial_number: device.serial_number,
-                    location: device.address,
-                    status: device.status == 1 ? 'online' : 'offline',
-                    settings: settingConfig,
-                    created_at: device.created_at,
-                    updated_at: device.update_at,
-                    mac_address: device.mac_address,
-                    token: device.token,
-                }));
-                setDevices(listDevices);
-            } catch (error) {
-                console.error('Failed to fetch stats:', error);
-            } finally {
+            } else {
                 setLoading(false);
             }
         };
-
         fetchDevices();
     }, []);
 

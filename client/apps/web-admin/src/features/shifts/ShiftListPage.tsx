@@ -43,6 +43,7 @@ import {
     deleteShift,
     changeShiftStatus,
 } from '@face-attendance/utils';
+import { ShiftTimeline } from '../../components/ShiftTimeline';
 
 const DAYS_OF_WEEK_SHORT = ['T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'CN'];
 
@@ -225,6 +226,8 @@ export const ShiftListPage: React.FC = () => {
 
     return (
         <Box>
+            {/* Timeline lịch ca làm việc */}
+            {!loading && shifts.length > 0 && <ShiftTimeline shifts={shifts} />}
             <Box
                 display="flex"
                 justifyContent="space-between"
