@@ -15,8 +15,6 @@ COPY . .
 # Build TS → JS
 RUN npm run build
 
-
-
 # -------------------------
 # 2. Production stage
 # -------------------------
@@ -32,5 +30,6 @@ RUN npm ci --omit=dev
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/src/proto ./dist/proto
 
+EXPOSE 8080
 # Start app
 CMD ["node", "dist/index.js"]

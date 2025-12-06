@@ -54,13 +54,16 @@ export class UserService {
         const result = await query(
             `SELECT 
             u.user_id,
+            u.role,
+            u.avatar_url,
             u.email,
             u.phone,
             u.full_name,
             e.employee_code,
             e.department,
             e.hire_date,
-            e.position
+            e.position,
+            u.status 
             FROM users u
             INNER JOIN employees e ON u.user_id = e.employee_id
             WHERE u.user_id = $1`,
@@ -382,6 +385,115 @@ export class UserService {
         await query(queryDeleteEmployees, [userIds]);
         const result = await query(queryDeleteUsers, [userIds]);
         return result.rowCount;
+    }
+
+    async updateUserName(
+        userId: string,
+        fullName: string
+    ): Promise<User | null> {
+        if (!fullName || fullName.trim().length === 0) {
+            throw new Error('Full name cannot be empty');
+        }
+
+        const now = new Date().toISOString();
+        const result = await query(
+            `UPDATE users SET full_name = $1, updated_at = $2 WHERE user_id = $3 RETURNING *`,
+            [fullName.trim(), now, userId]
+        );
+
+        return result.rows[0] || null;
+    }
+
+    async updateUserPhone(userId: string, phone: string): Promise<User | null> {
+        if (!phone || phone.trim().length === 0) {
+            throw new Error('Phone cannot be empty');
+        }
+
+        const now = new Date().toISOString();
+        const result = await query(
+            `UPDATE users SET phone = $1, updated_at = $2 WHERE user_id = $3 RETURNING *`,
+            [phone.trim(), now, userId]
+        );
+
+        return result.rows[0] || null;
+    }
+
+    async updateUserDepartment(
+        userId: string,
+        department: string
+    ): Promise<User | null> {
+        if (!department || department.trim().length === 0) {
+            throw new Error('Department cannot be empty');
+        }
+
+        const now = new Date().toISOString();
+
+        // Update employees table
+        await query(
+            `UPDATE employees SET department = $1, updated_at = $2 WHERE employee_id = $3`,
+            [department.trim(), now, userId]
+        );
+
+        // Return updated user
+        const result = await query(`SELECT * FROM users WHERE user_id = $1`, [
+            userId,
+        ]);
+
+        return result.rows[0] || null;
+    }
+
+    async updateUserPosition(
+        userId: string,
+        position: string
+    ): Promise<User | null> {
+        if (!position || position.trim().length === 0) {
+            throw new Error('Position cannot be empty');
+        }
+
+        const now = new Date().toISOString();
+
+        // Update employees table
+        await query(
+            `UPDATE employees SET position = $1, updated_at = $2 WHERE employee_id = $3`,
+            [position.trim(), now, userId]
+        );
+
+        // Return updated user
+        const result = await query(`SELECT * FROM users WHERE user_id = $1`, [
+            userId,
+        ]);
+
+        return result.rows[0] || null;
+    }
+
+    async resetPassword(
+        userId: string
+    ): Promise<{ newPassword: string; user: User } | null> {
+        const {
+            generateRandomPassword,
+            generateSalt,
+            hashPassword,
+        } = require('../utils/crypto');
+
+        const user = await this.getUserById(userId);
+        if (!user) {
+            return null;
+        }
+
+        const newPassword = generateRandomPassword();
+        const salt = generateSalt();
+        const passwordHash = hashPassword(newPassword, salt);
+        const now = new Date().toISOString();
+
+        const result = await query(
+            `UPDATE users SET salt = $1, password_hash = $2, updated_at = $3 WHERE user_id = $4 RETURNING *`,
+            [salt, passwordHash, now, userId]
+        );
+
+        return {
+            newPassword,
+            user: result.rows[0],
+        };
     }
 
     async importUsersFromFile(file: Express.Multer.File): Promise<number> {
