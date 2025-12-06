@@ -19,7 +19,8 @@ type IAnalyticService interface {
 	
 	// GetDailyReport returns daily attendance report
 	GetDailyReport(ctx context.Context, input *model.DailyReportInput) (*model.DailyReportOutput, *applicationErrors.Error)
-	
+	GetDailyReportDetail(ctx context.Context, input *model.DailyDetailReportInput) (*model.DailyReportDetailOutput, *applicationErrors.Error)
+	ExportDailyReportDetail(ctx context.Context, input *model.ExportDailyReportDetailInput) (*model.ExportDailyReportDetailOutput, *applicationErrors.Error)
 	// GetSummaryReport returns monthly summary report
 	GetSummaryReport(ctx context.Context, input *model.SummaryReportInput) (*model.SummaryReportOutput, *applicationErrors.Error)
 	

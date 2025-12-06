@@ -3,7 +3,7 @@ server:
     id: 'service-analytic-node-0'
     region: 'us-west-1'
     shardId: 'shard-1'
-    port: 8086
+    port: 8080
     mode: 'dev' # default: dev, options: dev, prod
     degraded_threshold: 85.0
     out_of_service_threshold: 95.0

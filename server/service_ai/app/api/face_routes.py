@@ -195,7 +195,7 @@ async def enroll_face_upload(
     if is_manager_or_admin(company_id=company_id, token_payload=token_payload) is False:
         raise HTTPException(status_code=403, detail="Insufficient permissions to enroll face for this company")
     # Check user existence
-    if user_service.check_user_exist_in_company(user_id=user_id, company_id=company_id) is False:
+    if await user_service.check_user_exist_in_company(user_id=user_id, company_id=company_id) is False:
         raise HTTPException(status_code=404, detail="User not found in the specified company")
     # Handle file upload 
     try:
@@ -217,6 +217,8 @@ async def enroll_face_upload(
                 "session_user": token_payload.dict() if token_payload else None
             }
         )
+        if hasattr(result, "status") and result.status == "failed":
+            raise HTTPException(status_code=503, detail=result.message)
         return result
     except Exception as e:
         logger.error(f"Error in enroll_upload endpoint: {e}")

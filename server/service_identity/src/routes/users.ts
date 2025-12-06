@@ -372,6 +372,181 @@ const upload = multer({ dest: 'uploads/' });
  */
 
 /**
+ * @swagger
+ * /api/v1/users/{user_id}/name:
+ *   put:
+ *     summary: Update user name
+ *     description: Update the full name of a user by their ID
+ *     tags:
+ *       - Users
+ *     parameters:
+ *       - in: path
+ *         name: user_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: User ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - full_name
+ *             properties:
+ *               full_name:
+ *                 type: string
+ *                 description: New full name for the user
+ *                 example: "John Doe"
+ *     responses:
+ *       200:
+ *         description: User name updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 user_id:
+ *                   type: string
+ *                   format: uuid
+ *                 full_name:
+ *                   type: string
+ *                 email:
+ *                   type: string
+ *                 updated_at:
+ *                   type: string
+ *                   format: date-time
+ *       400:
+ *         description: Validation error (missing full_name)
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
+
+/**
+ * @swagger
+ * /api/v1/users/{user_id}/phone:
+ *   put:
+ *     summary: Update user phone
+ *     description: Update the phone number of a user by their ID
+ *     tags:
+ *       - Users
+ *     parameters:
+ *       - in: path
+ *         name: user_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: User ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - phone
+ *             properties:
+ *               phone:
+ *                 type: string
+ *                 description: New phone number for the user
+ *                 example: "+84912345678"
+ *     responses:
+ *       200:
+ *         description: User phone updated successfully
+ *       400:
+ *         description: Validation error (missing phone)
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
+
+/**
+ * @swagger
+ * /api/v1/users/{user_id}/department:
+ *   put:
+ *     summary: Update user department
+ *     description: Update the department of a user by their ID
+ *     tags:
+ *       - Users
+ *     parameters:
+ *       - in: path
+ *         name: user_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: User ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - department
+ *             properties:
+ *               department:
+ *                 type: string
+ *                 description: New department for the user
+ *                 example: "Sales"
+ *     responses:
+ *       200:
+ *         description: User department updated successfully
+ *       400:
+ *         description: Validation error (missing department)
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
+
+/**
+ * @swagger
+ * /api/v1/users/{user_id}/position:
+ *   put:
+ *     summary: Update user position
+ *     description: Update the position of a user by their ID
+ *     tags:
+ *       - Users
+ *     parameters:
+ *       - in: path
+ *         name: user_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: User ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - position
+ *             properties:
+ *               position:
+ *                 type: string
+ *                 description: New position for the user
+ *                 example: "Sales Manager"
+ *     responses:
+ *       200:
+ *         description: User position updated successfully
+ *       400:
+ *         description: Validation error (missing position)
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
+
+/**
  * @route /api/v1/users/update-base
  * @summary Update user's base information
  * @method POST
@@ -394,6 +569,18 @@ router.get('/', (req, res) => userController.getAllUsers(req, res));
 router.post('/', (req, res) => userController.createUser(req, res));
 router.get('/:user_id', (req, res) => userController.getUserById(req, res));
 router.put('/:user_id', (req, res) => userController.updateUser(req, res));
+router.put('/:user_id/name', (req, res) =>
+    userController.updateUserName(req, res)
+);
+router.put('/:user_id/phone', (req, res) =>
+    userController.updateUserPhone(req, res)
+);
+router.put('/:user_id/department', (req, res) =>
+    userController.updateUserDepartment(req, res)
+);
+router.put('/:user_id/position', (req, res) =>
+    userController.updateUserPosition(req, res)
+);
 router.delete('/:user_id', (req, res) => userController.deleteUser(req, res));
 router.post('/update-base', (req, res) =>
     userController.updateBaseInfo(req, res)
@@ -419,8 +606,56 @@ router.delete('/:user_id/face-data/:fid', (req, res) =>
     faceDataController.deleteFaceData(req, res)
 );
 
-router.put('/:user_id/face-data/:fid/primary', (req, res) =>
-    faceDataController.updatePrimaryFaceData(req, res)
+/**
+ * @swagger
+ * /api/v1/users/{user_id}/reset-password:
+ *   post:
+ *     summary: Reset user password
+ *     description: Generate and reset a new random password for a user. The new password will be sent via Kafka to the user notification service (not returned in response for security).
+ *     tags:
+ *       - Users
+ *     parameters:
+ *       - in: path
+ *         name: user_id
+ *         required: true
+ *         schema:
+ *           type: string
+ *           format: uuid
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: Password reset successfully and sent to user via Kafka
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     user_id:
+ *                       type: string
+ *                       format: uuid
+ *                     email:
+ *                       type: string
+ *                     full_name:
+ *                       type: string
+ *                     reset_at:
+ *                       type: string
+ *                       format: date-time
+ *                 message:
+ *                   type: string
+ *                   example: "Password reset successfully. New password has been sent to user via Kafka notification."
+ *       404:
+ *         description: User not found
+ *       500:
+ *         description: Internal server error
+ */
+
+router.post('/:user_id/reset-password', (req, res) =>
+    userController.resetPassword(req, res)
 );
 
 export default router;

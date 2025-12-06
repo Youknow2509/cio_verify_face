@@ -153,10 +153,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.AttendanceRecordResponse"
-                                            }
+                                            "$ref": "#/definitions/dto.AttendanceRecordsNoShiftResponse"
                                         }
                                     }
                                 }
@@ -399,10 +396,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.AttendanceRecordResponse"
-                                            }
+                                            "$ref": "#/definitions/dto.AttendanceRecordsResponse"
                                         }
                                     }
                                 }
@@ -476,10 +470,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.AttendanceRecordResponse"
-                                            }
+                                            "$ref": "#/definitions/dto.AuditLogsResponse"
                                         }
                                     }
                                 }
@@ -622,10 +613,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.AttendanceRecordResponse"
-                                            }
+                                            "$ref": "#/definitions/dto.AuditLogsResponse"
                                         }
                                     }
                                 }
@@ -700,10 +688,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.AttendanceRecordResponse"
-                                            }
+                                            "$ref": "#/definitions/dto.AttendanceStatusRangeResponse"
                                         }
                                     }
                                 }
@@ -771,10 +756,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.AttendanceRecordResponse"
-                                            }
+                                            "$ref": "#/definitions/dto.DailyAttendanceStatusResponse"
                                         }
                                     }
                                 }
@@ -968,10 +950,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.AttendanceRecordResponse"
-                                            }
+                                            "$ref": "#/definitions/dto.MonthlySummaryResponse"
                                         }
                                     }
                                 }
@@ -1039,10 +1018,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.AttendanceRecordResponse"
-                                            }
+                                            "$ref": "#/definitions/dto.DailySummariesResponse"
                                         }
                                     }
                                 }
@@ -1138,10 +1114,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.AttendanceRecordResponse"
-                                            }
+                                            "$ref": "#/definitions/dto.DailySummariesResponse"
                                         }
                                     }
                                 }
@@ -1255,10 +1228,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.AttendanceRecordResponse"
-                                            }
+                                            "$ref": "#/definitions/dto.DailySummariesResponse"
                                         }
                                     }
                                 }
@@ -1277,6 +1247,69 @@ const docTemplate = `{
                                     "properties": {
                                         "data": {
                                             "$ref": "#/definitions/dto.DailySummaryResponse"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/daily-summaries/details": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Get detailed daily report for a specific employee and date",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Daily Summaries"
+                ],
+                "summary": "Get daily report details",
+                "parameters": [
+                    {
+                        "description": "Daily Report Details Request",
+                        "name": "details",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.DailyReportDetailsRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/dto.APIResponse"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/dto.DailyReportDetailsResponse"
                                         }
                                     }
                                 }
@@ -1381,10 +1414,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.AttendanceRecordResponse"
-                                            }
+                                            "$ref": "#/definitions/dto.DailySummariesResponse"
                                         }
                                     }
                                 }
@@ -2182,10 +2212,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.AttendanceRecordResponse"
-                                            }
+                                            "$ref": "#/definitions/dto.FaceEnrollmentLogsResponse"
                                         }
                                     }
                                 }
@@ -2260,10 +2287,7 @@ const docTemplate = `{
                                     "type": "object",
                                     "properties": {
                                         "data": {
-                                            "type": "array",
-                                            "items": {
-                                                "$ref": "#/definitions/dto.AttendanceRecordResponse"
-                                            }
+                                            "$ref": "#/definitions/dto.FaceEnrollmentLogsResponse"
                                         }
                                     }
                                 }
@@ -2351,6 +2375,57 @@ const docTemplate = `{
                 "responses": {
                     "200": {
                         "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.APIResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.APIResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/dto.APIResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/reports/daily/export": {
+            "post": {
+                "security": [
+                    {
+                        "Bearer": []
+                    }
+                ],
+                "description": "Export detailed daily attendance report with employee-level data to Excel/PDF/CSV",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Reports"
+                ],
+                "summary": "Export detailed daily attendance report",
+                "parameters": [
+                    {
+                        "description": "Export daily detail request",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ExportDailyReportDetailRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
                         "schema": {
                             "$ref": "#/definitions/dto.APIResponse"
                         }
@@ -2540,6 +2615,39 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.AttendanceRecordNoShiftResponse": {
+            "type": "object",
+            "properties": {
+                "company_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "department": {
+                    "type": "string",
+                    "example": "IT Department"
+                },
+                "employee_id": {
+                    "type": "string",
+                    "example": "660e8400-e29b-41d4-a716-446655440001"
+                },
+                "employee_name": {
+                    "type": "string",
+                    "example": "Nguyen Van A"
+                },
+                "record_time": {
+                    "type": "string",
+                    "example": "2024-01-15T09:00:00Z"
+                },
+                "record_type": {
+                    "type": "string",
+                    "example": "check_in"
+                },
+                "year_month": {
+                    "type": "string",
+                    "example": "2024-01"
+                }
+            }
+        },
         "dto.AttendanceRecordResponse": {
             "type": "object",
             "properties": {
@@ -2598,6 +2706,75 @@ const docTemplate = `{
                 "year_month": {
                     "type": "string",
                     "example": "2024-01"
+                }
+            }
+        },
+        "dto.AttendanceRecordsNoShiftResponse": {
+            "type": "object",
+            "properties": {
+                "records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.AttendanceRecordNoShiftResponse"
+                    }
+                },
+                "total_records": {
+                    "type": "integer"
+                },
+                "year_month": {
+                    "type": "string",
+                    "example": "2024-01"
+                }
+            }
+        },
+        "dto.AttendanceRecordsResponse": {
+            "type": "object",
+            "properties": {
+                "records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.AttendanceRecordResponse"
+                    }
+                },
+                "total_records": {
+                    "type": "integer"
+                },
+                "year_month": {
+                    "type": "string",
+                    "example": "2024-01"
+                }
+            }
+        },
+        "dto.AttendanceStatusRangeResponse": {
+            "type": "object",
+            "properties": {
+                "attendance_records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.AttendanceRecordResponse"
+                    }
+                },
+                "daily_summaries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.DailySummaryResponse"
+                    }
+                },
+                "end_date": {
+                    "type": "string",
+                    "example": "2024-01-31"
+                },
+                "start_date": {
+                    "type": "string",
+                    "example": "2024-01-01"
+                },
+                "total_days": {
+                    "type": "integer",
+                    "example": 31
+                },
+                "total_records": {
+                    "type": "integer",
+                    "example": 2500
                 }
             }
         },
@@ -2694,6 +2871,209 @@ const docTemplate = `{
                 "year_month": {
                     "type": "string",
                     "example": "2024-01"
+                }
+            }
+        },
+        "dto.AuditLogsResponse": {
+            "type": "object",
+            "properties": {
+                "logs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.AuditLogResponse"
+                    }
+                },
+                "total_logs": {
+                    "type": "integer"
+                },
+                "year_month": {
+                    "type": "string",
+                    "example": "2024-01"
+                }
+            }
+        },
+        "dto.CompanyStatistics": {
+            "type": "object",
+            "properties": {
+                "avg_attendance_rate": {
+                    "type": "number",
+                    "example": 90.91
+                },
+                "avg_punctuality_rate": {
+                    "type": "number",
+                    "example": 85
+                },
+                "avg_work_hours_per_employee": {
+                    "type": "number",
+                    "example": 160
+                },
+                "total_absent_days": {
+                    "type": "integer",
+                    "example": 150
+                },
+                "total_early_leave_minutes": {
+                    "type": "integer",
+                    "example": 2250
+                },
+                "total_late_days": {
+                    "type": "integer",
+                    "example": 225
+                },
+                "total_late_minutes": {
+                    "type": "integer",
+                    "example": 3375
+                },
+                "total_present_days": {
+                    "type": "integer",
+                    "example": 1500
+                },
+                "total_work_minutes": {
+                    "type": "integer",
+                    "example": 720000
+                }
+            }
+        },
+        "dto.DailyAttendanceStatusResponse": {
+            "type": "object",
+            "properties": {
+                "attendance_records": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.AttendanceRecordResponse"
+                    }
+                },
+                "daily_summaries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.DailySummaryResponse"
+                    }
+                },
+                "date": {
+                    "type": "string",
+                    "example": "2024-01-15"
+                },
+                "total_employees": {
+                    "type": "integer",
+                    "example": 75
+                },
+                "total_records": {
+                    "type": "integer",
+                    "example": 150
+                }
+            }
+        },
+        "dto.DailyReportDetailEmployee": {
+            "type": "object",
+            "properties": {
+                "actual_check_in": {
+                    "type": "string"
+                },
+                "actual_check_out": {
+                    "type": "string"
+                },
+                "attendance_percentage": {
+                    "description": "Calculated field",
+                    "type": "number"
+                },
+                "attendance_status": {
+                    "type": "integer"
+                },
+                "company_id": {
+                    "type": "string"
+                },
+                "early_leave_minutes": {
+                    "type": "integer"
+                },
+                "employee_id": {
+                    "type": "string"
+                },
+                "late_minutes": {
+                    "type": "integer"
+                },
+                "notes": {
+                    "type": "string"
+                },
+                "overtime_minutes": {
+                    "description": "Calculated field",
+                    "type": "integer"
+                },
+                "shift_id": {
+                    "type": "string"
+                },
+                "summary_month": {
+                    "description": "YYYY-MM format",
+                    "type": "string"
+                },
+                "total_work_minutes": {
+                    "type": "integer"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "work_date": {
+                    "type": "string"
+                }
+            }
+        },
+        "dto.DailyReportDetailsRequest": {
+            "type": "object",
+            "required": [
+                "company_id",
+                "date"
+            ],
+            "properties": {
+                "company_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "date": {
+                    "type": "string",
+                    "example": "2024-01-15"
+                },
+                "page_size": {
+                    "type": "integer",
+                    "maximum": 100,
+                    "minimum": 1,
+                    "example": 20
+                },
+                "page_state": {
+                    "type": "string",
+                    "example": "eyJQYWdlTnV4dCI6IjIifQ=="
+                }
+            }
+        },
+        "dto.DailyReportDetailsResponse": {
+            "type": "object",
+            "properties": {
+                "items": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.DailyReportDetailEmployee"
+                    }
+                },
+                "next_page": {
+                    "type": "string"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "dto.DailySummariesResponse": {
+            "type": "object",
+            "properties": {
+                "summaries": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.DailySummaryResponse"
+                    }
+                },
+                "summary_month": {
+                    "type": "string",
+                    "example": "2024-01"
+                },
+                "total_days": {
+                    "type": "integer"
                 }
             }
         },
@@ -2925,6 +3305,59 @@ const docTemplate = `{
                 }
             }
         },
+        "dto.EmployeeStatistics": {
+            "type": "object",
+            "properties": {
+                "absent_days": {
+                    "type": "integer",
+                    "example": 2
+                },
+                "attendance_rate": {
+                    "type": "number",
+                    "example": 90.91
+                },
+                "avg_work_hours_per_day": {
+                    "type": "number",
+                    "example": 8
+                },
+                "employee_id": {
+                    "type": "string",
+                    "example": "660e8400-e29b-41d4-a716-446655440001"
+                },
+                "employee_name": {
+                    "type": "string",
+                    "example": "Nguyen Van A"
+                },
+                "late_days": {
+                    "type": "integer",
+                    "example": 3
+                },
+                "present_days": {
+                    "type": "integer",
+                    "example": 20
+                },
+                "punctuality_rate": {
+                    "type": "number",
+                    "example": 85
+                },
+                "total_days": {
+                    "type": "integer",
+                    "example": 22
+                },
+                "total_early_leave_minutes": {
+                    "type": "integer",
+                    "example": 30
+                },
+                "total_late_minutes": {
+                    "type": "integer",
+                    "example": 45
+                },
+                "total_work_minutes": {
+                    "type": "integer",
+                    "example": 9600
+                }
+            }
+        },
         "dto.EmployeeStatsResponse": {
             "type": "object",
             "properties": {
@@ -3034,6 +3467,37 @@ const docTemplate = `{
                 },
                 "message": {
                     "type": "string"
+                }
+            }
+        },
+        "dto.ExportDailyReportDetailRequest": {
+            "type": "object",
+            "required": [
+                "company_id",
+                "date",
+                "format"
+            ],
+            "properties": {
+                "company_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "date": {
+                    "type": "string",
+                    "example": "2024-01-15"
+                },
+                "email": {
+                    "type": "string",
+                    "example": "admin@example.com"
+                },
+                "format": {
+                    "type": "string",
+                    "enum": [
+                        "excel",
+                        "pdf",
+                        "csv"
+                    ],
+                    "example": "excel"
                 }
             }
         },
@@ -3201,6 +3665,117 @@ const docTemplate = `{
                 "start_date": {
                     "type": "string",
                     "example": "2024-01-01"
+                }
+            }
+        },
+        "dto.FaceEnrollmentLogResponse": {
+            "type": "object",
+            "properties": {
+                "company_id": {
+                    "type": "string",
+                    "example": "550e8400-e29b-41d4-a716-446655440000"
+                },
+                "created_at": {
+                    "type": "string",
+                    "example": "2024-01-15T09:00:00Z"
+                },
+                "employee_id": {
+                    "type": "string",
+                    "example": "660e8400-e29b-41d4-a716-446655440001"
+                },
+                "enrollment_type": {
+                    "type": "string",
+                    "example": "initial"
+                },
+                "error_message": {
+                    "type": "string",
+                    "example": ""
+                },
+                "face_embeddings": {
+                    "type": "string",
+                    "example": "[0.123, 0.456, ...]"
+                },
+                "face_image_urls": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    },
+                    "example": [
+                        "https://storage.example.com/faces/img1.jpg",
+                        "https://storage.example.com/faces/img2.jpg"
+                    ]
+                },
+                "notes": {
+                    "type": "string",
+                    "example": "Initial face enrollment for new employee"
+                },
+                "performed_by": {
+                    "type": "string",
+                    "example": "990e8400-e29b-41d4-a716-446655440004"
+                },
+                "quality": {
+                    "type": "number",
+                    "example": 0.95
+                },
+                "status": {
+                    "type": "string",
+                    "example": "success"
+                },
+                "year_month": {
+                    "type": "string",
+                    "example": "2024-01"
+                }
+            }
+        },
+        "dto.FaceEnrollmentLogsResponse": {
+            "type": "object",
+            "properties": {
+                "logs": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.FaceEnrollmentLogResponse"
+                    }
+                },
+                "total_logs": {
+                    "type": "integer"
+                },
+                "year_month": {
+                    "type": "string",
+                    "example": "2024-01"
+                }
+            }
+        },
+        "dto.MonthlySummaryResponse": {
+            "type": "object",
+            "properties": {
+                "company_statistics": {
+                    "$ref": "#/definitions/dto.CompanyStatistics"
+                },
+                "employee_statistics": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/dto.EmployeeStatistics"
+                    }
+                },
+                "month": {
+                    "type": "string",
+                    "example": "2024-01"
+                },
+                "total_attendance_records": {
+                    "type": "integer",
+                    "example": 2500
+                },
+                "total_employees": {
+                    "type": "integer",
+                    "example": 75
+                },
+                "total_no_shift_records": {
+                    "type": "integer",
+                    "example": 15
+                },
+                "total_working_days": {
+                    "type": "integer",
+                    "example": 22
                 }
             }
         }

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"encoding/base64"
 	"net/http"
 	"strconv"
 	"time"
@@ -90,6 +91,63 @@ func authorizeEmployeeScoped(c *gin.Context, companyIDStr, employeeIDStr string)
 // ============================================
 // Attendance Records handlers
 // ============================================
+
+// GetDailyReportDetails handles POST /api/v1/daily-summaries/details
+// @Summary Get daily report details
+// @Description Get detailed daily report for a specific employee and date
+// @Tags Daily Summaries
+// @Accept json
+// @Produce json
+// @Param details body dto.DailyReportDetailsRequest true "Daily Report Details Request"
+// @Success 200 {object} dto.APIResponse{data=dto.DailyReportDetailsResponse}
+// @Failure 400 {object} dto.APIResponse
+// @Failure 500 {object} dto.APIResponse
+// @Security Bearer
+// @Router /daily-summaries/details [post]
+func (h *ScyllaHandler) GetDailyReportDetails(c *gin.Context) {
+	var req dto.DailyReportDetailsRequest
+	// Validate and bind request
+	if err := middleware.ValidateAndBind(c, &req); err != nil {
+		return
+	}
+	// Authorization
+	if authorizeEmployeeScoped(c, req.CompanyId, "") == nil {
+		return
+	}
+	// Get session
+	session := getSession(c)
+	if session == nil {
+		return
+	}
+	companyID, err := uuid.Parse(req.CompanyId)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse("INVALID_INPUT", "Invalid company_id", err.Error()))
+		return
+	}
+	var limit *int
+	if req.PageSize != 0 {
+		limit = &req.PageSize
+	}
+	pageState, err := base64.StdEncoding.DecodeString(req.PageState)
+	if err != nil && req.PageState != "" {
+		c.JSON(http.StatusBadRequest, dto.NewErrorResponse("INVALID_INPUT", "Invalid page_next", err.Error()))
+		return
+	}
+	resp, err := h.service.GetDailyReportDetail(
+		c.Request.Context(),
+		&applicationModel.DailyDetailReportInput{
+			Session:   session,
+			CompanyID: companyID,
+			Limit:     limit,
+			PageToken: pageState,
+		},
+	)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, dto.NewErrorResponse("QUERY_FAILED", "Failed to get daily report details", err.Error()))
+		return
+	}
+	c.JSON(http.StatusOK, dto.NewSuccessResponse(resp))
+}
 
 // GetAttendanceRecords handles GET /api/v1/attendance-records
 // @Summary Get attendance records
@@ -241,7 +299,7 @@ func (h *ScyllaHandler) GetAttendanceRecordsByEmployee(c *gin.Context) {
 // @Param company_id query string true "Company ID (UUID)"
 // @Param year_month query string true "Year-Month (YYYY-MM)"
 // @Param limit query int false "Limit (default 100)"
-// @Success 200 {object} dto.APIResponse{data=[]dto.AttendanceRecordResponse}
+// @Success 200 {object} dto.APIResponse{data=dto.AttendanceRecordsResponse}
 // @Failure 400 {object} dto.APIResponse
 // @Failure 500 {object} dto.APIResponse
 // @Security Bearer
@@ -295,7 +353,7 @@ func (h *ScyllaHandler) GetAttendanceRecordsByUser(c *gin.Context) {
 // @Produce json
 // @Param company_id query string true "Company ID (UUID)"
 // @Param month query string true "Month (YYYY-MM)"
-// @Success 200 {object} dto.APIResponse{data=[]dto.AttendanceRecordResponse}
+// @Success 200 {object} dto.APIResponse{data=dto.DailySummariesResponse}
 // @Failure 400 {object} dto.APIResponse
 // @Failure 500 {object} dto.APIResponse
 // @Security Bearer
@@ -343,7 +401,7 @@ func (h *ScyllaHandler) GetDailySummaries(c *gin.Context) {
 // @Accept json
 // @Produce json
 // @Param summary body dto.DailySummaryRequest true "Daily Summary"
-// @Success 200 {object} dto.APIResponse{data=[]dto.AttendanceRecordResponse}
+// @Success 200 {object} dto.APIResponse{data=dto.DailySummaryResponse}
 // @Failure 400 {object} dto.APIResponse
 // @Failure 500 {object} dto.APIResponse
 // @Security Bearer
@@ -357,7 +415,7 @@ func (h *ScyllaHandler) GetDailySummaries(c *gin.Context) {
 // @Param employee_id path string true "Employee ID (UUID)"
 // @Param company_id query string true "Company ID (UUID)"
 // @Param month query string true "Month (YYYY-MM)"
-// @Success 200 {object} dto.APIResponse{data=[]dto.AttendanceRecordResponse}
+// @Success 200 {object} dto.APIResponse{data=dto.DailySummariesResponse}
 // @Failure 400 {object} dto.APIResponse
 // @Failure 500 {object} dto.APIResponse
 // @Security Bearer
@@ -406,7 +464,7 @@ func (h *ScyllaHandler) GetDailySummariesByUser(c *gin.Context) {
 // @Param company_id query string true "Company ID (UUID)"
 // @Param year_month query string true "Year-Month (YYYY-MM)"
 // @Param limit query int false "Limit (default 100)"
-// @Success 200 {object} dto.APIResponse{data=[]dto.AttendanceRecordResponse}
+// @Success 200 {object} dto.APIResponse{data=dto.AuditLogsResponse}
 // @Failure 400 {object} dto.APIResponse
 // @Failure 500 {object} dto.APIResponse
 // @Security Bearer
@@ -451,7 +509,7 @@ func (h *ScyllaHandler) GetAuditLogs(c *gin.Context) {
 // @Param year_month query string true "Year-Month (YYYY-MM)"
 // @Param start_time query string true "Start time (RFC3339)"
 // @Param end_time query string true "End time (RFC3339)"
-// @Success 200 {object} dto.APIResponse{data=[]dto.AttendanceRecordResponse}
+// @Success 200 {object} dto.APIResponse{data=dto.AuditLogsResponse}
 // @Failure 400 {object} dto.APIResponse
 // @Failure 500 {object} dto.APIResponse
 // @Security Bearer
@@ -543,7 +601,7 @@ func (h *ScyllaHandler) CreateAuditLog(c *gin.Context) {
 // @Param company_id query string true "Company ID (UUID)"
 // @Param year_month query string true "Year-Month (YYYY-MM)"
 // @Param limit query int false "Limit (default 100)"
-// @Success 200 {object} dto.APIResponse{data=[]dto.AttendanceRecordResponse}
+// @Success 200 {object} dto.APIResponse{data=dto.FaceEnrollmentLogsResponse}
 // @Failure 400 {object} dto.APIResponse
 // @Failure 500 {object} dto.APIResponse
 // @Security Bearer
@@ -587,7 +645,7 @@ func (h *ScyllaHandler) GetFaceEnrollmentLogs(c *gin.Context) {
 // @Param employee_id path string true "Employee ID (UUID)"
 // @Param company_id query string true "Company ID (UUID)"
 // @Param year_month query string true "Year-Month (YYYY-MM)"
-// @Success 200 {object} dto.APIResponse{data=[]dto.AttendanceRecordResponse}
+// @Success 200 {object} dto.APIResponse{data=dto.FaceEnrollmentLogsResponse}
 // @Failure 400 {object} dto.APIResponse
 // @Failure 500 {object} dto.APIResponse
 // @Security Bearer
@@ -648,7 +706,7 @@ func (h *ScyllaHandler) GetFaceEnrollmentLogsByEmployee(c *gin.Context) {
 // @Param company_id query string true "Company ID (UUID)"
 // @Param year_month query string true "Year-Month (YYYY-MM)"
 // @Param limit query int false "Limit (default 100)"
-// @Success 200 {object} dto.APIResponse{data=[]dto.AttendanceRecordResponse}
+// @Success 200 {object} dto.APIResponse{data=dto.AttendanceRecordsNoShiftResponse}
 // @Failure 400 {object} dto.APIResponse
 // @Failure 500 {object} dto.APIResponse
 // @Security Bearer
@@ -695,7 +753,7 @@ func (h *ScyllaHandler) GetAttendanceRecordsNoShift(c *gin.Context) {
 // @Produce json
 // @Param company_id query string true "Company ID (UUID)"
 // @Param date query string true "Date (YYYY-MM-DD)"
-// @Success 200 {object} dto.APIResponse{data=[]dto.AttendanceRecordResponse}
+// @Success 200 {object} dto.APIResponse{data=dto.DailyAttendanceStatusResponse}
 // @Failure 400 {object} dto.APIResponse
 // @Failure 500 {object} dto.APIResponse
 // @Security Bearer
@@ -769,7 +827,7 @@ func (h *ScyllaHandler) GetDailyAttendanceStatus(c *gin.Context) {
 // @Param company_id query string true "Company ID (UUID)"
 // @Param start_date query string true "Start date (YYYY-MM-DD)"
 // @Param end_date query string true "End date (YYYY-MM-DD)"
-// @Success 200 {object} dto.APIResponse{data=[]dto.AttendanceRecordResponse}
+// @Success 200 {object} dto.APIResponse{data=dto.AttendanceStatusRangeResponse}
 // @Failure 400 {object} dto.APIResponse
 // @Failure 500 {object} dto.APIResponse
 // @Security Bearer
@@ -866,7 +924,7 @@ func (h *ScyllaHandler) GetAttendanceStatusByTimeRange(c *gin.Context) {
 // @Produce json
 // @Param company_id query string true "Company ID (UUID)"
 // @Param month query string true "Month (YYYY-MM)"
-// @Success 200 {object} dto.APIResponse{data=[]dto.AttendanceRecordResponse}
+// @Success 200 {object} dto.APIResponse{data=dto.MonthlySummaryResponse}
 // @Failure 400 {object} dto.APIResponse
 // @Failure 500 {object} dto.APIResponse
 // @Security Bearer

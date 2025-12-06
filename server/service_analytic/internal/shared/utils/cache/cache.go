@@ -26,6 +26,11 @@ func BuildDailyByDateKey(companyID uuid.UUID, date time.Time, deviceID *uuid.UUI
 	return base
 }
 
+// BuildDailyDetailByDateKey builds cache key for detailed daily report by date
+func BuildDailyDetailByDateKey(companyID uuid.UUID, date time.Time) string {
+	return fmt.Sprintf("%s:daily_detail:%s", companyID.String(), date.Format("2006-01-02"))
+}
+
 // BuildDailyByMonthKey builds cache key for daily summaries by month
 func BuildDailyByMonthKey(companyID uuid.UUID, month string) string {
 	return fmt.Sprintf(constants.CacheKeyDailyByMonth, companyID.String(), month)
@@ -39,6 +44,92 @@ func BuildTotalEmployeesKey(companyID uuid.UUID) string {
 // BuildExportKey builds cache key for export reports by company and date range
 func BuildExportKey(companyID uuid.UUID, startDate, endDate, format string) string {
 	return fmt.Sprintf(constants.CacheKeyExportReport, companyID.String(), startDate, endDate, format)
+}
+
+// ============================================
+// Additional Cache Key Builders for Attendance Records
+// ============================================
+
+// BuildAttendanceRecordsKey builds cache key for attendance records by company and month
+func BuildAttendanceRecordsKey(companyID uuid.UUID, yearMonth string, limit int) string {
+	return fmt.Sprintf("attendance_records:%s:%s:limit:%d", companyID.String(), yearMonth, limit)
+}
+
+// BuildAttendanceRecordsByTimeRangeKey builds cache key for attendance records by time range
+func BuildAttendanceRecordsByTimeRangeKey(companyID uuid.UUID, yearMonth string, startTime, endTime time.Time) string {
+	return fmt.Sprintf("attendance_records_time_range:%s:%s:%s:%s", companyID.String(), yearMonth, startTime.Format("2006-01-02"), endTime.Format("2006-01-02"))
+}
+
+// BuildAttendanceRecordsByEmployeeKey builds cache key for attendance records by employee
+func BuildAttendanceRecordsByEmployeeKey(companyID uuid.UUID, yearMonth string, employeeID uuid.UUID) string {
+	return fmt.Sprintf("attendance_records_employee:%s:%s:%s", companyID.String(), yearMonth, employeeID.String())
+}
+
+// BuildAttendanceRecordsByUserKey builds cache key for attendance records by user
+func BuildAttendanceRecordsByUserKey(companyID, employeeID uuid.UUID, yearMonth string, limit int) string {
+	return fmt.Sprintf("attendance_records_user:%s:%s:%s:limit:%d", companyID.String(), employeeID.String(), yearMonth, limit)
+}
+
+// BuildAttendanceRecordsByUserTimeRangeKey builds cache key for attendance records by user time range
+func BuildAttendanceRecordsByUserTimeRangeKey(companyID, employeeID uuid.UUID, yearMonth string, startTime, endTime time.Time) string {
+	return fmt.Sprintf("attendance_records_user_time_range:%s:%s:%s:%s:%s", companyID.String(), employeeID.String(), yearMonth, startTime.Format("2006-01-02"), endTime.Format("2006-01-02"))
+}
+
+// BuildAttendanceRecordsNoShiftKey builds cache key for attendance records without shift
+func BuildAttendanceRecordsNoShiftKey(companyID uuid.UUID, yearMonth string, limit int) string {
+	return fmt.Sprintf("attendance_records_no_shift:%s:%s:limit:%d", companyID.String(), yearMonth, limit)
+}
+
+// ============================================
+// Additional Cache Key Builders for Daily Summaries
+// ============================================
+
+// BuildDailySummariesByMonthKey builds cache key for daily summaries by month
+func BuildDailySummariesByMonthKey(companyID uuid.UUID, month string) string {
+	return fmt.Sprintf("daily_summaries:%s:%s", companyID.String(), month)
+}
+
+// BuildDailySummaryByEmployeeDateKey builds cache key for daily summary by employee and date
+func BuildDailySummaryByEmployeeDateKey(companyID uuid.UUID, month string, workDate time.Time, employeeID uuid.UUID) string {
+	return fmt.Sprintf("daily_summary_employee_date:%s:%s:%s:%s", companyID.String(), month, workDate.Format("2006-01-02"), employeeID.String())
+}
+
+// BuildDailySummariesByUserKey builds cache key for daily summaries by user
+func BuildDailySummariesByUserKey(companyID, employeeID uuid.UUID, month string) string {
+	return fmt.Sprintf("daily_summaries_user:%s:%s:%s", companyID.String(), employeeID.String(), month)
+}
+
+// BuildDailySummaryByUserDateKey builds cache key for daily summary by user and date
+func BuildDailySummaryByUserDateKey(companyID, employeeID uuid.UUID, month string, workDate time.Time) string {
+	return fmt.Sprintf("daily_summary_user_date:%s:%s:%s:%s", companyID.String(), employeeID.String(), month, workDate.Format("2006-01-02"))
+}
+
+// ============================================
+// Additional Cache Key Builders for Audit Logs
+// ============================================
+
+// BuildAuditLogsKey builds cache key for audit logs
+func BuildAuditLogsKey(companyID uuid.UUID, yearMonth string, limit int) string {
+	return fmt.Sprintf("audit_logs:%s:%s:limit:%d", companyID.String(), yearMonth, limit)
+}
+
+// BuildAuditLogsByTimeRangeKey builds cache key for audit logs by time range
+func BuildAuditLogsByTimeRangeKey(companyID uuid.UUID, yearMonth string, startTime, endTime time.Time) string {
+	return fmt.Sprintf("audit_logs_time_range:%s:%s:%s:%s", companyID.String(), yearMonth, startTime.Format("2006-01-02"), endTime.Format("2006-01-02"))
+}
+
+// ============================================
+// Additional Cache Key Builders for Face Enrollment Logs
+// ============================================
+
+// BuildFaceEnrollmentLogsKey builds cache key for face enrollment logs
+func BuildFaceEnrollmentLogsKey(companyID uuid.UUID, yearMonth string, limit int) string {
+	return fmt.Sprintf("face_enrollment_logs:%s:%s:limit:%d", companyID.String(), yearMonth, limit)
+}
+
+// BuildFaceEnrollmentLogsByEmployeeKey builds cache key for face enrollment logs by employee
+func BuildFaceEnrollmentLogsByEmployeeKey(companyID uuid.UUID, yearMonth string, employeeID uuid.UUID) string {
+	return fmt.Sprintf("face_enrollment_logs_employee:%s:%s:%s", companyID.String(), yearMonth, employeeID.String())
 }
 
 // SetLocal sets a value in local cache with TTL

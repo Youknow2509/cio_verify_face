@@ -28,6 +28,8 @@ export interface User {
     last_login?: string;
     is_locked: boolean;
     lock_expires_at?: string;
+    department?: string;
+    position?: string;
     created_at: string;
     updated_at: string;
 }

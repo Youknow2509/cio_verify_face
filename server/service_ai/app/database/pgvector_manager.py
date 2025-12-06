@@ -6,11 +6,16 @@ import numpy as np
 from typing import List, Dict, Optional
 from datetime import datetime
 from sqlalchemy import create_engine, text, and_
+from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import QueuePool
 from app.utils.database import get_face_profile_partition_name
 
 from app.core.config import settings
+
+
+class VectorDBUnavailable(Exception):
+    """Raised when the vector database is unavailable (e.g., restarting/recovery)."""
 
 logger = logging.getLogger(__name__)
 
@@ -26,15 +31,28 @@ class PgVectorManager:
         self.engine = create_engine(
             settings.DATABASE_URL,
             poolclass=QueuePool,
-            pool_size=10,
-            max_overflow=20,
-            pool_pre_ping=True,  # Verify connections before using
+            pool_size=20,
+            max_overflow=30,
+            pool_pre_ping=True, 
+            pool_recycle=3600, 
             echo=False
         )
         self.SessionLocal = sessionmaker(bind=self.engine)
         self.index_version = settings.VECTOR_DB_INDEX_VERSION
         self._initialize_pgvector()
         logger.info("PgVectorManager initialized successfully")
+
+    def _normalize_embedding(self, embedding: np.ndarray) -> np.ndarray:
+        """Normalize embedding and guard against invalid vectors."""
+        arr = np.asarray(embedding, dtype=np.float32).flatten()
+        if arr.size != self.dimension:
+            raise ValueError(f"Embedding dimension mismatch: expected {self.dimension}, got {arr.size}")
+        if not np.all(np.isfinite(arr)):
+            raise ValueError("Embedding contains non-finite values")
+        norm = np.linalg.norm(arr)
+        if norm == 0:
+            raise ValueError("Embedding norm is zero; cannot normalize")
+        return arr / norm
     
     def check_connection(self):
         """Check connection to PostgreSQL database"""
@@ -126,8 +144,7 @@ class PgVectorManager:
         db = self.SessionLocal()
         try:
             # Ensure embedding is normalized for cosine similarity
-            embedding = embedding.flatten().astype(np.float32)
-            embedding = embedding / np.linalg.norm(embedding)
+            embedding = self._normalize_embedding(embedding)
             
             # Convert numpy array to list for PostgreSQL
             embedding_list = embedding.tolist()
@@ -209,19 +226,11 @@ class PgVectorManager:
         Returns:
             List of matches with profile_id, user_id, similarity, is_primary
         """
-        db = self.SessionLocal()
-        try:
-            # Ensure embedding is normalized
-            embedding = embedding.flatten().astype(np.float32)
-            embedding = embedding / np.linalg.norm(embedding)
-            
-            # Convert to list for PostgreSQL
-            embedding_list = embedding.tolist()
-            
-            # Use cosine distance operator (<=>)
-            # pgvector's <=> operator computes cosine distance (0 = identical, 2 = opposite)
-            # We convert to similarity score (0-1 range) where 1 = identical
-            query = text("""
+        # Ensure embedding is normalized once
+        embedding = self._normalize_embedding(embedding)
+        embedding_list = embedding.tolist()
+
+        query = text("""
                 SELECT 
                     profile_id::text,
                     user_id::text,
@@ -234,33 +243,44 @@ class PgVectorManager:
                 ORDER BY embedding <=> CAST(:embedding AS vector)
                 LIMIT :k
             """)
-            
-            result = db.execute(
-                query,
-                {
-                    "embedding": str(embedding_list),
-                    "company_id": company_id,
-                    "k": k
-                }
-            )
-            
-            # Format results
-            matches = []
-            for row in result:
-                matches.append({
-                    'profile_id': row[0],
-                    'user_id': row[1],
-                    'is_primary': row[2],
-                    'similarity': float(row[3])
-                })
-            
-            return matches
-            
+
+        def _run_search():
+            db = self.SessionLocal()
+            try:
+                result = db.execute(
+                    query,
+                    {
+                        "embedding": str(embedding_list),
+                        "company_id": company_id,
+                        "k": k
+                    }
+                )
+
+                matches = []
+                for row in result:
+                    matches.append({
+                        'profile_id': row[0],
+                        'user_id': row[1],
+                        'is_primary': row[2],
+                        'similarity': float(row[3])
+                    })
+                return matches
+            finally:
+                db.close()
+
+        try:
+            return _run_search()
+        except OperationalError as e:
+            logger.error(f"Error searching embeddings (will retry once): {e}")
+            self.engine.dispose()
+            try:
+                return _run_search()
+            except OperationalError as e2:
+                logger.error(f"Vector DB unavailable after retry: {e2}")
+                raise VectorDBUnavailable("Vector database unavailable or in recovery; please retry later") from e2
         except Exception as e:
             logger.error(f"Error searching embeddings: {e}")
             raise
-        finally:
-            db.close()
     
     def rebuild_index(self, embeddings: List[tuple]):
         """
@@ -284,8 +304,7 @@ class PgVectorManager:
             updated_count = 0
             for profile_id, user_id, embedding, is_primary in embeddings:
                 # Normalize embedding
-                embedding = embedding.flatten().astype(np.float32)
-                embedding = embedding / np.linalg.norm(embedding)
+                embedding = self._normalize_embedding(embedding)
                 embedding_list = embedding.tolist()
                 
                 # Update the embedding
