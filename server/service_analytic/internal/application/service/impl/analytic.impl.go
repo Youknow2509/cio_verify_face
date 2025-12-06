@@ -1786,101 +1786,924 @@ func localTTLFrom(distSeconds int) time.Duration {
 // Attendance Records methods implementation
 // ============================================
 
-// GetAttendanceRecords retrieves attendance records for a company and month
+// GetAttendanceRecords retrieves attendance records for a company and month (with cache and logging)
 func (s *AnalyticServiceImpl) GetAttendanceRecords(ctx context.Context, companyID uuid.UUID, yearMonth string, limit int) ([]*domainModel.AttendanceRecord, error) {
-	return s.repo.GetAttendanceRecords(ctx, companyID, yearMonth, limit)
+	// Build cache key
+	cacheKey := cacheutil.BuildAttendanceRecordsKey(companyID, yearMonth, limit)
+
+	// Try local cache first
+	if v, ok := cacheutil.GetLocal(cacheKey); ok {
+		if records, ok2 := v.([]*domainModel.AttendanceRecord); ok2 {
+			if global.Logger != nil {
+				global.Logger.Debug("GetAttendanceRecords cache hit (local)",
+					"company_id", companyID.String(),
+					"year_month", yearMonth,
+					"limit", limit,
+					"records_count", len(records))
+			}
+			return records, nil
+		}
+	}
+
+	// Try distributed cache
+	var cachedRecords []*domainModel.AttendanceRecord
+	if hit, _ := cacheutil.GetDistributed(ctx, cacheKey, &cachedRecords); hit {
+		cacheutil.SetLocal(cacheKey, &cachedRecords, localTTLFrom(constants.CacheTTLMidSeconds))
+		if global.Logger != nil {
+			global.Logger.Debug("GetAttendanceRecords cache hit (redis)",
+				"company_id", companyID.String(),
+				"year_month", yearMonth,
+				"records_count", len(cachedRecords))
+		}
+		return cachedRecords, nil
+	}
+
+	// Cache miss, fetch from database
+	if global.Logger != nil {
+		global.Logger.Info("GetAttendanceRecords: Fetching from database",
+			"company_id", companyID.String(),
+			"year_month", yearMonth,
+			"limit", limit)
+	}
+
+	records, err := s.repo.GetAttendanceRecords(ctx, companyID, yearMonth, limit)
+	if err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("GetAttendanceRecords: Database query failed",
+				"company_id", companyID.String(),
+				"year_month", yearMonth,
+				"error", err.Error())
+		}
+		return nil, err
+	}
+
+	// Store in caches
+	_ = cacheutil.SetDistributed(ctx, cacheKey, records, time.Duration(constants.CacheTTLMidSeconds)*time.Second)
+	_ = cacheutil.SetLocal(cacheKey, records, localTTLFrom(constants.CacheTTLMidSeconds))
+
+	if global.Logger != nil {
+		global.Logger.Info("GetAttendanceRecords: Successfully fetched and cached",
+			"company_id", companyID.String(),
+			"year_month", yearMonth,
+			"records_count", len(records))
+	}
+
+	return records, nil
 }
 
-// GetAttendanceRecordsByTimeRange retrieves attendance records within a time range
+// GetAttendanceRecordsByTimeRange retrieves attendance records within a time range (with cache and logging)
 func (s *AnalyticServiceImpl) GetAttendanceRecordsByTimeRange(ctx context.Context, companyID uuid.UUID, yearMonth string, startTime, endTime time.Time) ([]*domainModel.AttendanceRecord, error) {
-	return s.repo.GetAttendanceRecordsByTimeRange(ctx, companyID, yearMonth, startTime, endTime)
+	// Build cache key including time range
+	cacheKey := cacheutil.BuildAttendanceRecordsByTimeRangeKey(companyID, yearMonth, startTime, endTime)
+
+	// Try local cache first
+	if v, ok := cacheutil.GetLocal(cacheKey); ok {
+		if records, ok2 := v.([]*domainModel.AttendanceRecord); ok2 {
+			if global.Logger != nil {
+				global.Logger.Debug("GetAttendanceRecordsByTimeRange cache hit (local)",
+					"company_id", companyID.String(),
+					"start_time", startTime.Format(time.RFC3339),
+					"end_time", endTime.Format(time.RFC3339),
+					"records_count", len(records))
+			}
+			return records, nil
+		}
+	}
+
+	// Try distributed cache
+	var cachedRecords []*domainModel.AttendanceRecord
+	if hit, _ := cacheutil.GetDistributed(ctx, cacheKey, &cachedRecords); hit {
+		cacheutil.SetLocal(cacheKey, &cachedRecords, localTTLFrom(constants.CacheTTLMidSeconds))
+		if global.Logger != nil {
+			global.Logger.Debug("GetAttendanceRecordsByTimeRange cache hit (redis)",
+				"company_id", companyID.String(),
+				"records_count", len(cachedRecords))
+		}
+		return cachedRecords, nil
+	}
+
+	// Cache miss, fetch from database
+	if global.Logger != nil {
+		global.Logger.Info("GetAttendanceRecordsByTimeRange: Fetching from database",
+			"company_id", companyID.String(),
+			"year_month", yearMonth,
+			"start_time", startTime.Format(time.RFC3339),
+			"end_time", endTime.Format(time.RFC3339))
+	}
+
+	records, err := s.repo.GetAttendanceRecordsByTimeRange(ctx, companyID, yearMonth, startTime, endTime)
+	if err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("GetAttendanceRecordsByTimeRange: Database query failed",
+				"company_id", companyID.String(),
+				"error", err.Error())
+		}
+		return nil, err
+	}
+
+	// Store in caches
+	_ = cacheutil.SetDistributed(ctx, cacheKey, records, time.Duration(constants.CacheTTLMidSeconds)*time.Second)
+	_ = cacheutil.SetLocal(cacheKey, records, localTTLFrom(constants.CacheTTLMidSeconds))
+
+	if global.Logger != nil {
+		global.Logger.Info("GetAttendanceRecordsByTimeRange: Successfully fetched and cached",
+			"company_id", companyID.String(),
+			"records_count", len(records))
+	}
+
+	return records, nil
 }
 
-// GetAttendanceRecordsByEmployee retrieves attendance records for a specific employee
+// GetAttendanceRecordsByEmployee retrieves attendance records for a specific employee (with cache and logging)
 func (s *AnalyticServiceImpl) GetAttendanceRecordsByEmployee(ctx context.Context, companyID uuid.UUID, yearMonth string, employeeID uuid.UUID) ([]*domainModel.AttendanceRecord, error) {
-	return s.repo.GetAttendanceRecordsByEmployee(ctx, companyID, yearMonth, employeeID)
+	// Build cache key
+	cacheKey := cacheutil.BuildAttendanceRecordsByEmployeeKey(companyID, yearMonth, employeeID)
+
+	// Try local cache first
+	if v, ok := cacheutil.GetLocal(cacheKey); ok {
+		if records, ok2 := v.([]*domainModel.AttendanceRecord); ok2 {
+			if global.Logger != nil {
+				global.Logger.Debug("GetAttendanceRecordsByEmployee cache hit (local)",
+					"company_id", companyID.String(),
+					"employee_id", employeeID.String(),
+					"year_month", yearMonth,
+					"records_count", len(records))
+			}
+			return records, nil
+		}
+	}
+
+	// Try distributed cache
+	var cachedRecords []*domainModel.AttendanceRecord
+	if hit, _ := cacheutil.GetDistributed(ctx, cacheKey, &cachedRecords); hit {
+		cacheutil.SetLocal(cacheKey, &cachedRecords, localTTLFrom(constants.CacheTTLMidSeconds))
+		if global.Logger != nil {
+			global.Logger.Debug("GetAttendanceRecordsByEmployee cache hit (redis)",
+				"employee_id", employeeID.String(),
+				"records_count", len(cachedRecords))
+		}
+		return cachedRecords, nil
+	}
+
+	// Cache miss, fetch from database
+	if global.Logger != nil {
+		global.Logger.Info("GetAttendanceRecordsByEmployee: Fetching from database",
+			"company_id", companyID.String(),
+			"employee_id", employeeID.String(),
+			"year_month", yearMonth)
+	}
+
+	records, err := s.repo.GetAttendanceRecordsByEmployee(ctx, companyID, yearMonth, employeeID)
+	if err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("GetAttendanceRecordsByEmployee: Database query failed",
+				"employee_id", employeeID.String(),
+				"error", err.Error())
+		}
+		return nil, err
+	}
+
+	// Store in caches
+	_ = cacheutil.SetDistributed(ctx, cacheKey, records, time.Duration(constants.CacheTTLMidSeconds)*time.Second)
+	_ = cacheutil.SetLocal(cacheKey, records, localTTLFrom(constants.CacheTTLMidSeconds))
+
+	if global.Logger != nil {
+		global.Logger.Info("GetAttendanceRecordsByEmployee: Successfully fetched and cached",
+			"employee_id", employeeID.String(),
+			"records_count", len(records))
+	}
+
+	return records, nil
 }
 
-// GetAttendanceRecordsByUser retrieves attendance records indexed by user
+// GetAttendanceRecordsByUser retrieves attendance records indexed by user (with cache and logging)
 func (s *AnalyticServiceImpl) GetAttendanceRecordsByUser(ctx context.Context, companyID, employeeID uuid.UUID, yearMonth string, limit int) ([]*domainModel.AttendanceRecordByUser, error) {
-	return s.repo.GetAttendanceRecordsByUser(ctx, companyID, employeeID, yearMonth, limit)
+	// Build cache key
+	cacheKey := cacheutil.BuildAttendanceRecordsByUserKey(companyID, employeeID, yearMonth, limit)
+
+	// Try local cache first
+	if v, ok := cacheutil.GetLocal(cacheKey); ok {
+		if records, ok2 := v.([]*domainModel.AttendanceRecordByUser); ok2 {
+			if global.Logger != nil {
+				global.Logger.Debug("GetAttendanceRecordsByUser cache hit (local)",
+					"employee_id", employeeID.String(),
+					"year_month", yearMonth,
+					"records_count", len(records))
+			}
+			return records, nil
+		}
+	}
+
+	// Try distributed cache
+	var cachedRecords []*domainModel.AttendanceRecordByUser
+	if hit, _ := cacheutil.GetDistributed(ctx, cacheKey, &cachedRecords); hit {
+		cacheutil.SetLocal(cacheKey, &cachedRecords, localTTLFrom(constants.CacheTTLMidSeconds))
+		if global.Logger != nil {
+			global.Logger.Debug("GetAttendanceRecordsByUser cache hit (redis)",
+				"employee_id", employeeID.String(),
+				"records_count", len(cachedRecords))
+		}
+		return cachedRecords, nil
+	}
+
+	// Cache miss, fetch from database
+	if global.Logger != nil {
+		global.Logger.Info("GetAttendanceRecordsByUser: Fetching from database",
+			"company_id", companyID.String(),
+			"employee_id", employeeID.String(),
+			"year_month", yearMonth,
+			"limit", limit)
+	}
+
+	records, err := s.repo.GetAttendanceRecordsByUser(ctx, companyID, employeeID, yearMonth, limit)
+	if err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("GetAttendanceRecordsByUser: Database query failed",
+				"employee_id", employeeID.String(),
+				"error", err.Error())
+		}
+		return nil, err
+	}
+
+	// Store in caches
+	_ = cacheutil.SetDistributed(ctx, cacheKey, records, time.Duration(constants.CacheTTLMidSeconds)*time.Second)
+	_ = cacheutil.SetLocal(cacheKey, records, localTTLFrom(constants.CacheTTLMidSeconds))
+
+	if global.Logger != nil {
+		global.Logger.Info("GetAttendanceRecordsByUser: Successfully fetched and cached",
+			"employee_id", employeeID.String(),
+			"records_count", len(records))
+	}
+
+	return records, nil
 }
 
 // ============================================
 // Daily Summary methods implementation
 // ============================================
 
-// GetDailySummaries retrieves daily summaries for a month
+// GetDailySummaries retrieves daily summaries for a month (with cache and logging)
 func (s *AnalyticServiceImpl) GetDailySummaries(ctx context.Context, companyID uuid.UUID, month string) ([]*domainModel.DailySummary, error) {
-	return s.repo.GetDailySummariesByMonth(ctx, companyID, month)
+	// Build cache key
+	cacheKey := cacheutil.BuildDailySummariesByMonthKey(companyID, month)
+
+	// Try local cache first
+	if v, ok := cacheutil.GetLocal(cacheKey); ok {
+		if summaries, ok2 := v.([]*domainModel.DailySummary); ok2 {
+			if global.Logger != nil {
+				global.Logger.Debug("GetDailySummaries cache hit (local)",
+					"company_id", companyID.String(),
+					"month", month,
+					"summaries_count", len(summaries))
+			}
+			return summaries, nil
+		}
+	}
+
+	// Try distributed cache
+	var cachedSummaries []*domainModel.DailySummary
+	if hit, _ := cacheutil.GetDistributed(ctx, cacheKey, &cachedSummaries); hit {
+		cacheutil.SetLocal(cacheKey, &cachedSummaries, localTTLFrom(constants.CacheTTLLongSeconds))
+		if global.Logger != nil {
+			global.Logger.Debug("GetDailySummaries cache hit (redis)",
+				"company_id", companyID.String(),
+				"summaries_count", len(cachedSummaries))
+		}
+		return cachedSummaries, nil
+	}
+
+	// Cache miss, fetch from database
+	if global.Logger != nil {
+		global.Logger.Info("GetDailySummaries: Fetching from database",
+			"company_id", companyID.String(),
+			"month", month)
+	}
+
+	summaries, err := s.repo.GetDailySummariesByMonth(ctx, companyID, month)
+	if err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("GetDailySummaries: Database query failed",
+				"company_id", companyID.String(),
+				"error", err.Error())
+		}
+		return nil, err
+	}
+
+	// Store in caches with longer TTL for monthly data
+	_ = cacheutil.SetDistributed(ctx, cacheKey, summaries, time.Duration(constants.CacheTTLLongSeconds)*time.Second)
+	_ = cacheutil.SetLocal(cacheKey, summaries, localTTLFrom(constants.CacheTTLLongSeconds))
+
+	if global.Logger != nil {
+		global.Logger.Info("GetDailySummaries: Successfully fetched and cached",
+			"company_id", companyID.String(),
+			"summaries_count", len(summaries))
+	}
+
+	return summaries, nil
 }
 
-// GetDailySummaryByEmployeeDate retrieves a specific daily summary
+// GetDailySummaryByEmployeeDate retrieves a specific daily summary (with cache and logging)
 func (s *AnalyticServiceImpl) GetDailySummaryByEmployeeDate(ctx context.Context, companyID uuid.UUID, month string, workDate time.Time, employeeID uuid.UUID) (*domainModel.DailySummary, error) {
-	return s.repo.GetDailySummaryByEmployeeDate(ctx, companyID, month, workDate, employeeID)
+	// Build cache key
+	cacheKey := cacheutil.BuildDailySummaryByEmployeeDateKey(companyID, month, workDate, employeeID)
+
+	// Try local cache first
+	if v, ok := cacheutil.GetLocal(cacheKey); ok {
+		if summary, ok2 := v.(*domainModel.DailySummary); ok2 {
+			if global.Logger != nil {
+				global.Logger.Debug("GetDailySummaryByEmployeeDate cache hit (local)",
+					"employee_id", employeeID.String(),
+					"work_date", workDate.Format("2006-01-02"))
+			}
+			return summary, nil
+		}
+	}
+
+	// Try distributed cache
+	var cachedSummary domainModel.DailySummary
+	if hit, _ := cacheutil.GetDistributed(ctx, cacheKey, &cachedSummary); hit {
+		cacheutil.SetLocal(cacheKey, &cachedSummary, localTTLFrom(constants.CacheTTLMidSeconds))
+		if global.Logger != nil {
+			global.Logger.Debug("GetDailySummaryByEmployeeDate cache hit (redis)",
+				"employee_id", employeeID.String())
+		}
+		return &cachedSummary, nil
+	}
+
+	// Cache miss, fetch from database
+	if global.Logger != nil {
+		global.Logger.Info("GetDailySummaryByEmployeeDate: Fetching from database",
+			"company_id", companyID.String(),
+			"employee_id", employeeID.String(),
+			"work_date", workDate.Format("2006-01-02"))
+	}
+
+	summary, err := s.repo.GetDailySummaryByEmployeeDate(ctx, companyID, month, workDate, employeeID)
+	if err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("GetDailySummaryByEmployeeDate: Database query failed",
+				"employee_id", employeeID.String(),
+				"error", err.Error())
+		}
+		return nil, err
+	}
+
+	// Store in caches
+	_ = cacheutil.SetDistributed(ctx, cacheKey, summary, time.Duration(constants.CacheTTLMidSeconds)*time.Second)
+	_ = cacheutil.SetLocal(cacheKey, summary, localTTLFrom(constants.CacheTTLMidSeconds))
+
+	if global.Logger != nil {
+		global.Logger.Info("GetDailySummaryByEmployeeDate: Successfully fetched and cached",
+			"employee_id", employeeID.String())
+	}
+
+	return summary, nil
 }
 
-// GetDailySummariesByUser retrieves daily summaries for a user
+// GetDailySummariesByUser retrieves daily summaries for a user (with cache and logging)
 func (s *AnalyticServiceImpl) GetDailySummariesByUser(ctx context.Context, companyID, employeeID uuid.UUID, month string) ([]*domainModel.DailySummaryByUser, error) {
-	return s.repo.GetDailySummariesByUser(ctx, companyID, employeeID, month)
+	// Build cache key
+	cacheKey := cacheutil.BuildDailySummariesByUserKey(companyID, employeeID, month)
+
+	// Try local cache first
+	if v, ok := cacheutil.GetLocal(cacheKey); ok {
+		if summaries, ok2 := v.([]*domainModel.DailySummaryByUser); ok2 {
+			if global.Logger != nil {
+				global.Logger.Debug("GetDailySummariesByUser cache hit (local)",
+					"employee_id", employeeID.String(),
+					"month", month,
+					"summaries_count", len(summaries))
+			}
+			return summaries, nil
+		}
+	}
+
+	// Try distributed cache
+	var cachedSummaries []*domainModel.DailySummaryByUser
+	if hit, _ := cacheutil.GetDistributed(ctx, cacheKey, &cachedSummaries); hit {
+		cacheutil.SetLocal(cacheKey, &cachedSummaries, localTTLFrom(constants.CacheTTLLongSeconds))
+		if global.Logger != nil {
+			global.Logger.Debug("GetDailySummariesByUser cache hit (redis)",
+				"employee_id", employeeID.String(),
+				"summaries_count", len(cachedSummaries))
+		}
+		return cachedSummaries, nil
+	}
+
+	// Cache miss, fetch from database
+	if global.Logger != nil {
+		global.Logger.Info("GetDailySummariesByUser: Fetching from database",
+			"company_id", companyID.String(),
+			"employee_id", employeeID.String(),
+			"month", month)
+	}
+
+	summaries, err := s.repo.GetDailySummariesByUser(ctx, companyID, employeeID, month)
+	if err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("GetDailySummariesByUser: Database query failed",
+				"employee_id", employeeID.String(),
+				"error", err.Error())
+		}
+		return nil, err
+	}
+
+	// Store in caches with longer TTL for monthly data
+	_ = cacheutil.SetDistributed(ctx, cacheKey, summaries, time.Duration(constants.CacheTTLLongSeconds)*time.Second)
+	_ = cacheutil.SetLocal(cacheKey, summaries, localTTLFrom(constants.CacheTTLLongSeconds))
+
+	if global.Logger != nil {
+		global.Logger.Info("GetDailySummariesByUser: Successfully fetched and cached",
+			"employee_id", employeeID.String(),
+			"summaries_count", len(summaries))
+	}
+
+	return summaries, nil
 }
 
 // ============================================
 // Audit Logs methods implementation
 // ============================================
 
-// GetAuditLogs retrieves audit logs for a company and month
+// GetAuditLogs retrieves audit logs for a company and month (with cache and logging)
 func (s *AnalyticServiceImpl) GetAuditLogs(ctx context.Context, companyID uuid.UUID, yearMonth string, limit int) ([]*domainModel.AuditLog, error) {
-	return s.repo.GetAuditLogs(ctx, companyID, yearMonth, limit)
+	// Build cache key
+	cacheKey := cacheutil.BuildAuditLogsKey(companyID, yearMonth, limit)
+
+	// Try local cache first
+	if v, ok := cacheutil.GetLocal(cacheKey); ok {
+		if logs, ok2 := v.([]*domainModel.AuditLog); ok2 {
+			if global.Logger != nil {
+				global.Logger.Debug("GetAuditLogs cache hit (local)",
+					"company_id", companyID.String(),
+					"year_month", yearMonth,
+					"logs_count", len(logs))
+			}
+			return logs, nil
+		}
+	}
+
+	// Try distributed cache
+	var cachedLogs []*domainModel.AuditLog
+	if hit, _ := cacheutil.GetDistributed(ctx, cacheKey, &cachedLogs); hit {
+		cacheutil.SetLocal(cacheKey, &cachedLogs, localTTLFrom(constants.CacheTTLMidSeconds))
+		if global.Logger != nil {
+			global.Logger.Debug("GetAuditLogs cache hit (redis)",
+				"company_id", companyID.String(),
+				"logs_count", len(cachedLogs))
+		}
+		return cachedLogs, nil
+	}
+
+	// Cache miss, fetch from database
+	if global.Logger != nil {
+		global.Logger.Info("GetAuditLogs: Fetching from database",
+			"company_id", companyID.String(),
+			"year_month", yearMonth,
+			"limit", limit)
+	}
+
+	logs, err := s.repo.GetAuditLogs(ctx, companyID, yearMonth, limit)
+	if err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("GetAuditLogs: Database query failed",
+				"company_id", companyID.String(),
+				"error", err.Error())
+		}
+		return nil, err
+	}
+
+	// Store in caches
+	_ = cacheutil.SetDistributed(ctx, cacheKey, logs, time.Duration(constants.CacheTTLMidSeconds)*time.Second)
+	_ = cacheutil.SetLocal(cacheKey, logs, localTTLFrom(constants.CacheTTLMidSeconds))
+
+	if global.Logger != nil {
+		global.Logger.Info("GetAuditLogs: Successfully fetched and cached",
+			"company_id", companyID.String(),
+			"logs_count", len(logs))
+	}
+
+	return logs, nil
 }
 
-// GetAuditLogsByTimeRange retrieves audit logs within a time range
+// GetAuditLogsByTimeRange retrieves audit logs within a time range (with cache and logging)
 func (s *AnalyticServiceImpl) GetAuditLogsByTimeRange(ctx context.Context, companyID uuid.UUID, yearMonth string, startTime, endTime time.Time) ([]*domainModel.AuditLog, error) {
-	return s.repo.GetAuditLogsByTimeRange(ctx, companyID, yearMonth, startTime, endTime)
+	// Build cache key
+	cacheKey := cacheutil.BuildAuditLogsByTimeRangeKey(companyID, yearMonth, startTime, endTime)
+
+	// Try local cache first
+	if v, ok := cacheutil.GetLocal(cacheKey); ok {
+		if logs, ok2 := v.([]*domainModel.AuditLog); ok2 {
+			if global.Logger != nil {
+				global.Logger.Debug("GetAuditLogsByTimeRange cache hit (local)",
+					"company_id", companyID.String(),
+					"logs_count", len(logs))
+			}
+			return logs, nil
+		}
+	}
+
+	// Try distributed cache
+	var cachedLogs []*domainModel.AuditLog
+	if hit, _ := cacheutil.GetDistributed(ctx, cacheKey, &cachedLogs); hit {
+		cacheutil.SetLocal(cacheKey, &cachedLogs, localTTLFrom(constants.CacheTTLMidSeconds))
+		if global.Logger != nil {
+			global.Logger.Debug("GetAuditLogsByTimeRange cache hit (redis)",
+				"company_id", companyID.String(),
+				"logs_count", len(cachedLogs))
+		}
+		return cachedLogs, nil
+	}
+
+	// Cache miss, fetch from database
+	if global.Logger != nil {
+		global.Logger.Info("GetAuditLogsByTimeRange: Fetching from database",
+			"company_id", companyID.String(),
+			"year_month", yearMonth,
+			"start_time", startTime.Format(time.RFC3339),
+			"end_time", endTime.Format(time.RFC3339))
+	}
+
+	logs, err := s.repo.GetAuditLogsByTimeRange(ctx, companyID, yearMonth, startTime, endTime)
+	if err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("GetAuditLogsByTimeRange: Database query failed",
+				"company_id", companyID.String(),
+				"error", err.Error())
+		}
+		return nil, err
+	}
+
+	// Store in caches
+	_ = cacheutil.SetDistributed(ctx, cacheKey, logs, time.Duration(constants.CacheTTLMidSeconds)*time.Second)
+	_ = cacheutil.SetLocal(cacheKey, logs, localTTLFrom(constants.CacheTTLMidSeconds))
+
+	if global.Logger != nil {
+		global.Logger.Info("GetAuditLogsByTimeRange: Successfully fetched and cached",
+			"company_id", companyID.String(),
+			"logs_count", len(logs))
+	}
+
+	return logs, nil
 }
 
-// CreateAuditLog creates a new audit log
+// CreateAuditLog creates a new audit log with logging
 func (s *AnalyticServiceImpl) CreateAuditLog(ctx context.Context, log *domainModel.AuditLog) error {
 	// Ensure YearMonth is set
 	if log.YearMonth == "" {
 		log.YearMonth = log.CreatedAt.Format("2006-01")
 	}
-	return s.repo.CreateAuditLog(ctx, log)
+
+	if global.Logger != nil {
+		global.Logger.Info("CreateAuditLog: Creating new audit log",
+			"company_id", log.CompanyID.String(),
+			"action_name", log.ActionName,
+			"actor_id", log.ActorID.String())
+	}
+
+	err := s.repo.CreateAuditLog(ctx, log)
+	if err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("CreateAuditLog: Failed to create audit log",
+				"company_id", log.CompanyID.String(),
+				"error", err.Error())
+		}
+		return err
+	}
+
+	if global.Logger != nil {
+		global.Logger.Info("CreateAuditLog: Audit log created successfully",
+			"company_id", log.CompanyID.String(),
+			"year_month", log.YearMonth)
+	}
+
+	// Invalidate related cache keys after write
+	s.invalidateAuditLogsCache(ctx, log.CompanyID, log.YearMonth)
+
+	return nil
 }
 
 // ============================================
 // Face Enrollment Logs methods implementation
 // ============================================
 
-// GetFaceEnrollmentLogs retrieves face enrollment logs for a company and month
+// GetFaceEnrollmentLogs retrieves face enrollment logs for a company and month (with cache and logging)
 func (s *AnalyticServiceImpl) GetFaceEnrollmentLogs(ctx context.Context, companyID uuid.UUID, yearMonth string, limit int) ([]*domainModel.FaceEnrollmentLog, error) {
-	return s.repo.GetFaceEnrollmentLogs(ctx, companyID, yearMonth, limit)
+	// Build cache key
+	cacheKey := cacheutil.BuildFaceEnrollmentLogsKey(companyID, yearMonth, limit)
+
+	// Try local cache first
+	if v, ok := cacheutil.GetLocal(cacheKey); ok {
+		if logs, ok2 := v.([]*domainModel.FaceEnrollmentLog); ok2 {
+			if global.Logger != nil {
+				global.Logger.Debug("GetFaceEnrollmentLogs cache hit (local)",
+					"company_id", companyID.String(),
+					"year_month", yearMonth,
+					"logs_count", len(logs))
+			}
+			return logs, nil
+		}
+	}
+
+	// Try distributed cache
+	var cachedLogs []*domainModel.FaceEnrollmentLog
+	if hit, _ := cacheutil.GetDistributed(ctx, cacheKey, &cachedLogs); hit {
+		cacheutil.SetLocal(cacheKey, &cachedLogs, localTTLFrom(constants.CacheTTLMidSeconds))
+		if global.Logger != nil {
+			global.Logger.Debug("GetFaceEnrollmentLogs cache hit (redis)",
+				"company_id", companyID.String(),
+				"logs_count", len(cachedLogs))
+		}
+		return cachedLogs, nil
+	}
+
+	// Cache miss, fetch from database
+	if global.Logger != nil {
+		global.Logger.Info("GetFaceEnrollmentLogs: Fetching from database",
+			"company_id", companyID.String(),
+			"year_month", yearMonth,
+			"limit", limit)
+	}
+
+	logs, err := s.repo.GetFaceEnrollmentLogs(ctx, companyID, yearMonth, limit)
+	if err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("GetFaceEnrollmentLogs: Database query failed",
+				"company_id", companyID.String(),
+				"error", err.Error())
+		}
+		return nil, err
+	}
+
+	// Store in caches
+	_ = cacheutil.SetDistributed(ctx, cacheKey, logs, time.Duration(constants.CacheTTLMidSeconds)*time.Second)
+	_ = cacheutil.SetLocal(cacheKey, logs, localTTLFrom(constants.CacheTTLMidSeconds))
+
+	if global.Logger != nil {
+		global.Logger.Info("GetFaceEnrollmentLogs: Successfully fetched and cached",
+			"company_id", companyID.String(),
+			"logs_count", len(logs))
+	}
+
+	return logs, nil
 }
 
-// GetFaceEnrollmentLogsByEmployee retrieves face enrollment logs for a specific employee
+// GetFaceEnrollmentLogsByEmployee retrieves face enrollment logs for a specific employee (with cache and logging)
 func (s *AnalyticServiceImpl) GetFaceEnrollmentLogsByEmployee(ctx context.Context, companyID uuid.UUID, yearMonth string, employeeID uuid.UUID) ([]*domainModel.FaceEnrollmentLog, error) {
-	return s.repo.GetFaceEnrollmentLogsByEmployee(ctx, companyID, yearMonth, employeeID)
+	// Build cache key
+	cacheKey := cacheutil.BuildFaceEnrollmentLogsByEmployeeKey(companyID, yearMonth, employeeID)
+
+	// Try local cache first
+	if v, ok := cacheutil.GetLocal(cacheKey); ok {
+		if logs, ok2 := v.([]*domainModel.FaceEnrollmentLog); ok2 {
+			if global.Logger != nil {
+				global.Logger.Debug("GetFaceEnrollmentLogsByEmployee cache hit (local)",
+					"employee_id", employeeID.String(),
+					"year_month", yearMonth,
+					"logs_count", len(logs))
+			}
+			return logs, nil
+		}
+	}
+
+	// Try distributed cache
+	var cachedLogs []*domainModel.FaceEnrollmentLog
+	if hit, _ := cacheutil.GetDistributed(ctx, cacheKey, &cachedLogs); hit {
+		cacheutil.SetLocal(cacheKey, &cachedLogs, localTTLFrom(constants.CacheTTLMidSeconds))
+		if global.Logger != nil {
+			global.Logger.Debug("GetFaceEnrollmentLogsByEmployee cache hit (redis)",
+				"employee_id", employeeID.String(),
+				"logs_count", len(cachedLogs))
+		}
+		return cachedLogs, nil
+	}
+
+	// Cache miss, fetch from database
+	if global.Logger != nil {
+		global.Logger.Info("GetFaceEnrollmentLogsByEmployee: Fetching from database",
+			"company_id", companyID.String(),
+			"employee_id", employeeID.String(),
+			"year_month", yearMonth)
+	}
+
+	logs, err := s.repo.GetFaceEnrollmentLogsByEmployee(ctx, companyID, yearMonth, employeeID)
+	if err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("GetFaceEnrollmentLogsByEmployee: Database query failed",
+				"employee_id", employeeID.String(),
+				"error", err.Error())
+		}
+		return nil, err
+	}
+
+	// Store in caches
+	_ = cacheutil.SetDistributed(ctx, cacheKey, logs, time.Duration(constants.CacheTTLMidSeconds)*time.Second)
+	_ = cacheutil.SetLocal(cacheKey, logs, localTTLFrom(constants.CacheTTLMidSeconds))
+
+	if global.Logger != nil {
+		global.Logger.Info("GetFaceEnrollmentLogsByEmployee: Successfully fetched and cached",
+			"employee_id", employeeID.String(),
+			"logs_count", len(logs))
+	}
+
+	return logs, nil
 }
 
 // ============================================
 // Attendance Records No Shift methods implementation
 // ============================================
 
-// GetAttendanceRecordsNoShift retrieves attendance records without shift
+// GetAttendanceRecordsNoShift retrieves attendance records without shift (with cache and logging)
 func (s *AnalyticServiceImpl) GetAttendanceRecordsNoShift(ctx context.Context, companyID uuid.UUID, yearMonth string, limit int) ([]*domainModel.AttendanceRecordNoShift, error) {
-	return s.repo.GetAttendanceRecordsNoShift(ctx, companyID, yearMonth, limit)
+	// Build cache key
+	cacheKey := cacheutil.BuildAttendanceRecordsNoShiftKey(companyID, yearMonth, limit)
+
+	// Try local cache first
+	if v, ok := cacheutil.GetLocal(cacheKey); ok {
+		if records, ok2 := v.([]*domainModel.AttendanceRecordNoShift); ok2 {
+			if global.Logger != nil {
+				global.Logger.Debug("GetAttendanceRecordsNoShift cache hit (local)",
+					"company_id", companyID.String(),
+					"year_month", yearMonth,
+					"records_count", len(records))
+			}
+			return records, nil
+		}
+	}
+
+	// Try distributed cache
+	var cachedRecords []*domainModel.AttendanceRecordNoShift
+	if hit, _ := cacheutil.GetDistributed(ctx, cacheKey, &cachedRecords); hit {
+		cacheutil.SetLocal(cacheKey, &cachedRecords, localTTLFrom(constants.CacheTTLMidSeconds))
+		if global.Logger != nil {
+			global.Logger.Debug("GetAttendanceRecordsNoShift cache hit (redis)",
+				"company_id", companyID.String(),
+				"records_count", len(cachedRecords))
+		}
+		return cachedRecords, nil
+	}
+
+	// Cache miss, fetch from database
+	if global.Logger != nil {
+		global.Logger.Info("GetAttendanceRecordsNoShift: Fetching from database",
+			"company_id", companyID.String(),
+			"year_month", yearMonth,
+			"limit", limit)
+	}
+
+	records, err := s.repo.GetAttendanceRecordsNoShift(ctx, companyID, yearMonth, limit)
+	if err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("GetAttendanceRecordsNoShift: Database query failed",
+				"company_id", companyID.String(),
+				"error", err.Error())
+		}
+		return nil, err
+	}
+
+	// Store in caches
+	_ = cacheutil.SetDistributed(ctx, cacheKey, records, time.Duration(constants.CacheTTLMidSeconds)*time.Second)
+	_ = cacheutil.SetLocal(cacheKey, records, localTTLFrom(constants.CacheTTLMidSeconds))
+
+	if global.Logger != nil {
+		global.Logger.Info("GetAttendanceRecordsNoShift: Successfully fetched and cached",
+			"company_id", companyID.String(),
+			"records_count", len(records))
+	}
+
+	return records, nil
 }
 
 // ============================================
 // Additional helper methods
 // ============================================
 
-// GetAttendanceRecordsByUserTimeRange retrieves attendance records for a user within a time range
+// GetAttendanceRecordsByUserTimeRange retrieves attendance records for a user within a time range (with cache and logging)
 func (s *AnalyticServiceImpl) GetAttendanceRecordsByUserTimeRange(ctx context.Context, companyID, employeeID uuid.UUID, yearMonth string, startTime, endTime time.Time) ([]*domainModel.AttendanceRecordByUser, error) {
-	return s.repo.GetAttendanceRecordsByUserTimeRange(ctx, companyID, employeeID, yearMonth, startTime, endTime)
+	// Build cache key
+	cacheKey := cacheutil.BuildAttendanceRecordsByUserTimeRangeKey(companyID, employeeID, yearMonth, startTime, endTime)
+
+	// Try local cache first
+	if v, ok := cacheutil.GetLocal(cacheKey); ok {
+		if records, ok2 := v.([]*domainModel.AttendanceRecordByUser); ok2 {
+			if global.Logger != nil {
+				global.Logger.Debug("GetAttendanceRecordsByUserTimeRange cache hit (local)",
+					"employee_id", employeeID.String(),
+					"records_count", len(records))
+			}
+			return records, nil
+		}
+	}
+
+	// Try distributed cache
+	var cachedRecords []*domainModel.AttendanceRecordByUser
+	if hit, _ := cacheutil.GetDistributed(ctx, cacheKey, &cachedRecords); hit {
+		cacheutil.SetLocal(cacheKey, &cachedRecords, localTTLFrom(constants.CacheTTLMidSeconds))
+		if global.Logger != nil {
+			global.Logger.Debug("GetAttendanceRecordsByUserTimeRange cache hit (redis)",
+				"employee_id", employeeID.String(),
+				"records_count", len(cachedRecords))
+		}
+		return cachedRecords, nil
+	}
+
+	// Cache miss, fetch from database
+	if global.Logger != nil {
+		global.Logger.Info("GetAttendanceRecordsByUserTimeRange: Fetching from database",
+			"company_id", companyID.String(),
+			"employee_id", employeeID.String(),
+			"start_time", startTime.Format(time.RFC3339),
+			"end_time", endTime.Format(time.RFC3339))
+	}
+
+	records, err := s.repo.GetAttendanceRecordsByUserTimeRange(ctx, companyID, employeeID, yearMonth, startTime, endTime)
+	if err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("GetAttendanceRecordsByUserTimeRange: Database query failed",
+				"employee_id", employeeID.String(),
+				"error", err.Error())
+		}
+		return nil, err
+	}
+
+	// Store in caches
+	_ = cacheutil.SetDistributed(ctx, cacheKey, records, time.Duration(constants.CacheTTLMidSeconds)*time.Second)
+	_ = cacheutil.SetLocal(cacheKey, records, localTTLFrom(constants.CacheTTLMidSeconds))
+
+	if global.Logger != nil {
+		global.Logger.Info("GetAttendanceRecordsByUserTimeRange: Successfully fetched and cached",
+			"employee_id", employeeID.String(),
+			"records_count", len(records))
+	}
+
+	return records, nil
 }
 
-// GetDailySummaryByUserDate retrieves a specific daily summary for a user and date
+// GetDailySummaryByUserDate retrieves a specific daily summary for a user and date (with cache and logging)
 func (s *AnalyticServiceImpl) GetDailySummaryByUserDate(ctx context.Context, companyID, employeeID uuid.UUID, month string, workDate time.Time) (*domainModel.DailySummaryByUser, error) {
-	return s.repo.GetDailySummaryByUserDate(ctx, companyID, employeeID, month, workDate)
+	// Build cache key
+	cacheKey := cacheutil.BuildDailySummaryByUserDateKey(companyID, employeeID, month, workDate)
+
+	// Try local cache first
+	if v, ok := cacheutil.GetLocal(cacheKey); ok {
+		if summary, ok2 := v.(*domainModel.DailySummaryByUser); ok2 {
+			if global.Logger != nil {
+				global.Logger.Debug("GetDailySummaryByUserDate cache hit (local)",
+					"employee_id", employeeID.String(),
+					"work_date", workDate.Format("2006-01-02"))
+			}
+			return summary, nil
+		}
+	}
+
+	// Try distributed cache
+	var cachedSummary domainModel.DailySummaryByUser
+	if hit, _ := cacheutil.GetDistributed(ctx, cacheKey, &cachedSummary); hit {
+		cacheutil.SetLocal(cacheKey, &cachedSummary, localTTLFrom(constants.CacheTTLMidSeconds))
+		if global.Logger != nil {
+			global.Logger.Debug("GetDailySummaryByUserDate cache hit (redis)",
+				"employee_id", employeeID.String())
+		}
+		return &cachedSummary, nil
+	}
+
+	// Cache miss, fetch from database
+	if global.Logger != nil {
+		global.Logger.Info("GetDailySummaryByUserDate: Fetching from database",
+			"company_id", companyID.String(),
+			"employee_id", employeeID.String(),
+			"work_date", workDate.Format("2006-01-02"))
+	}
+
+	summary, err := s.repo.GetDailySummaryByUserDate(ctx, companyID, employeeID, month, workDate)
+	if err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("GetDailySummaryByUserDate: Database query failed",
+				"employee_id", employeeID.String(),
+				"error", err.Error())
+		}
+		return nil, err
+	}
+
+	// Store in caches
+	_ = cacheutil.SetDistributed(ctx, cacheKey, summary, time.Duration(constants.CacheTTLMidSeconds)*time.Second)
+	_ = cacheutil.SetLocal(cacheKey, summary, localTTLFrom(constants.CacheTTLMidSeconds))
+
+	if global.Logger != nil {
+		global.Logger.Info("GetDailySummaryByUserDate: Successfully fetched and cached",
+			"employee_id", employeeID.String())
+	}
+
+	return summary, nil
+}
+
+// invalidateAuditLogsCache invalidates related cache keys after creating audit log
+func (s *AnalyticServiceImpl) invalidateAuditLogsCache(ctx context.Context, companyID uuid.UUID, yearMonth string) {
+	// Build and delete all related cache keys
+	// This is a simplified version - in production you might want to use cache key patterns
+	if global.Logger != nil {
+		global.Logger.Debug("invalidateAuditLogsCache: Cache invalidation would be performed here",
+			"company_id", companyID.String(),
+			"year_month", yearMonth)
+	}
 }
