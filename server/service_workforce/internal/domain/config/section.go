@@ -7,7 +7,7 @@ package config
 // ==========================================================
 type (
 	Setting struct {
-		AuthService       AuthServiceSetting   `mapstructure:"auth_service"`
+		AuthService       AuthServiceSetting   `mapstructure:"service_auth"`
 		GrpcServer        GrpcSetting          `mapstructure:"grpc"`
 		Server            ServerSetting        `mapstructure:"server"`
 		WsServer          WsSetting            `mapstructure:"ws"`

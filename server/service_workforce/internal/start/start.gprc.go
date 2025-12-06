@@ -18,6 +18,11 @@ var (
 // init client grpc
 func initClientGrpc() error {
 	config := global.SettingServer.AuthService
+	// Validate gRPC address
+    if config.GrpcAddr == "" {
+        return fmt.Errorf("gRPC server address is empty")
+    }
+    
 	// load configuration
 	var opts []grpc.DialOption
 	if config.Tls.Enabled {
@@ -44,3 +49,4 @@ func initClientGrpc() error {
 	grpcClient = pb.NewAuthServiceClient(conn)
 	return nil
 }
+
