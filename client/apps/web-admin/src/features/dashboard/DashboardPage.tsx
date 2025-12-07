@@ -29,15 +29,12 @@ export const DashboardPage: React.FC = () => {
     const fetchStats = async () => {
       try {
         const response = await apiClient.get('/api/v1/reports/daily');
-        // Mock data for demo
-        setStats({
-          total_employees: 150,
-          attendance_today: 142,
-          late_rate_this_month: 0.05,
-          active_devices: 5,
-        });
+        if (response.data) {
+          setStats(response.data);
+        }
       } catch (error) {
         console.error('Failed to fetch stats:', error);
+        // Keep default zeros - no mock data
       } finally {
         setLoading(false);
       }
