@@ -56,9 +56,15 @@ class MilvusManager:
         self.collection_name = settings.MILVUS_COLLECTION
         self.milvus_db = settings.MILVUS_DB
         self.metric_type = settings.MILVUS_METRIC_TYPE
-        self.index_type = settings.MILVUS_INDEX_TYPE
+        self.index_type = settings.MILVUS_INDEX_TYPE.upper()
         self.nlist = settings.MILVUS_NLIST
         self.nprobe = settings.MILVUS_NPROBE
+        self.hnsw_m = getattr(settings, "MILVUS_HNSW_M", 16)
+        self.hnsw_efc = getattr(settings, "MILVUS_HNSW_EF_CONSTRUCTION", 200)
+        self.search_ef = getattr(settings, "MILVUS_SEARCH_EF", 64)
+        self.retry_nprobe_mult = getattr(settings, "MILVUS_RETRY_NPROBE_MULT", 4)
+        self.retry_nprobe_min = getattr(settings, "MILVUS_RETRY_NPROBE_MIN", 64)
+        self.candidate_multiplier = getattr(settings, "MILVUS_CANDIDATE_MULTIPLIER", 3)
         self.index_version = settings.VECTOR_DB_INDEX_VERSION
 
         self._connect_milvus()
@@ -124,9 +130,22 @@ class MilvusManager:
     def _create_index_if_needed(self, coll: Collection):
         has_embedding_index = any(idx.field_name == "embedding" for idx in coll.indexes)
         if not has_embedding_index:
-            params = {"index_type": self.index_type, "metric_type": self.metric_type, "params": {"nlist": self.nlist}}
             try:
-                coll.create_index(field_name="embedding", index_params=params)
+                index_params = None
+                if self.index_type in {"IVF_FLAT", "IVF_SQ8"}:
+                    index_params = {"index_type": self.index_type, "metric_type": self.metric_type, "params": {"nlist": self.nlist}}
+                elif self.index_type == "HNSW":
+                    index_params = {
+                        "index_type": "HNSW",
+                        "metric_type": self.metric_type,
+                        "params": {"M": self.hnsw_m, "efConstruction": self.hnsw_efc},
+                    }
+                elif self.index_type == "FLAT":
+                    index_params = {"index_type": "FLAT", "metric_type": self.metric_type, "params": {}}
+                else:
+                    index_params = {"index_type": self.index_type, "metric_type": self.metric_type, "params": {}}
+
+                coll.create_index(field_name="embedding", index_params=index_params)
             except Exception as e:
                 logger.error(f"Create index failed: {e}")
                 raise
@@ -332,7 +351,16 @@ class MilvusManager:
         finally:
             db.close()
 
-    def search(self, company_id: str, embedding: np.ndarray, k: int = 5) -> List[Dict]:
+    def search(
+        self,
+        company_id: str,
+        embedding: np.ndarray,
+        k: int = 5,
+        filter_user_id: Optional[str] = None,
+        prioritize_primary: bool = False,
+        retry_with_high_nprobe: bool = True,
+        candidate_multiplier: Optional[int] = None,
+    ) -> List[Dict]:
         try:
             # Normalize embedding for IP (Inner Product) metric
             # IP metric expects normalized vectors (L2 norm = 1)
@@ -358,20 +386,35 @@ class MilvusManager:
             except Exception as e:
                 logger.warning(f"Load collection warning (may already be loaded): {e}")
 
-            search_params = {
-                "metric_type": self.metric_type,
-                "params": {"nprobe": self.nprobe},
-            }
-            expr = f'company_id == "{company_id}" and indexed == true'
+            cmult = candidate_multiplier if candidate_multiplier is not None else self.candidate_multiplier
+            limit = max(k, k * max(1, cmult))
 
-            res = coll.search(
-                data=[embedding_list],
-                anns_field="embedding",
-                param=search_params,
-                limit=k,
-                expr=expr,
-                output_fields=["profile_id", "user_id", "is_primary"],
-            )
+            def _do_search(nprobe_val: Optional[int] = None):
+                params_body = {}
+                if self.index_type in {"IVF_FLAT", "IVF_SQ8"}:
+                    params_body["nprobe"] = nprobe_val if nprobe_val is not None else self.nprobe
+                elif self.index_type == "HNSW":
+                    params_body["ef"] = self.search_ef
+                # FLAT or others: params empty is fine
+
+                search_params = {
+                    "metric_type": self.metric_type,
+                    "params": params_body,
+                }
+                expr_parts = [f'company_id == "{company_id}"', "indexed == true"]
+                if filter_user_id:
+                    expr_parts.append(f'user_id == "{filter_user_id}"')
+                expr = " and ".join(expr_parts)
+                return coll.search(
+                    data=[embedding_list],
+                    anns_field="embedding",
+                    param=search_params,
+                    limit=limit,
+                    expr=expr,
+                    output_fields=["profile_id", "user_id", "is_primary"],
+                )
+
+            res = _do_search(self.nprobe if self.index_type in {"IVF_FLAT", "IVF_SQ8"} else None)
             
             matches: List[Dict] = []
             for hit in res[0]:
@@ -389,6 +432,50 @@ class MilvusManager:
                         "distance": distance,  # Add raw distance for diagnostics
                     }
                 )
+
+            if prioritize_primary:
+                # Prefer primary profiles when similarity is close; stable sort keeps original order otherwise
+                matches = sorted(matches, key=lambda m: (not m["is_primary"], -m["similarity"]))
+
+            # Keep only top-k after sorting (limit may be larger)
+            matches = matches[:k]
+
+            # If low similarity and allowed, retry with higher nprobe to improve recall
+            if retry_with_high_nprobe and self.index_type in {"IVF_FLAT", "IVF_SQ8"}:
+                best_sim = matches[0]["similarity"] if matches else 0.0
+                if best_sim < 0.5:  # heuristic: only retry when too low
+                    high_nprobe = max(int(self.nprobe * self.retry_nprobe_mult), self.retry_nprobe_min)
+                    high_nprobe = min(high_nprobe, max(self.nlist, high_nprobe))
+                    try:
+                        res_retry = _do_search(high_nprobe)
+                        retry_matches: List[Dict] = []
+                        for hit in res_retry[0]:
+                            distance = float(hit.distance)
+                            similarity = distance
+                            retry_matches.append(
+                                {
+                                    "profile_id": hit.entity.get("profile_id"),
+                                    "user_id": hit.entity.get("user_id"),
+                                    "is_primary": bool(hit.entity.get("is_primary")),
+                                    "similarity": similarity,
+                                    "distance": distance,
+                                }
+                            )
+                        if prioritize_primary:
+                            retry_matches = sorted(
+                                retry_matches, key=lambda m: (not m["is_primary"], -m["similarity"])
+                            )
+                        retry_matches = retry_matches[:k]
+                        # Use retry results only if they improve the best similarity
+                        if retry_matches and retry_matches[0]["similarity"] > best_sim:
+                            matches = retry_matches
+                            logger.info(
+                                f"Retry search with higher nprobe improved similarity "
+                                f"from {best_sim:.4f} to {matches[0]['similarity']:.4f} "
+                                f"for company={company_id} filter_user={filter_user_id}"
+                            )
+                    except Exception as e:
+                        logger.warning(f"High nprobe retry failed: {e}")
             
             if matches:
                 logger.debug(
@@ -493,6 +580,3 @@ class MilvusManager:
         except Exception:
             return datetime.utcnow()
 
-
-# Backward-compatible alias used across services
-PgVectorManager = MilvusManager

@@ -48,20 +48,22 @@ class FaceVerificationServiceImpl(face_service_pb2_grpc.FaceVerificationServiceS
             logger.info(f"gRPC EnrollFace successful for user_id: {request.user_id}")
             
             # Manually construct the response
-            response = face_service_pb2.EnrollResponse(
-                status=result.get("status"),
-                message=result.get("message")
-            )
-            if result.get("profile_id"):
-                response.profile_id = str(result.get("profile_id"))
-            if result.get("quality_score"):
-                response.quality_score = result.get("quality_score")
-            if result.get("duplicate_profiles"):
-                for dp in result.get("duplicate_profiles"):
-                    response.duplicate_profiles.add(
-                        profile_id=str(dp.get("profile_id")),
-                        similarity=dp.get("similarity")
-                    )
+            response = face_service_pb2.EnrollResponse(status=result.status)
+            if result.message:
+                response.message = result.message
+            if result.profile_id:
+                response.profile_id = str(result.profile_id)
+            if result.quality_score is not None:
+                response.quality_score = result.quality_score
+            if result.duplicate_profiles:
+                for dp in result.duplicate_profiles:
+                    profile_id = dp.get("profile_id") or dp.get("user_id")
+                    similarity = dp.get("similarity")
+                    if profile_id:
+                        response.duplicate_profiles.add(
+                            profile_id=str(profile_id),
+                            similarity=similarity if similarity is not None else 0.0
+                        )
             return response
         except Exception as e:
             logger.error(f"Error in EnrollFace gRPC call: {e}", exc_info=True)
@@ -85,31 +87,30 @@ class FaceVerificationServiceImpl(face_service_pb2_grpc.FaceVerificationServiceS
 
             # Manual construction of VerifyResponse
             response = face_service_pb2.VerifyResponse(
-                status=result.get("status"),
-                verified=result.get("verified", False)
+                status=result.status,
+                verified=result.verified
             )
-            if result.get("message"):
-                response.message = result.get("message")
-            if result.get("liveness_score"):
-                response.liveness_score = result.get("liveness_score")
+            if result.message:
+                response.message = result.message
+            if result.liveness_score is not None:
+                response.liveness_score = result.liveness_score
 
-            if result.get("matches"):
-                for match_data in result.get("matches"):
+            if result.matches:
+                for match_data in result.matches:
                     response.matches.add(
-                        user_id=str(match_data.get("user_id")),
-                        profile_id=str(match_data.get("profile_id")),
-                        similarity=match_data.get("similarity"),
-                        confidence=match_data.get("confidence"),
-                        is_primary=match_data.get("is_primary")
+                        user_id=str(match_data.user_id),
+                        profile_id=str(match_data.profile_id),
+                        similarity=match_data.similarity,
+                        confidence=match_data.confidence,
+                        is_primary=match_data.is_primary
                     )
             
-            if result.get("best_match"):
-                best_match_data = result.get("best_match")
-                response.best_match.user_id = str(best_match_data.get("user_id"))
-                response.best_match.profile_id = str(best_match_data.get("profile_id"))
-                response.best_match.similarity = best_match_data.get("similarity")
-                response.best_match.confidence = best_match_data.get("confidence")
-                response.best_match.is_primary = best_match_data.get("is_primary")
+            if result.best_match:
+                response.best_match.user_id = str(result.best_match.user_id)
+                response.best_match.profile_id = str(result.best_match.profile_id)
+                response.best_match.similarity = result.best_match.similarity
+                response.best_match.confidence = result.best_match.confidence
+                response.best_match.is_primary = result.best_match.is_primary
 
             return response
         except Exception as e:

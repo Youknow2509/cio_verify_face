@@ -49,6 +49,7 @@ logs/
 data/indexes/*
 !data/indexes/.gitkeep
 models/*
+data/models/*
 !models/.gitkeep
 
 # Testing

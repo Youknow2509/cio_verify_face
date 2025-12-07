@@ -28,164 +28,114 @@ MIGRATE_DB_DSN ?= "${MIGRATE_DRIVER}://${MIGRATE_URL}"
 # docker
 DOCKER_BAKE_FILE ?= docker-bake.hcl
 
-help:
+help: ## Show this help message
 	@echo "Available commands:"
-	@echo "\nCql Commands:"
-	@echo "\t cmd_create_keyspace \t Cmd Create keyspace"
+	@grep -E '^[a-zA-Z_0-9-]+:.*?## .*$$' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-30s\033[0m %s\n", $$1, $$2}'
 
-	@echo "\nGoose Migration SQL Commands:"
-	@echo "\t goose_create \t Create a new migration"
-	@echo "\t goose_up \t Run all available migrations"
-	@echo "\t goose_up_by_one \t Run all available migrations by one"
-	@echo "\t goose_down \t Rollback the most recent migration"
-	@echo "\t goose_status \t Show the status of all migrations"
-	@echo "\t goose_fix \t Fix the last migration"
-	@echo "\t goose_redo \t Rollback and re-run the most recent migration"
-	@echo "\t goose_reset \t Rollback all migrations"
-	@echo "\t goose_clean \t Remove all migrations"
-
-	@echo "\nGolang-migrate Migration CQL Commands:"
-	@echo "\t migrate_create \t Create a new migration"
-	@echo "\t migrate_up \t Run all up migrations"
-	@echo "\t migrate_up_n \t Run N up migrations"
-	@echo "\t migrate_down \t Rollback the most recent migration"
-	@echo "\t migrate_down_n \t Rollback n recent migration"
-	@echo "\t migrate_drop \t Drop all migrations"
-	@echo "\t migrate_force \t Force a migration to a specific version"
-
-	@echo "\nDocker Compose Commands:"
-	@echo "\t docker_compose_up \t Docker compose up"
-	@echo "\t docker_compose_down \t Docker compose down"
-	@echo "\t docker_builds \t Docker build all services and push to registry"
-	@echo "\t docker_build_service \t Docker build a specific service and push to registry"
-	@echo "\t docker_run_resource \t Docker run resource containers"
-	@echo "\t docker_nginx_dev \t Docker run nginx in dev mode"
-	@echo "\t docker_observabilities \t Docker run observabilities containers"
-
-	@echo "  help - Show this help message"
-
-# Docker Run Observabilities Containers
-docker_observabilities:
+docker_run_observabilities: ## Docker Run Observabilities Containers
 	@echo "Running observabilities containers"
 	docker compose -p $(PROJECT_NAME) -f docker-compose-observability.yml up -d
 
-# Docker Run Nginx in Dev Mode
-docker_nginx_dev:
-	@echo "Running Nginx in development mode"
-	docker compose -p $(PROJECT_NAME) -f docker-compose-nginx-dev.yml up -d
+docker_stop_observabilities: ## Docker Stop Observabilities Containers
+	@echo "Stopping observabilities containers"
+	docker compose -p $(PROJECT_NAME) -f docker-compose-observability.yml down
 
-# Docker Run Resource Containers
-docker_run_resource:
+docker_run_resource: ## Docker Run Resource Containers
 	@echo "Running resource containers"
 	cd environment/docker && docker compose -p $(PROJECT_NAME) -f docker-compose-dev.yml up -d
 
-# Docker build a specific service and push to registry
-docker_build_service:
+docker_stop_resource: ## Docker Stop Resource Containers
+	@echo "Stopping resource containers"
+	cd environment/docker && docker compose -p $(PROJECT_NAME) -f docker-compose-dev.yml down
+
+docker_build_service: ## Docker build a specific service and push to registry
 	@echo "Building Docker image for service $(SERVICE) and pushing to registry"
 	docker buildx bake --file ${DOCKER_BAKE_FILE} $(SERVICE) --push
 
-# Docker Build All Services
-docker_builds:
+docker_builds: ## Docker Build All Services
 	@echo "Building Docker images for all services and pushing to registry"
 	docker buildx bake --file ${DOCKER_BAKE_FILE} --push
 	
-# Docker Compose - Down
-docker_compose_down:
-	@echo "Stopping Docker Compose"
-	docker-compose -f docker-compose.yml -p cio_verify_face down
+docker_stop_services: ## Docker stop all services
+	@echo "Stopping all Docker services for project $(PROJECT_NAME)"
+	docker-compose -f docker-compose.yml -p $(PROJECT_NAME) down
 
-# Docker Compose - Up
-docker_compose_up:
-	@echo "Starting Docker Compose"
-	docker-compose -f docker-compose.yml -p cio_verify_face up -d
+docker_run_services: ## Docker run all services
+	@echo "Starting all Docker services for project $(PROJECT_NAME)"
+	docker-compose -f docker-compose.yml -p $(PROJECT_NAME) up -d
 
-# Create keyspace scylladb
-cmd_create_keyspace:
+cmd_create_keyspace: ## Create keyspace scylladb
 	@echo "Creating keyspace"
 	@echo "-- Create keyspace with proper replication"
 	@echo "CREATE KEYSPACE IF NOT EXISTS face_attendance WITH replication = {'class': 'NetworkTopologyStrategy', 'datacenter1': 3} AND durable_writes = true;"
 	@echo "USE face_attendance;"
 
-# Golang-migrate - Force a migration to a specific version
-migrate_force:
+migrate_force: ## Golang-migrate - Force a migration to a specific version
 	@echo "Forcing migration to version 1"
 	${MIGRATE} -path ${MIGRATE_PATH_SCHEMA} -database ${MIGRATE_DB_DSN} force ${VERSION}
 	@echo "${GREEN_COLOR_BG}Migration forced to version ${VERSION}"
 
-# Golang-migrate - Down all migrations
-migrate_down:
+migrate_down: ## Golang-migrate - Down all migrations
 	@echo "Rolling back the most recent migration"
 	${MIGRATE} -path ${MIGRATE_PATH_SCHEMA} -database ${MIGRATE_DB_DSN} down
 	@echo "${GREEN_COLOR_BG}Migration rolled back"
 
-# Golang-migrate - Drop all migrations
-migrate_drop:
+migrate_drop: ## Golang-migrate - Drop all migrations
 	@echo "Dropping all migrations"
 	${MIGRATE} -path ${MIGRATE_PATH_SCHEMA} -database ${MIGRATE_DB_DSN} drop
 	@echo "${GREEN_COLOR_BG}All migrations dropped"
 
-# Golang-migrate - Run all up migrations
-migrate_up:
+migrate_up: ## Golang-migrate - Run all up migrations
 	@echo "Running all up migrations"
 	${MIGRATE} -path ${MIGRATE_PATH_SCHEMA} -database ${MIGRATE_DB_DSN} up
 	@echo "${GREEN_COLOR_BG}Migrations completed"
 
-# Golang-migrate - Create a new migration
-migrate_create:
+migrate_create: ## Golang-migrate - Create a new migration
 	@echo "Creating a new migration"
 	${MIGRATE} create -ext cql -dir ${MIGRATE_PATH_SCHEMA} -seq $(NAME)
 	@echo "${GREEN_COLOR_BG}Migration created"
 
-# Goosee - Create a new migration
-goose_create:
+goose_create: ## Goosee - Create a new migration
 	@echo "Creating a new migration"
 	${GOOSE} -dir ${GOOSE_PATH_SCHEMA} create $(NAME) sql
 	@echo "${GREEN_COLOR_BG}Migration created"
 
-# Goose - Migrate the DB up by 1 
-goose_up_by_one:
+goose_up_by_one: ## Goose - Migrate the DB up by 1 
 	@echo "Migrate the DB up by 1"
 	goose -dir ${GOOSE_PATH_SCHEMA} ${GOOSE_DRIVER} $(GOOSE_DB_DSN) up-by-one
 	@echo "${GREEN_COLOR_BG}Migrations completed"
 
-# Goose - Run all available migrations
-goose_up:
+goose_up: ## Goose - Run all available migrations
 	@echo "Running all available migrations"
 	goose -dir ${GOOSE_PATH_SCHEMA} ${GOOSE_DRIVER} $(GOOSE_DB_DSN) up
 	@echo "${GREEN_COLOR_BG}Migrations completed"
 
-# Goose - Rollback the most recent migration
-goose_down:
+goose_down: ## Goose - Rollback the most recent migration
 	@echo "Rolling back the most recent migration"
 	goose -dir ${GOOSE_PATH_SCHEMA} ${GOOSE_DRIVER} $(GOOSE_DB_DSN) down
 	@echo "${GREEN_COLOR_BG}Migration rolled back"
 
-# Goose - Show the status of all migrations
-goose_status:
+goose_status: ## Goose - Show the status of all migrations
 	@echo "Showing the status of all migrations"
 	goose -dir ${GOOSE_PATH_SCHEMA} ${GOOSE_DRIVER} $(GOOSE_DB_DSN) status
 	@echo "${GREEN_COLOR_BG}Migration status displayed"
 
-# Goose - Fix the last migration
-goose_fix:
+goose_fix: ## Goose - Fix the last migration
 	@echo "Fixing the last migration"
 	goose -dir ${GOOSE_PATH_SCHEMA} ${GOOSE_DRIVER} $(GOOSE_DB_DSN) fix
 	@echo "${GREEN_COLOR_BG}Migration fixed"
 
-# Goose - Rollback and re-run the most recent migration
-goose_redo:
+goose_redo: ## Goose - Rollback and re-run the most recent migration
 	@echo "Rolling back and re-running the most recent migration"
 	goose -dir ${GOOSE_PATH_SCHEMA} ${GOOSE_DRIVER} $(GOOSE_DB_DSN) redo
 	@echo "${GREEN_COLOR_BG}Migration redone"
 
-# Goose - Rollback all migrations
-goose_reset:
+goose_reset: ## Goose - Rollback all migrations
 	@echo "Rolling back all migrations"
 	goose -dir ${GOOSE_PATH_SCHEMA} ${GOOSE_DRIVER} $(GOOSE_DB_DSN) reset
 	@echo "${GREEN_COLOR_BG}Migrations reset"
 
-# Goose - Remove all migrations
-goose_clean:
+goose_clean: ## Goose - Remove all migrations
 	@echo "Removing all migrations"
 	goose -dir ${GOOSE_PATH_SCHEMA} ${GOOSE_DRIVER} $(GOOSE_DB_DSN) clean
 	@echo "${GREEN_COLOR_BG}Migrations removed"

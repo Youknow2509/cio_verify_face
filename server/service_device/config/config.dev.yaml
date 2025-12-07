@@ -22,6 +22,20 @@ service_auth:
         cert_file: ''
         key_file: ''
 
+service_face:
+    enabled: true
+    grpc_addr: 'localhost:50055' # face verification gRPC address
+    keepalive_time_ms: 120000
+    keepalive_timeout_ms: 20000
+    keepalive_permit_without_calls: true
+    http2_max_pings_without_data: 1
+    http2_min_time_between_pings_ms: 60000
+    http2_min_ping_interval_without_data_ms: 60000
+    tls:
+        enabled: false
+        cert_file: ''
+        key_file: ''
+
 grpc:
     network: 'tcp'
     host: 0.0.0.0

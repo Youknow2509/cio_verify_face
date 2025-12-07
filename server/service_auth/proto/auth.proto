@@ -66,7 +66,6 @@ message ParseServiceTokenResponse {
 
 message ParseDeviceTokenRequest {
     string token = 1;
-    string device_id = 2;
 }
 
 message ParseDeviceTokenResponse {

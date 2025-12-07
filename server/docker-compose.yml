@@ -57,6 +57,8 @@ services:
         image: someone2509/cio_verify_face_service_attendance:latest
         networks:
             - nw-dev-0
+        ports:
+          - '50052:50051'
         volumes:
           - ./config/config_service_attendance.yaml:/prod/config/config.yaml:ro
         depends_on:
