@@ -153,6 +153,13 @@ logger:
     file_max_age: 30
     compress: true
 
+observability:
+    enabled: true
+    metrics_path: '/metrics'
+    metrics_port: 9090
+    tracing_enabled: true
+    otlp_endpoint: 'http://jaeger:4318/v1/traces'
+
 password_reset_notifications:
     topic: 'password_reset_notifications'
     workers: 3

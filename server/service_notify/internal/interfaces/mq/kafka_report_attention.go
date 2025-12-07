@@ -3,12 +3,14 @@ package mq
 import (
 	"context"
 	"encoding/json"
+	"time"
 
 	applicationModel "github.com/youknow2509/cio_verify_face/server/service_notify/internal/application/model"
 	applicationService "github.com/youknow2509/cio_verify_face/server/service_notify/internal/application/service"
 	domainMq "github.com/youknow2509/cio_verify_face/server/service_notify/internal/domain/mq"
 	"github.com/youknow2509/cio_verify_face/server/service_notify/internal/global"
 	"github.com/youknow2509/cio_verify_face/server/service_notify/internal/interfaces/dto"
+	"go.opentelemetry.io/otel/attribute"
 )
 
 /**
@@ -54,12 +56,14 @@ func (k *ReportAttentionKafkaListener) Listener(ctx context.Context) error {
 					return
 				}
 
+				start := time.Now()
 				msg, err := mq.ReadMessageAutoCommit(ctxUsed, k.Topic)
 				if err != nil {
 					if ctxUsed.Err() != nil {
 						global.Logger.Info("Report attention Kafka read aborted by context", "topic", k.Topic, "thread", thread)
 						return
 					}
+					recordKafkaError(k.Topic, "read", time.Since(start).Seconds())
 					global.Logger.Warn("Report attention Kafka read message error", "error", err)
 					continue
 				}
@@ -67,15 +71,20 @@ func (k *ReportAttentionKafkaListener) Listener(ctx context.Context) error {
 				// Parse message to ReportAttentionNotificationEvent
 				var event dto.ReportAttentionNotificationEvent
 				if err := json.Unmarshal(msg, &event); err != nil {
+					recordKafkaError(k.Topic, "unmarshal", time.Since(start).Seconds())
 					global.Logger.Warn("Report attention Kafka unmarshal message error", "error", err, "message", string(msg))
 					continue
 				}
 
 				// Validate message
 				if err := global.Validator.Struct(event); err != nil {
+					recordKafkaError(k.Topic, "validate", time.Since(start).Seconds())
 					global.Logger.Warn("Report attention Kafka validate message error", "error", err)
 					continue
 				}
+
+				ctxSpan, span := startKafkaSpan(ctxUsed, k.Topic, thread)
+				span.SetAttributes(attribute.String("report_attention.type", event.Type), attribute.String("report_attention.format", event.Format))
 
 				// Convert to application model
 				input := applicationModel.ReportAttentionNotification{
@@ -90,12 +99,16 @@ func (k *ReportAttentionKafkaListener) Listener(ctx context.Context) error {
 				}
 
 				// Send notification
-				if err := applicationService.GetMailService().SendReportAttentionNotification(ctxUsed, input); err != nil {
+				if err := applicationService.GetMailService().SendReportAttentionNotification(ctxSpan, input); err != nil {
+					span.RecordError(err)
+					recordKafkaError(k.Topic, "handle", time.Since(start).Seconds())
 					global.Logger.Warn("Report attention send mail error", "error", err)
 					continue
 				}
 
 				global.Logger.Info("Report attention notification sent successfully", "to", input.Email, "company_id", input.CompanyID)
+				recordKafkaSuccess(k.Topic, time.Since(start).Seconds())
+				span.End()
 			}
 		}(i)
 	}
