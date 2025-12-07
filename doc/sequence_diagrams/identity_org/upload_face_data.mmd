@@ -1,88 +1,42 @@
 sequenceDiagram
+    autonumber
     participant Admin as Company Admin
-    participant LB as Load Balancer
     participant Gateway as API Gateway
-    participant Auth as Auth Service
-    participant Identity as Identity Service
-    participant Cache as Redis Cache
-    participant FaceProcessor as Face Processing
-    participant Storage as File Storage
-    participant DB as PostgreSQL
-    participant Queue as Message Queue
+    box "Core Services" #f9f9f9
+        participant Identity as Identity Service
+        participant AI as AI Engine
+    end
+    box "Data Persistence" #ececec
+        participant Data as Data Layer (DB/Storage)
+        participant Queue as Event Queue
+    end
 
-    Admin->>+LB: POST /api/v1/users/{user_id}/face-data
-    Note over Admin,LB: Content-Type: multipart/form-data<br/>Images: face_image_1, face_image_2, ...
+    Admin->>+Gateway: POST /users/{id}/face-data (Images)
+    Gateway->>Gateway: Validate Admin Token & Permissions
+    Gateway->>+Identity: Forward Request
     
-    LB->>+Gateway: Forward request
-    Gateway->>+Auth: Validate admin token
-    Auth->>Auth: Check company permissions
-    Auth-->>-Gateway: Authorized for company
-    
-    Gateway->>+Identity: POST /api/v1/users/{user_id}/face-data
-    
-    Identity->>+Cache: GET user:{user_id}
-    Cache-->>-Identity: User data or cache miss
-    
-    alt Cache miss
-        Identity->>+DB: SELECT user WHERE id AND company_id
-        Note over Identity,DB: Verify user belongs to admin's company
-        DB-->>-Identity: User data
-        Identity->>Cache: Cache user data
-    end
-    
-    alt User not found or wrong company
-        Identity-->>Gateway: 404 Not Found
-    else User valid
-        Identity->>Identity: Validate uploaded images
-        Note over Identity: File type, size, count limits
+    Note right of Identity: Start Enrollment Process
+
+    loop For each Image
+        Identity->>+AI: Analyze & Vectorize
+        Note right of AI: 1. Face Detection<br/>2. Quality Check (Blur/Angle)<br/>3. Generate Embeddings (512-d)
         
-        par Process face images
-            loop For each uploaded image
-                Identity->>+FaceProcessor: Analyze face image
-                Note over Identity,FaceProcessor: Face detection & quality check
-                FaceProcessor->>FaceProcessor: Detect faces
-                FaceProcessor->>FaceProcessor: Quality assessment
-                FaceProcessor->>FaceProcessor: Extract face embeddings
-                FaceProcessor-->>-Identity: Processing result
-                
-                alt Face processing successful
-                    Identity->>+Storage: Store original image
-                    Note over Identity,Storage: Encrypted storage with company isolation
-                    Storage-->>-Identity: Image stored
-                    
-                    Identity->>+DB: INSERT INTO face_embeddings
-                    Note over Identity,DB: Store embedding vectors with metadata
-                    DB-->>-Identity: Embedding saved
-                else Processing failed
-                    Identity->>Identity: Skip invalid image
-                end
-            end
-        and Update user cache
-            Identity->>+Cache: Update user_face_count:{user_id}
-            Cache-->>-Identity: Count updated
+        alt Quality Check Failed
+            AI-->>Identity: Error: Low Quality
+        else Quality Check Passed
+            AI-->>-Identity: Return Vector Embeddings
+            Identity->>+Data: Store Encrypted Image & Vector
+            Data-->>-Identity: Stored Successfully
         end
-        
-        Identity->>+DB: UPDATE users SET face_registered=true, updated_at=NOW()
-        DB-->>-Identity: User updated
-        
-        par Invalidate related caches
-            Identity->>+Cache: DELETE user:{user_id}
-            Cache-->>-Identity: Cache cleared
-        and Trigger face model training
-            Identity->>+Queue: Publish FaceDataUpdated event
-            Note over Identity,Queue: Async model retraining for company
-            Queue-->>-Identity: Event published
-        end
-        
-        Identity-->>-Gateway: 201 Created - Face data registered
     end
-    
-    Gateway-->>-LB: Response
-    LB-->>-Admin: Face registration result
-    
-    Note over Admin,DB: Scale optimizations for face processing:
-    Note over Admin,DB: 1. Batch face processing pipeline
-    Note over Admin,DB: 2. Distributed face embedding storage
-    Note over Admin,DB: 3. Company-isolated face models
-    Note over Admin,DB: 4. Async background processing
-    Note over Admin,DB: 5. Face quality pre-filtering
+
+    Identity->>+Data: Update User Profile (Face Registered = True)
+    Data-->>-Identity: Confirm Update
+
+    par Async Processing
+        Identity->>Queue: Publish "FaceUpdated" Event
+        Note right of Queue: Triggers Model Retraining<br/>& Sync to Edge Devices
+    and Response
+        Identity-->>-Gateway: 201 Created
+        Gateway-->>-Admin: Enrollment Success
+    end

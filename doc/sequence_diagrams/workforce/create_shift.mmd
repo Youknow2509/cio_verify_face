@@ -1,58 +1,46 @@
 sequenceDiagram
-    participant Admin as Company Admin
-    participant LB as Load Balancer
+    autonumber
+    participant Manager as HR Manager
     participant Gateway as API Gateway
-    participant Auth as Auth Service
-    participant Workforce as Workforce Service
-    participant Cache as Redis Cache
-    participant DB as PostgreSQL
-    participant Queue as Message Queue
+    box Workforce Management #f9fbe7
+        participant Auth as Auth Service
+        participant Workforce as Workforce Service
+    end
+    participant Data as Data Layer
 
-    Admin->>+LB: POST /api/v1/shifts
-    Note over Admin,LB: {name, start_time, end_time, break_duration, days_of_week}
+    Manager->>+Gateway: POST /shifts (Shift Details)
+    Note right of Manager: Payload: {name, start_time, end_time,<br/>break_duration, days_of_week}
     
-    LB->>+Gateway: Forward request
-    Gateway->>+Auth: Validate admin token
-    Auth-->>-Gateway: Authorized for company
+    Gateway->>+Auth: Validate Manager Token
+    Auth->>Auth: Check Role Permissions
+    Note right of Auth: Verify "Create Shift" permission
+    Auth-->>-Gateway: Authorized
     
-    Gateway->>+Workforce: POST /api/v1/shifts
+    Gateway->>+Workforce: Create Shift Request
     
-    Workforce->>Workforce: Validate shift data
-    Note over Workforce: Time validation, overlap checks
+    Workforce->>Workforce: Validate Shift Data
+    Note right of Workforce: • Time range validation<br/>• Break duration limits<br/>• Days of week format
     
-    Workforce->>+DB: Check for conflicting shifts
-    Note over Workforce,DB: Prevent overlapping shifts for same employees
-    DB-->>-Workforce: Conflict check result
+    Workforce->>+Data: Check for Conflicting Shifts
+    Note right of Data: Query overlapping time ranges<br/>for same employees
     
-    alt Conflicting shifts found
-        Workforce-->>Gateway: 409 Conflict - Overlapping shifts
-    else No conflicts
-        Workforce->>+DB: INSERT INTO shifts
-        Note over Workforce,DB: Create shift with company_id
-        DB-->>-Workforce: Shift created
+    alt Conflicts Found
+        Data-->>Workforce: Conflict Detected
+        Workforce-->>Gateway: 409 Conflict
+        Gateway-->>Manager: Error: Overlapping Shifts
+    else No Conflicts
+        Data-->>-Workforce: Clear to Create
         
-        par Cache new shift
-            Workforce->>+Cache: Set shift_info:{shift_id}
-            Note over Workforce,Cache: TTL: 24 hours
-            Cache-->>-Workforce: Cached
-        and Invalidate shift lists
-            Workforce->>+Cache: DELETE shifts_list:{company_id}:*
-            Note over Workforce,Cache: Clear cached shift listings
-            Cache-->>-Workforce: Cache cleared
-        and Trigger schedule updates
-            Workforce->>+Queue: Publish ShiftCreated event
-            Note over Workforce,Queue: Update related schedules
-            Queue-->>-Workforce: Event published
+        Workforce->>+Data: Create Shift Record
+        Data-->>-Workforce: Shift Created (ID: 12345)
+        
+        par Post-Creation
+            Workforce->>Data: Cache Shift Info (24h TTL)
+        and Notify
+            Workforce->>Data: Publish "ShiftCreated" Event
+            Note right of Data: Trigger schedule updates<br/>& employee notifications
         end
         
-        Workforce-->>-Gateway: 201 Created - Shift created
+        Workforce-->>-Gateway: 201 Created
+        Gateway-->>-Manager: Shift Created Successfully
     end
-    
-    Gateway-->>-LB: Response
-    LB-->>-Admin: Shift creation result
-    
-    Note over Admin,DB: Workforce management optimizations:
-    Note over Admin,DB: 1. Shift template library
-    Note over Admin,DB: 2. Automated conflict detection
-    Note over Admin,DB: 3. Bulk shift operations
-    Note over Admin,DB: 4. Shift coverage analytics

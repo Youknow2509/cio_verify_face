@@ -1,74 +1,44 @@
 sequenceDiagram
-    participant Admin as Company Admin
-    participant LB as Load Balancer
+    autonumber
+    participant Admin as Admin/Manager
     participant Gateway as API Gateway
-    parameter Auth as Auth Service
-    participant Analytics as Analytics Service
-    participant TimeSeries as ScyllaDB
-    participant Cache as Redis Cache
-    participant DB as PostgreSQL
-    participant Workforce as Workforce Service
+    box Analytics Engine #fff8e1
+        participant Analytics as Analytics Service
+        participant Cache as Smart Cache
+    end
+    participant Data as Data Warehouse
 
-    Admin->>+LB: GET /api/v1/reports/daily?date=2024-01-15&location_id=123
-    Note over Admin,LB: Authorization: Bearer {admin_token}
+    Admin->>+Gateway: GET /reports/daily?date=2024-01-15
+    Gateway->>Gateway: Validate Admin Token
     
-    LB->>+Gateway: Forward request
-    Gateway->>+Auth: Validate token & extract company_id
-    Auth-->>-Gateway: Company authorized
+    Gateway->>+Analytics: Request Daily Report
     
-    Gateway->>+Analytics: GET /api/v1/reports/daily
-    Note over Gateway,Analytics: {company_id, date, location_id, filters}
+    Analytics->>+Cache: Check Cached Report
+    Note right of Cache: Key: daily_report:{company}:{date}
     
-    Analytics->>+Cache: GET daily_report:{company_id}:{date}:{location_id}
-    Cache-->>-Analytics: Cached report or miss
-    
-    alt Cache hit - return cached report
-        Analytics-->>Gateway: Cached daily report
-    else Cache miss - generate report
-        par Fetch attendance records
-            Analytics->>+TimeSeries: Query attendance records for date
-            Note over Analytics,TimeSeries: SELECT * FROM attendance<br/>WHERE company_id AND date AND location_id
-            TimeSeries-->>-Analytics: Raw attendance data
-        and Fetch employee schedules
-            Analytics->>+Workforce: Get scheduled employees for date
-            Note over Analytics,Workforce: Expected vs actual attendance
-            Workforce-->>-Analytics: Schedule data
-        and Get employee details
-            Analytics->>+DB: Get employee information
-            Note over Analytics,DB: JOIN with departments, positions
-            DB-->>-Analytics: Employee details
+    alt Cache Hit
+        Cache-->>Analytics: Return Cached Report
+        Analytics-->>Gateway: Daily Report (Cached)
+    else Cache Miss
+        Cache-->>-Analytics: Not Found
+        
+        par Parallel Data Aggregation
+            Analytics->>+Data: Query Attendance Records
+            Note right of Data: Time-series DB query<br/>Partition: date + company_id
+            Data-->>-Analytics: Raw Attendance Data
+        and
+            Analytics->>+Data: Query Employee Schedules
+            Data-->>-Analytics: Expected Schedules
         end
         
-        Analytics->>Analytics: Process and aggregate data
-        Note over Analytics: Calculate:
-        Note over Analytics: - Total check-ins/outs
-        Note over Analytics: - Late arrivals
-        Note over Analytics: - Early departures  
-        Note over Analytics: - Missing attendances
-        Note over Analytics: - Work hour summaries
+        Analytics->>Analytics: Process & Calculate Metrics
+        Note right of Analytics: • Total Check-ins/Outs<br/>• Late Arrivals<br/>• Early Departures<br/>• Absences<br/>• Work Hour Summaries
         
-        par Generate detailed report
-            Analytics->>Analytics: Build comprehensive report
-            Note over Analytics: Include charts, summaries, exceptions
-        and Cache the report
-            Analytics->>+Cache: Cache daily report
-            Note over Analytics,Cache: TTL: 6 hours (updates during day)
-            Cache-->>-Analytics: Report cached
-        and Update aggregated metrics
-            Analytics->>+DB: Update daily summary tables
-            Note over Analytics,DB: For monthly/yearly reporting
-            DB-->>-Analytics: Metrics updated
+        par Finalize Report
+            Analytics->>Cache: Cache Report (TTL: 6h)
+        and
+            Analytics-->>-Gateway: Generated Report
         end
-        
-        Analytics-->>-Gateway: Generated daily report
     end
     
-    Gateway-->>-LB: Report response
-    LB-->>-Admin: Daily attendance report
-    
-    Note over Admin,DB: Reporting optimizations for scale:
-    Note over Admin,DB: 1. Pre-aggregated daily summaries
-    Note over Admin,DB: 2. Time-series data compression
-    Note over Admin,DB: 3. Report caching with smart invalidation
-    Note over Admin,DB: 4. Async report generation for large datasets
-    Note over Admin,DB: 5. Dashboard real-time metrics streaming
+    Gateway-->>-Admin: Daily Attendance Report

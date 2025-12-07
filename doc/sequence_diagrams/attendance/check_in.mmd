@@ -1,103 +1,51 @@
 sequenceDiagram
+    autonumber
+    participant Staff as Employee
     participant Device as Attendance Device
-    participant LB as Load Balancer
-    participant Gateway as API Gateway
-    participant Auth as Auth Service
-    participant Attendance as Attendance Service
-    participant FaceVerify as Face Verification
-    participant Identity as Identity Service
-    participant Cache as Redis Cache
-    participant TimeSeries as ScyllaDB
-    participant Queue as Kafka
-    participant WS as WebSocket Service
-
-    Device->>+LB: POST /api/v1/attendance/check-in
-    Note over Device,LB: {face_image, device_id, timestamp, location?}
-    
-    LB->>+Gateway: Forward request
-    Gateway->>+Auth: Validate device token
-    Auth->>+Cache: Verify device session
-    Cache-->>-Auth: Device authenticated
-    Auth-->>-Gateway: Device authorized
-    
-    Gateway->>+Attendance: POST /api/v1/attendance/check-in
-    Note over Gateway,Attendance: {company_id, device_id, face_image, metadata}
-    
-    Attendance->>+Cache: Check rate limit
-    Note over Attendance,Cache: device_checkin:{device_id} (max 1/min)
-    Cache-->>-Attendance: Rate limit status
-    
-    alt Rate limit exceeded
-        Attendance-->>Gateway: 429 Too Many Requests
-    else Rate limit OK
-        Attendance->>+FaceVerify: Process face image
-        Note over Attendance,FaceVerify: Real-time face verification pipeline
-        
-        FaceVerify->>FaceVerify: Face detection
-        FaceVerify->>FaceVerify: Quality assessment
-        FaceVerify->>FaceVerify: Face alignment
-        FaceVerify->>FaceVerify: Extract embedding vector
-        
-        alt Face processing failed
-            FaceVerify-->>Attendance: Invalid face image
-            Attendance-->>Gateway: 400 Bad Request - Face not detected
-        else Face processed successfully
-            FaceVerify-->>-Attendance: Face embedding vector
-            
-            Attendance->>+Identity: Find matching employee
-            Note over Attendance,Identity: Company-scoped face matching
-            
-            Identity->>+Cache: GET company_face_vectors:{company_id}
-            Cache-->>-Identity: Cached face database or miss
-            
-            alt Cache miss
-                Identity->>+Cache: GET face_vectors_shard:{company_id}:{shard}
-                Note over Identity,Cache: Load face vectors in shards
-                Cache-->>-Identity: Face vector shard
-            end
-            
-            Identity->>Identity: Compare embedding vectors
-            Note over Identity: Cosine similarity calculation<br/>Threshold: 0.85 for high accuracy
-            
-            alt No match found
-                Identity-->>Attendance: No matching employee
-                Attendance->>+TimeSeries: Log failed attempt
-                Note over Attendance,TimeSeries: Store for security monitoring
-                TimeSeries-->>-Attendance: Logged
-                Attendance-->>Gateway: 401 Unauthorized - Unknown person
-            else Employee matched
-                Identity-->>-Attendance: Employee identified: {user_id, confidence}
-                
-                par Record attendance
-                    Attendance->>+TimeSeries: INSERT attendance record
-                    Note over Attendance,TimeSeries: Partition by date + company_id
-                    TimeSeries-->>-Attendance: Attendance recorded
-                and Update rate limit
-                    Attendance->>+Cache: Set check-in rate limit
-                    Note over Attendance,Cache: Prevent double check-ins
-                    Cache-->>-Attendance: Rate limit updated
-                and Publish event
-                    Attendance->>+Queue: Publish AttendanceCheckin event
-                    Note over Attendance,Queue: For analytics & reporting
-                    Queue-->>-Attendance: Event published
-                and Notify device
-                    Attendance->>+WS: Send real-time notification
-                    Note over Attendance,WS: Success message to device
-                    WS-->>-Attendance: Notification sent
-                end
-                
-                Attendance-->>-Gateway: 200 OK - Check-in successful
-            end
-        end
+    box AI Processing Engine #e6f7ff
+        participant Gateway as API Gateway
+        participant AI as Face Matching AI
+        participant Core as Attendance Core
     end
+    participant Socket as WebSocket Server
+
+    Staff->>Device: Look at Camera
+    Device->>Device: Liveness Check (On-Device)
+    Note right of Device: Anti-spoofing detection
     
-    Gateway-->>-LB: Response
-    LB-->>-Device: Check-in result
+    Device->>+Gateway: POST /check-in (Face Image + Device ID)
+    Gateway->>Gateway: Validate Device Token
     
-    Device->>Device: Display result to user
-    Note over Device: Show name, time, success/failure
+    Gateway->>+AI: Identify Face
+    Note right of AI: Real-time Face Recognition Pipeline
     
-    Note over Device,TimeSeries: Performance optimizations for millions of employees:
+    AI->>AI: Extract Face Embedding (512-d Vector)
+    AI->>AI: Vector Matching (1:N Search)
+    Note right of AI: Compare with Company Face DB<br/>Similarity Threshold > 0.85
+    
+    alt No Match Found
+        AI-->>Gateway: 404 Not Found
+        Gateway-->>Device: "Person Not Recognized"
+        Device-->>Staff: Show Error Message
+    else Match Found
+        AI-->>-Core: Match Result (User ID, Confidence: 0.92)
+        
+        Core->>Core: Validate Business Rules
+        Note right of Core: Check shift schedule<br/>Prevent duplicate check-in (1 min)
+        
+        Core->>Core: Record Time Log
+        Note right of Core: Store in Time-Series DB<br/>Partition by Date + Company
+        
+        par Real-time Sync
+            Core->>Socket: Push Notification to Admin Dashboard
+            Note right of Socket: Show live attendance updates
+        and Response
+            Core-->>-Gateway: 200 OK
+            Gateway-->>-Device: Check-in Success
+        end
+        
+        Device-->>Staff: Display "Welcome, [Name]!"
+    end
     Note over Device,TimeSeries: 1. Face vector clustering by company
     Note over Device,TimeSeries: 2. Distributed face matching across nodes
     Note over Device,TimeSeries: 3. Time-series partitioning for attendance records

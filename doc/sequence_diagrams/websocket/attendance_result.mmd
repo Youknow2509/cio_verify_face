@@ -1,75 +1,47 @@
 sequenceDiagram
+    autonumber
     participant Device as Attendance Device
-    participant WSGateway as WebSocket Gateway
-    participant WS as WebSocket Service
-    participant Queue as Kafka Consumer
-    participant Cache as Redis Cache
-    participant Attendance as Attendance Service
+    participant Gateway as WebSocket Gateway
+    box Real-time Messaging #f0f9ff
+        participant Socket as WebSocket Service
+        participant Queue as Event Queue
+    end
+    participant Core as Attendance Core
 
-    Note over Device,Attendance: Real-time attendance result notification
+    Note over Device,Core: Real-time Attendance Result Notification
+
+    Device->>+Gateway: Connect WebSocket
+    Note right of Device: ws://api.domain/ws?device={id}&token={jwt}
     
-    Device->>+WSGateway: WebSocket Connection
-    Note over Device,WSGateway: ws://api.example.com/ws?device_id=123&token=xyz
+    Gateway->>Gateway: Validate Device Token
+    Gateway->>+Socket: Register Connection
+    Note right of Socket: Map Device ID → Socket Connection
+    Socket-->>-Gateway: Connected
+    Gateway-->>-Device: Connection Established
+
+    Note over Device,Core: ─── Attendance Check-in Occurs ───
+
+    Core->>+Queue: Publish "AttendanceResult" Event
+    Note right of Queue: Payload: {device_id, user, result, timestamp}
     
-    WSGateway->>WSGateway: Validate device token
-    WSGateway->>+Cache: Register device connection
-    Note over WSGateway,Cache: device_ws_connection:{device_id}
-    Cache-->>-WSGateway: Connection registered
+    Queue->>+Socket: Deliver Event to Device
     
-    WSGateway->>+WS: Register WebSocket client
-    Note over WSGateway,WS: Map device_id to WebSocket connection
-    WS-->>-WSGateway: Client registered
-    
-    WSGateway-->>-Device: WebSocket connection established
-    
-    Note over Device,Attendance: Attendance check-in occurs...
-    
-    Attendance->>+Queue: Publish attendance_result event
-    Note over Attendance,Queue: {device_id, user_id, result, timestamp, message}
-    Queue-->>-Attendance: Event published
-    
-    Queue->>+WS: Consume attendance_result event
-    Note over Queue,WS: Kafka consumer processes event
-    
-    WS->>+Cache: Get device connection info
-    Note over WS,Cache: device_ws_connection:{device_id}
-    Cache-->>-WS: Connection details
-    
-    alt Device connected
-        WS->>WSGateway: Send message to device
-        Note over WS,WSGateway: {type: "attendance_result", payload: {...}}
-        
-        WSGateway->>Device: WebSocket message
-        Note over WSGateway,Device: Real-time attendance result
-        
-        Device->>Device: Display result on screen
-        Note over Device: Success: "Welcome John Doe, 08:30 AM"
-        Note over Device: Failure: "Face not recognized"
-        
-        Device->>WSGateway: ACK message received
-        WSGateway->>WS: Delivery confirmation
-    else Device disconnected
-        WS->>+Cache: Store pending message
-        Note over WS,Cache: pending_messages:{device_id}
-        Note over WS,Cache: TTL: 5 minutes
-        Cache-->>-WS: Message queued
+    alt Device Online
+        Socket->>+Gateway: Send Message to Device
+        Gateway->>Device: Push Notification
+        Note right of Device: Display Result:<br/>"✓ Welcome John Doe - 08:30 AM"
+        Device->>Gateway: ACK Received
+        Gateway-->>-Socket: Delivery Confirmed
+    else Device Offline
+        Socket->>Socket: Queue Message (TTL: 5 min)
+        Note right of Socket: Deliver when device reconnects
     end
     
-    WS-->>-Queue: Event processed
-    
-    Note over Device,Attendance: Device status monitoring
-    
-    Device->>WSGateway: Heartbeat ping
-    Note over Device,WSGateway: Every 30 seconds
-    
-    WSGateway->>+Cache: Update device last_seen
-    Cache-->>-WSGateway: Status updated
-    
-    WSGateway->>Device: Heartbeat pong
-    
-    Note over Device,Cache: WebSocket optimizations for scale:
-    Note over Device,Cache: 1. Connection pooling across multiple WS nodes
-    Note over Device,Cache: 2. Message queuing for offline devices
-    Note over Device,Cache: 3. Device heartbeat monitoring
-    Note over Device,Cache: 4. Load balancing WS connections
-    Note over Device,Cache: 5. Automatic reconnection handling
+    Socket-->>-Queue: Event Processed
+
+    Note over Device,Socket: ─── Heartbeat Monitoring ───
+
+    loop Every 30 seconds
+        Device->>Gateway: Ping
+        Gateway->>Device: Pong
+    end

@@ -8,19 +8,22 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@face-attendance/types": "workspace:*",
-    "@face-attendance/utils": "workspace:*",
+    "axios": "^1.6.0",
     "@mui/material": "^5.15.0",
     "@mui/icons-material": "^5.15.0",
+    "@mui/x-data-grid": "^6.18.0",
     "@emotion/react": "^11.11.3",
     "@emotion/styled": "^11.11.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "react-router-dom": "^6.21.0"
+    "react-router-dom": "^6.21.0",
+    "zustand": "^4.4.7",
+    "recharts": "^2.10.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.45",
     "@types/react-dom": "^18.2.18",
+    "@types/node": "^20.10.0",
     "@vitejs/plugin-react": "^4.2.1",
     "typescript": "^5.3.3",
     "vite": "^5.0.8"

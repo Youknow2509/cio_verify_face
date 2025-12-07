@@ -1,18 +1,22 @@
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { CssBaseline, Box, Typography } from '@mui/material';
+import { ThemeProvider, CssBaseline } from '@mui/material';
+import { RouterProvider } from 'react-router-dom';
+import { useThemeStore } from '@/stores/themeStore';
+import { lightTheme, darkTheme } from '@/theme';
+import { router } from '@/routes';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { ToastContainer } from '@/components/Toast';
 
-const theme = createTheme();
+export const App: React.FC = () => {
+  const { mode } = useThemeStore();
+  const theme = mode === 'light' ? lightTheme : darkTheme;
 
-function App() {
   return (
-    <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <Box sx={{ p: 4 }}>
-        <Typography variant="h4">System Admin - Coming Soon</Typography>
-        <Typography variant="body1">Giao diện quản trị hệ thống</Typography>
-      </Box>
-    </ThemeProvider>
+    <ErrorBoundary>
+      <ThemeProvider theme={theme}>
+        <CssBaseline />
+        <RouterProvider router={router} />
+        <ToastContainer />
+      </ThemeProvider>
+    </ErrorBoundary>
   );
-}
-
-export default App;
+};

@@ -8,7 +8,10 @@ interface ProtectedRouteProps {
 export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
     const { isAuthenticated } = useDeviceStore();
 
-    if (!isAuthenticated) {
+    // Auth bypass disabled for production
+    const bypassAuth = false;
+
+    if (!isAuthenticated && !bypassAuth) {
         return <Navigate to="/token-auth" replace />;
     }
 
