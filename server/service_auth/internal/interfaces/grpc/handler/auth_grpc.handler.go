@@ -198,10 +198,6 @@ func toPbParseUserTokenResponse(out *model.ParseTokenUserOutput) (*pb.ParseUserT
 }
 
 func toModelCheckDeviceTokenInput(req *pb.ParseDeviceTokenRequest) (model.ParseTokenDeviceInput, error) {
-	_, err := uuidUtils.ParseUUID(req.GetDeviceId())
-	if err != nil {
-		return model.ParseTokenDeviceInput{}, errors.New("invalid device ID format")
-	}
 	return model.ParseTokenDeviceInput{
 		Token: req.GetToken(),
 	}, nil
