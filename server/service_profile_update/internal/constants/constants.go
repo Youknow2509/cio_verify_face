@@ -45,6 +45,9 @@ const (
 	// Update link TTL (24 hours)
 	UpdateLinkTTLSeconds = 60 * 60 * 24
 
+	// Password reset link TTL (24 hours)
+	PasswordResetLinkTTLSeconds = 60 * 60 * 24
+
 	// Minimum interval between password resets for the same user (1 hour)
 	PasswordResetCooldownSeconds = 60 * 60
 
@@ -60,16 +63,18 @@ const (
 // =================================
 const (
 	// Local cache TTLs
-	TTLLocalPendingCheck = 30 // 30 seconds
-	TTLLocalMonthlyCount = 60 // 1 minute
-	TTLLocalUpdateToken  = 60 // 1 minute
-	TTLLocalSpamCheck    = 5  // 5 seconds
+	TTLLocalPendingCheck         = 30 // 30 seconds
+	TTLLocalMonthlyCount         = 60 // 1 minute
+	TTLLocalUpdateToken          = 60 // 1 minute
+	TTLLocalSpamCheck            = 5  // 5 seconds
+	TTLLocalPasswordResetToken   = 60 // 1 minute
 
 	// Distributed cache TTLs
-	TTLDistributedPendingCheck = 120          // 2 minutes
-	TTLDistributedMonthlyCount = 300          // 5 minutes
-	TTLDistributedUpdateToken  = 60 * 60 * 24 // 24 hours
-	TTLDistributedSpamCheck    = 60           // 1 minute
+	TTLDistributedPendingCheck      = 120          // 2 minutes
+	TTLDistributedMonthlyCount      = 300          // 5 minutes
+	TTLDistributedUpdateToken       = 60 * 60 * 24 // 24 hours
+	TTLDistributedSpamCheck         = 60           // 1 minute
+	TTLDistributedPasswordResetToken = 60 * 60 * 24 // 24 hours
 )
 
 // =================================
@@ -98,12 +103,13 @@ const (
 // Cache Key Prefixes:
 // =================================
 const (
-	CacheKeyPrefixPendingRequest    = "fpr:pending:"
-	CacheKeyPrefixMonthlyCount      = "fpr:monthly:"
-	CacheKeyPrefixUpdateToken       = "fpr:token:"
-	CacheKeyPrefixPasswordResetSpam = "prr:spam:"
-	CacheKeyPrefixRequestLock       = "fpr:lock:"
-	CacheKeyPrefixApprovalLock      = "fpr:approval_lock:"
+	CacheKeyPrefixPendingRequest      = "fpr:pending:"
+	CacheKeyPrefixMonthlyCount        = "fpr:monthly:"
+	CacheKeyPrefixUpdateToken         = "fpr:token:"
+	CacheKeyPrefixPasswordResetSpam   = "prr:spam:"
+	CacheKeyPrefixPasswordResetToken  = "prr:token:"
+	CacheKeyPrefixRequestLock         = "fpr:lock:"
+	CacheKeyPrefixApprovalLock        = "fpr:approval_lock:"
 )
 
 // =================================

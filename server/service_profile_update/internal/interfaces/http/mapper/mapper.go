@@ -72,3 +72,10 @@ func ToResetEmployeePasswordInput(d *dto.ResetPasswordRequestDTO, session *model
 		EmployeeID: d.EmployeeID,
 	}
 }
+
+// ToConfirmPasswordResetInput maps DTO to application model
+func ToConfirmPasswordResetInput(d *dto.ConfirmPasswordResetDTO) *model.ConfirmPasswordResetInput {
+	return &model.ConfirmPasswordResetInput{
+		Token: d.Token,
+	}
+}

@@ -38,8 +38,11 @@ type IFaceProfileUpdateService interface {
 // Password Reset Service Interface:
 // =================================
 type IPasswordResetService interface {
-	// Manager: Reset an employee's password
+	// Manager: Reset an employee's password (initiates reset with email link)
 	ResetEmployeePassword(ctx context.Context, input *model.ResetEmployeePasswordInput) (*model.ResetEmployeePasswordOutput, *appErrors.Error)
+	
+	// User: Confirm password reset using the link from email
+	ConfirmPasswordReset(ctx context.Context, input *model.ConfirmPasswordResetInput) (*model.ConfirmPasswordResetOutput, *appErrors.Error)
 }
 
 // =================================

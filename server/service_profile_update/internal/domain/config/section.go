@@ -10,6 +10,7 @@ type (
 		GrpcServer        GrpcSetting          `mapstructure:"grpc"`
 		Server            ServerSetting        `mapstructure:"server"`
 		ServiceAuth       ServiceAuthSetting   `mapstructure:"service_auth"`
+		ServiceFace       ServiceFaceSetting   `mapstructure:"service_face"`
 		WsServer          WsSetting            `mapstructure:"ws"`
 		Observability     ObservabilitySetting `mapstructure:"observability"`
 		Cassandra         CassandraSetting     `mapstructure:"cassandra"`
@@ -52,6 +53,7 @@ type ServerSetting struct {
 	ShardId               string  `mapstructure:"shardId"`
 	Port                  int     `mapstructure:"port"`
 	Mode                  string  `mapstructure:"mode"`
+	Domain                string  `mapstructure:"domain"`
 	DegradedThreshold     float64 `mapstructure:"degraded_threshold"`
 	OutOfServiceThreshold float64 `mapstructure:"out_of_service_threshold"`
 }

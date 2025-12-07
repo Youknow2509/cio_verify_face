@@ -129,9 +129,18 @@ type ResetEmployeePasswordInput struct {
 }
 
 type ResetEmployeePasswordOutput struct {
-	Success     bool   `json:"success"`
-	Message     string `json:"message"`
-	NewPassword string `json:"new_password,omitempty"` // Only returned to manager, also sent via email
+	Success bool   `json:"success"`
+	Message string `json:"message"`
+}
+
+// ConfirmPasswordResetInput - User confirms password reset using the link
+type ConfirmPasswordResetInput struct {
+	Token string `json:"token" binding:"required"`
+}
+
+type ConfirmPasswordResetOutput struct {
+	Success bool   `json:"success"`
+	Message string `json:"message"`
 }
 
 // =================================

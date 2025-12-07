@@ -403,6 +403,41 @@ func (h *PasswordResetHandler) ResetEmployeePassword(c *gin.Context) {
 	response.Success(c, result)
 }
 
+// ConfirmPasswordReset handles POST /api/v1/password/reset/confirm
+// @Summary Confirm password reset
+// @Description User confirms password reset using the token from email
+// @Tags Password Reset
+// @Accept json
+// @Produce json
+// @Param request body dto.ConfirmPasswordResetDTO true "Request body"
+// @Success 200 {object} response.Response{data=model.ConfirmPasswordResetOutput}
+// @Failure 400 {object} response.Response
+// @Router /api/v1/password/reset/confirm [post]
+func (h *PasswordResetHandler) ConfirmPasswordReset(c *gin.Context) {
+	// Bind and validate DTO
+	var requestDTO dto.ConfirmPasswordResetDTO
+	if !middleware.BindAndValidate(c, &requestDTO, "json") {
+		return
+	}
+
+	svc := service.GetPasswordResetService()
+	if svc == nil {
+		response.InternalError(c, "Service unavailable")
+		return
+	}
+
+	// Map DTO to application input
+	input := mapper.ToConfirmPasswordResetInput(&requestDTO)
+	result, appErr := svc.ConfirmPasswordReset(c.Request.Context(), input)
+
+	if appErr != nil {
+		response.FromAppError(c, appErr)
+		return
+	}
+
+	response.Success(c, result)
+}
+
 // Helper functions
 func getSessionFromContext(c *gin.Context) *model.SessionInfo {
 	session, exists := c.Get("session")
@@ -417,6 +452,9 @@ func getSessionFromContext(c *gin.Context) *model.SessionInfo {
 
 // SetupRoutes configures all HTTP routes
 func SetupRoutes(r *gin.Engine) {
+	// Enable CORS for Swagger UI and external clients
+	r.Use(middleware.CORSMiddleware())
+
 	// Health check
 	r.GET("/health", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
@@ -452,8 +490,11 @@ func SetupRoutes(r *gin.Engine) {
 		passwordHandler := NewPasswordResetHandler()
 		password := v1.Group("/password")
 		{
-			// Require authentication for password reset
+			// Require authentication for password reset initiation
 			password.POST("/reset", middleware.AuthMiddleware(), passwordHandler.ResetEmployeePassword)
+
+			// Confirm password reset (no auth required - uses reset token)
+			password.POST("/reset/confirm", passwordHandler.ConfirmPasswordReset)
 		}
 	}
 }

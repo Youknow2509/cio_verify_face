@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -29,7 +30,8 @@ func NewPasswordResetService() *PasswordResetServiceImpl {
 	return &PasswordResetServiceImpl{}
 }
 
-// ResetEmployeePassword - Manager resets an employee's password
+// ResetEmployeePassword - Manager initiates password reset for an employee
+// This generates a reset token, caches it, and sends notification via Kafka
 func (s *PasswordResetServiceImpl) ResetEmployeePassword(ctx context.Context, input *appModel.ResetEmployeePasswordInput) (*appModel.ResetEmployeePasswordOutput, *appErrors.Error) {
 	if input.Session == nil {
 		return nil, appErrors.ErrUnauthorized.WithDetails("session required")
@@ -101,15 +103,23 @@ func (s *PasswordResetServiceImpl) ResetEmployeePassword(ctx context.Context, in
 		return nil, appErrors.ErrPasswordResetSpam.WithDetails("hourly password reset limit exceeded")
 	}
 
-	// Generate new random password
+	// Generate new random password (will be set when user clicks reset link)
 	newPassword := s.generateRandomPassword(12)
 	salt := s.generateSalt()
 	passwordHash := s.hashPassword(newPassword, salt)
 
-	// Update password in database
-	if err := userRepo.UpdateUserPassword(ctx, employeeID, salt, passwordHash); err != nil {
-		global.Logger.Error("Failed to update user password", err)
-		return nil, appErrors.ErrPasswordResetFailed.WithDetails("failed to update password")
+	// Generate reset token
+	resetToken := s.generateSecureToken()
+	if resetToken == "" {
+		global.Logger.Error("Failed to generate reset token", nil)
+		return nil, appErrors.ErrServiceUnavailable.WithDetails("failed to generate secure token")
+	}
+
+	// Cache the password reset state (token -> {user_id, salt, password_hash, expires_at})
+	ttl := int64(constants.PasswordResetLinkTTLSeconds)
+	if err := s.cachePasswordResetState(ctx, resetToken, employeeID, salt, passwordHash, ttl); err != nil {
+		global.Logger.Error("Failed to cache password reset state", err)
+		return nil, appErrors.ErrServiceUnavailable.WithDetails("failed to prepare password reset")
 	}
 
 	// Create password reset request record
@@ -126,6 +136,7 @@ func (s *PasswordResetServiceImpl) ResetEmployeePassword(ctx context.Context, in
 			"user_agent":     input.Session.ClientAgent,
 			"employee_email": employeeInfo.Email,
 			"employee_name":  employeeInfo.FullName,
+			"reset_token":    resetToken,
 		},
 		CreatedAt: now,
 		UpdatedAt: now,
@@ -133,27 +144,31 @@ func (s *PasswordResetServiceImpl) ResetEmployeePassword(ctx context.Context, in
 
 	if err := prrRepo.CreateRequest(ctx, resetRequest); err != nil {
 		global.Logger.Error("Failed to create password reset request record", err)
-		// Don't fail - password is already reset
+		// Continue anyway
 	}
 
-	// Send notification via Kafka
-	kafkaMessageID, kafkaErr := s.sendPasswordResetNotification(ctx, employeeInfo, newPassword, requestID)
+	// Send notification via Kafka with reset link
+	kafkaMessageID, kafkaErr := s.sendPasswordResetNotification(ctx, employeeInfo, resetToken, requestID)
 	if kafkaErr != nil {
 		global.Logger.Error("Failed to send password reset notification", kafkaErr)
 		// Update request status to failed
-		_ = prrRepo.UpdateRequestStatus(ctx, requestID, domainModel.PasswordResetStatusFailed, "")
+		if resetRequest.RequestID != uuid.Nil {
+			_ = prrRepo.UpdateRequestStatus(ctx, requestID, domainModel.PasswordResetStatusFailed, "")
+		}
+		return nil, appErrors.ErrServiceUnavailable.WithDetails("failed to send password reset email")
 	} else {
 		// Update request status to sent
-		_ = prrRepo.UpdateRequestStatus(ctx, requestID, domainModel.PasswordResetStatusSent, kafkaMessageID)
+		if resetRequest.RequestID != uuid.Nil {
+			_ = prrRepo.UpdateRequestStatus(ctx, requestID, domainModel.PasswordResetStatusSent, kafkaMessageID)
+		}
 	}
 
 	// Set spam prevention marker
 	s.setPasswordResetSpamMarker(ctx, managerID, employeeID)
 
 	return &appModel.ResetEmployeePasswordOutput{
-		Success:     true,
-		Message:     "Password reset successfully. New password sent to employee's email.",
-		NewPassword: newPassword, // Only returned to manager for reference
+		Success: true,
+		Message: "Password reset link sent to employee's email. The link is valid for 24 hours.",
 	}, nil
 }
 
@@ -261,7 +276,7 @@ func (s *PasswordResetServiceImpl) hashPassword(password, salt string) string {
 	return hex.EncodeToString(hash[:])
 }
 
-func (s *PasswordResetServiceImpl) sendPasswordResetNotification(ctx context.Context, employee *domainModel.UserInfo, newPassword string, requestID uuid.UUID) (string, error) {
+func (s *PasswordResetServiceImpl) sendPasswordResetNotification(ctx context.Context, employee *domainModel.UserInfo, resetToken string, requestID uuid.UUID) (string, error) {
 	kafkaWriter, err := domainMQ.GetKafkaWriter()
 	if err != nil {
 		return "", err
@@ -269,18 +284,29 @@ func (s *PasswordResetServiceImpl) sendPasswordResetNotification(ctx context.Con
 
 	messageID := uuid.New().String()
 
-	payload := map[string]interface{}{
-		"message_id":   messageID,
-		"request_id":   requestID.String(),
-		"event_type":   constants.KafkaEventTypePasswordReset,
-		"user_id":      employee.UserID.String(),
-		"email":        employee.Email,
-		"full_name":    employee.FullName,
-		"new_password": newPassword,
-		"created_at":   time.Now().UTC().Format(time.RFC3339),
+	// Create reset URL - this will be used by the employee to reset password
+	resetURL := fmt.Sprintf("%s/api/v1/password/reset/confirm?token=%s",
+		global.SettingServer.Server.Domain,
+		resetToken)
+
+	// Create event with proper structure for notification service
+	event := map[string]interface{}{
+		"event_type": constants.KafkaEventTypePasswordReset,
+		"payload": map[string]interface{}{
+			"to":         employee.Email,
+			"full_name":  employee.FullName,
+			"reset_url":  resetURL,
+			"expires_in": int64(24), // 24 hours
+		},
+		"metadata": map[string]interface{}{
+			"message_id": messageID,
+			"request_id": requestID.String(),
+			"user_id":    employee.UserID.String(),
+			"created_at": time.Now().UTC().Format(time.RFC3339),
+		},
 	}
 
-	payloadBytes, err := json.Marshal(payload)
+	payloadBytes, err := json.Marshal(event)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal kafka payload: %w", err)
 	}
@@ -291,4 +317,148 @@ func (s *PasswordResetServiceImpl) sendPasswordResetNotification(ctx context.Con
 	}
 
 	return messageID, nil
+}
+
+func (s *PasswordResetServiceImpl) generateSecureToken() string {
+	bytes := make([]byte, 32)
+	if _, err := rand.Read(bytes); err != nil {
+		return uuid.New().String()
+	}
+	return hex.EncodeToString(bytes)
+}
+
+func (s *PasswordResetServiceImpl) cachePasswordResetState(ctx context.Context, token string, userID uuid.UUID, salt, passwordHash string, ttl int64) error {
+	key := constants.CacheKeyPrefixPasswordResetToken + token
+	value := fmt.Sprintf("%s:%s:%s:%d", userID.String(), salt, passwordHash, time.Now().Add(time.Duration(ttl)*time.Second).Unix())
+
+	// Cache in distributed cache (primary)
+	distCache, err := domainCache.GetDistributedCache()
+	if err != nil {
+		return fmt.Errorf("failed to get distributed cache: %w", err)
+	}
+
+	if err := distCache.SetTTL(ctx, key, value, ttl); err != nil {
+		return fmt.Errorf("failed to cache password reset state: %w", err)
+	}
+
+	// Also cache in local cache for faster access
+	if localCache, err := domainCache.GetLocalCache(); err == nil {
+		localTTL := ttl
+		if localTTL > int64(constants.TTLLocalPasswordResetToken) {
+			localTTL = int64(constants.TTLLocalPasswordResetToken)
+		}
+		_ = localCache.SetTTL(ctx, key, value, localTTL)
+	}
+
+	return nil
+}
+
+func (s *PasswordResetServiceImpl) getPasswordResetState(ctx context.Context, token string) (userID uuid.UUID, salt, passwordHash string, expiresAt time.Time, found bool, err error) {
+	key := constants.CacheKeyPrefixPasswordResetToken + token
+	var value string
+
+	// Try local cache first
+	if localCache, cacheErr := domainCache.GetLocalCache(); cacheErr == nil {
+		if val, getErr := localCache.Get(ctx, key); getErr == nil && val != "" {
+			value = val
+		}
+	}
+
+	// Try distributed cache if not in local
+	if value == "" {
+		distCache, cacheErr := domainCache.GetDistributedCache()
+		if cacheErr != nil {
+			return uuid.Nil, "", "", time.Time{}, false, cacheErr
+		}
+
+		val, getErr := distCache.Get(ctx, key)
+		if getErr != nil || val == "" {
+			return uuid.Nil, "", "", time.Time{}, false, nil
+		}
+		value = val
+
+		// Backfill local cache
+		if localCache, cacheErr := domainCache.GetLocalCache(); cacheErr == nil {
+			_ = localCache.SetTTL(ctx, key, val, int64(constants.TTLLocalPasswordResetToken))
+		}
+	}
+
+	// Parse the cached value
+	parts := strings.SplitN(value, ":", 4)
+	if len(parts) != 4 {
+		return uuid.Nil, "", "", time.Time{}, false, fmt.Errorf("invalid cached value format")
+	}
+
+	userID, parseErr := uuid.Parse(parts[0])
+	if parseErr != nil {
+		return uuid.Nil, "", "", time.Time{}, false, fmt.Errorf("invalid user ID in cache")
+	}
+
+	var expiresUnix int64
+	if _, scanErr := fmt.Sscanf(parts[3], "%d", &expiresUnix); scanErr != nil {
+		return uuid.Nil, "", "", time.Time{}, false, fmt.Errorf("invalid expiry time in cache")
+	}
+
+	return userID, parts[1], parts[2], time.Unix(expiresUnix, 0), true, nil
+}
+
+func (s *PasswordResetServiceImpl) invalidatePasswordResetState(ctx context.Context, token string) {
+	key := constants.CacheKeyPrefixPasswordResetToken + token
+
+	if localCache, err := domainCache.GetLocalCache(); err == nil {
+		_ = localCache.Delete(ctx, key)
+	}
+	if distCache, err := domainCache.GetDistributedCache(); err == nil {
+		_ = distCache.Delete(ctx, key)
+	}
+}
+
+// ConfirmPasswordReset - User confirms password reset by clicking the link
+func (s *PasswordResetServiceImpl) ConfirmPasswordReset(ctx context.Context, input *appModel.ConfirmPasswordResetInput) (*appModel.ConfirmPasswordResetOutput, *appErrors.Error) {
+	if input.Token == "" {
+		return nil, appErrors.ErrInvalidInput.WithDetails("reset token required")
+	}
+
+	// Get password reset state from cache
+	userID, salt, passwordHash, expiresAt, found, err := s.getPasswordResetState(ctx, input.Token)
+	if err != nil {
+		global.Logger.Error("Failed to get password reset state", err)
+		return nil, appErrors.ErrServiceUnavailable
+	}
+
+	if !found {
+		return &appModel.ConfirmPasswordResetOutput{
+			Success: false,
+			Message: "Invalid or expired reset token",
+		}, nil
+	}
+
+	// Check if token has expired
+	if time.Now().After(expiresAt) {
+		s.invalidatePasswordResetState(ctx, input.Token)
+		return &appModel.ConfirmPasswordResetOutput{
+			Success: false,
+			Message: "Reset token has expired",
+		}, nil
+	}
+
+	// Update user password in database
+	userRepo, err := domainRepo.GetUserRepository()
+	if err != nil {
+		global.Logger.Error("Failed to get user repository", err)
+		return nil, appErrors.ErrServiceUnavailable
+	}
+
+	if err := userRepo.UpdateUserPassword(ctx, userID, salt, passwordHash); err != nil {
+		global.Logger.Error("Failed to update user password", err)
+		return nil, appErrors.ErrPasswordResetFailed.WithDetails("failed to update password")
+	}
+
+	// Invalidate the reset token
+	s.invalidatePasswordResetState(ctx, input.Token)
+
+	return &appModel.ConfirmPasswordResetOutput{
+		Success: true,
+		Message: "Password reset successfully. You can now login with your new password.",
+	}, nil
 }

@@ -40,9 +40,9 @@ func NewZapLogger(cfg *config.LoggerSetting) (domainLogger.ILogger, error) {
 	logFilePath := filepath.Join(logFolder, "profile_update.log")
 	fileWriter := &lumberjack.Logger{
 		Filename:   logFilePath,
-		MaxSize:    cfg.FileMaxSize,       // megabytes
+		MaxSize:    cfg.FileMaxSize, // megabytes
 		MaxBackups: cfg.FileMaxBackups,
-		MaxAge:     cfg.FileMaxAge,        // days
+		MaxAge:     cfg.FileMaxAge, // days
 		Compress:   cfg.Compress,
 	}
 
@@ -60,7 +60,12 @@ func NewZapLogger(cfg *config.LoggerSetting) (domainLogger.ILogger, error) {
 		),
 	)
 
-	logger := zap.New(core, zap.AddCaller(), zap.AddStacktrace(zapcore.ErrorLevel))
+	logger := zap.New(
+		core,
+		zap.AddCaller(),
+		zap.AddStacktrace(zapcore.ErrorLevel),
+	).WithOptions(zap.AddCallerSkip(1))
+
 	return &ZapLogger{logger: logger.Sugar()}, nil
 }
 

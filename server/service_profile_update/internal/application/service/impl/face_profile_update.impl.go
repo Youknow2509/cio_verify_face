@@ -13,6 +13,7 @@ import (
 	appModel "github.com/youknow2509/cio_verify_face/server/service_profile_update/internal/application/model"
 	"github.com/youknow2509/cio_verify_face/server/service_profile_update/internal/constants"
 	domainCache "github.com/youknow2509/cio_verify_face/server/service_profile_update/internal/domain/cache"
+	domainGrpc "github.com/youknow2509/cio_verify_face/server/service_profile_update/internal/domain/grpc"
 	domainModel "github.com/youknow2509/cio_verify_face/server/service_profile_update/internal/domain/model"
 	domainRepo "github.com/youknow2509/cio_verify_face/server/service_profile_update/internal/domain/repository"
 	"github.com/youknow2509/cio_verify_face/server/service_profile_update/internal/global"
@@ -458,25 +459,82 @@ func (s *FaceProfileUpdateServiceImpl) UpdateFaceProfile(ctx context.Context, in
 		return nil, appErrors.ErrServiceUnavailable
 	}
 
-	// TODO: Call AI service to enroll the new face profile via gRPC
-	// This would use the face_service.proto EnrollFace or StreamEnrollFace method
-	// For now, we'll simulate success
-	profileID := uuid.New().String()
-	qualityScore := 0.95
+	// Get face service client
+	faceClient := domainGrpc.GetFaceServiceClient()
+	if faceClient == nil {
+		global.Logger.Error("Face service client not initialized", nil)
+		return nil, appErrors.ErrServiceUnavailable.WithDetails("face service unavailable")
+	}
 
-	// Mark the request as completed
+	// Step 1: Get existing face profiles for the user
+	getProfilesReq := &domainGrpc.GetUserProfilesRequest{
+		UserID:     request.UserID.String(),
+		CompanyID:  request.CompanyID.String(),
+		PageNumber: 1,
+		PageSize:   100,
+	}
+
+	existingProfiles, err := faceClient.GetUserProfiles(ctx, getProfilesReq)
+	if err != nil {
+		// Differentiate between 'not found' (acceptable) and actual errors
+		errMsg := err.Error()
+		if !strings.Contains(errMsg, "not found") && !strings.Contains(errMsg, "no profiles") {
+			global.Logger.Error("Failed to get existing face profiles", err)
+			return nil, appErrors.ErrServiceUnavailable.WithDetails("failed to communicate with face service")
+		}
+		// User has no existing profiles - this is acceptable for first-time enrollment
+		existingProfiles = &domainGrpc.GetUserProfilesResponse{Profiles: []*domainGrpc.FaceProfile{}}
+	}
+
+	// Step 2: Delete all existing face profiles
+	for _, profile := range existingProfiles.Profiles {
+		if profile.DeletedAt == nil { // Only delete non-deleted profiles
+			deleteReq := &domainGrpc.DeleteProfileRequest{
+				ProfileID:  profile.ProfileID,
+				CompanyID:  request.CompanyID.String(),
+				HardDelete: false, // Soft delete
+			}
+			if _, delErr := faceClient.DeleteProfile(ctx, deleteReq); delErr != nil {
+				global.Logger.Error("Failed to delete existing profile", delErr)
+				// Continue to enrollment even if delete fails
+			}
+		}
+	}
+
+	// Step 3: Enroll the new face profile
+	enrollReq := &domainGrpc.EnrollFaceRequest{
+		ImageData:   input.ImageData,
+		UserID:      request.UserID.String(),
+		CompanyID:   request.CompanyID.String(),
+		DeviceID:    "", // Not from device
+		MakePrimary: true,
+		Filename:    input.Filename,
+	}
+
+	enrollResp, err := faceClient.EnrollFace(ctx, enrollReq)
+	if err != nil {
+		global.Logger.Error("Failed to enroll new face profile", err)
+		return nil, appErrors.ErrServiceUnavailable.WithDetails("failed to enroll face profile")
+	}
+
+	if !strings.EqualFold(enrollResp.Status, domainGrpc.FaceServiceStatusSuccess) {
+		global.Logger.Error("Face enrollment failed", fmt.Errorf("%s", enrollResp.Message))
+		return nil, appErrors.ErrServiceUnavailable.WithDetails(enrollResp.Message)
+	}
+
+	// Step 4: Mark the request as completed
 	if err := fprRepo.CompleteRequest(ctx, request.RequestID, request.CompanyID); err != nil {
 		global.Logger.Error("Failed to complete request", err)
 		// Don't return error since face was updated successfully
 	}
 
-	// Invalidate token cache
+	// Step 5: Invalidate token cache
 	s.invalidateTokenCache(ctx, input.Token)
 
 	return &appModel.UpdateFaceProfileOutput{
 		Success:      true,
-		ProfileID:    profileID,
-		QualityScore: qualityScore,
+		ProfileID:    enrollResp.ProfileID,
+		QualityScore: float64(enrollResp.QualityScore),
 		Message:      "Face profile updated successfully",
 	}, nil
 }

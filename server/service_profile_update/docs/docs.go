@@ -99,6 +99,58 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/password/reset/confirm": {
+            "post": {
+                "description": "User confirms password reset using the token from email",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Password Reset"
+                ],
+                "summary": "Confirm password reset",
+                "parameters": [
+                    {
+                        "description": "Request body",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/dto.ConfirmPasswordResetDTO"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "allOf": [
+                                {
+                                    "$ref": "#/definitions/response.Response"
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/definitions/model.ConfirmPasswordResetOutput"
+                                        }
+                                    }
+                                }
+                            ]
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/response.Response"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/profile-update/face": {
             "post": {
                 "description": "Update face profile using a valid update token",
@@ -565,6 +617,18 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "dto.ConfirmPasswordResetDTO": {
+            "type": "object",
+            "required": [
+                "token"
+            ],
+            "properties": {
+                "token": {
+                    "type": "string",
+                    "example": "abc123..."
+                }
+            }
+        },
         "dto.CreateFaceProfileUpdateRequestDTO": {
             "type": "object",
             "properties": {
@@ -613,6 +677,17 @@ const docTemplate = `{
                 },
                 "update_link": {
                     "type": "string"
+                }
+            }
+        },
+        "model.ConfirmPasswordResetOutput": {
+            "type": "object",
+            "properties": {
+                "message": {
+                    "type": "string"
+                },
+                "success": {
+                    "type": "boolean"
                 }
             }
         },
@@ -743,10 +818,6 @@ const docTemplate = `{
             "type": "object",
             "properties": {
                 "message": {
-                    "type": "string"
-                },
-                "new_password": {
-                    "description": "Only returned to manager, also sent via email",
                     "type": "string"
                 },
                 "success": {

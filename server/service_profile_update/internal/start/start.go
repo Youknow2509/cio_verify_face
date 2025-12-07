@@ -33,6 +33,11 @@ func StartService() error {
 		return err
 	}
 
+	// Initialize face service client
+	if err := initFaceServiceClient(); err != nil {
+		return err
+	}
+
 	// Initialize infrastructure connections
 	if err := initConnectionToInfrastructure(setting); err != nil {
 		return err

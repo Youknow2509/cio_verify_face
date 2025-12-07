@@ -7,6 +7,7 @@ GOCLEAN=$(GOCMD) clean
 GOTEST=$(GOCMD) test
 GOGET=$(GOCMD) get
 GOMOD=$(GOCMD) mod
+SWAG?=$(shell command -v swag 2>/dev/null || echo $(shell go env GOPATH)/bin/swag)
 BINARY_NAME=service_profile_update
 
 help:
@@ -16,8 +17,8 @@ help:
 all: help
 
 swagger-gen: # Generate Swagger documentation
-	swagger generate spec -o ./docs/swagger.yaml --scan-models
-
+# 	swagger generate spec -o ./docs/swagger.yaml --scan-models
+	$(SWAG) init -g cmd/main.go -o docs
 build: # Build the Go app
 	$(GOBUILD) -o $(BINARY_NAME) -v ./cmd/main.go
 
