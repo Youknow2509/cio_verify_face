@@ -22,8 +22,8 @@ type (
 	}
 
 	TokenDeviceJwtInput struct {
-		DeviceId string `json:"device_id"`
-		TokenId  string `json:"token_id"`
+		DeviceId  string `json:"device_id"`
+		CompanyId string `json:"company_id"`
 	}
 
 	ServiceRefreshTokenInput struct {

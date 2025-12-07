@@ -31,4 +31,9 @@ func (r *HttpRouterManager) InitRoutes(group *gin.RouterGroup) {
 		deviceV1.POST("/info", handler.NewHandler().UpdateInfoDevice)
 		deviceV1.POST("/status", handler.NewHandler().UpdateStatusDevice)
 	}
+	deviceSelf := group.Group("/v1/device")
+	deviceSelf.Use(infraMiddleware.GetAuthDeviceAccessTokenJwtMiddleware().Apply())
+	{
+		deviceSelf.GET("/me", handler.NewHandler().GetInfoDevice)
+	}
 }

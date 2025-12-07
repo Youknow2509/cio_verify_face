@@ -1,3 +1,19 @@
+-- name: GetDeviceInfoByToken :one
+SELECT
+    device_id,
+    company_id,
+    name,
+    address,
+    serial_number,
+    mac_address,
+    ip_address,
+    firmware_version,
+    device_type,
+    created_at
+FROM devices
+WHERE token = $1
+LIMIT 1;
+
 -- name: GetDeviceToken :one
 SELECT token
 FROM devices

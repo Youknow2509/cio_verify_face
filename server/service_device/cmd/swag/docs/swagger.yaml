@@ -374,6 +374,31 @@ paths:
       summary: Update location
       tags:
       - Core Device
+  /v1/device/me:
+    post:
+      consumes:
+      - application/json
+      description: Get info device
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Get info device
+      tags:
+      - Core Device
   /v1/device/name:
     post:
       consumes:

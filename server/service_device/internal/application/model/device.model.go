@@ -8,6 +8,25 @@ import (
 // Device model
 // =================================================
 
+// Get info device with token
+type GetInfoDeviceWithTokenInput struct {
+	ClientIp    string `json:"client_ip"`
+	ClientAgent string `json:"client_agent"`
+	DeviceToken string `json:"device_token"`
+}
+type GetInfoDeviceWithTokenOutput struct {
+	DeviceID        uuid.UUID `json:"device_id"`
+	CompanyID       uuid.UUID `json:"company_id"`
+	Name            string    `json:"name"`
+	Address         string    `json:"address,omitempty"`
+	SerialNumber    string    `json:"serial_number,omitempty"`
+	MacAddress      string    `json:"mac_address,omitempty"`
+	IpAddress       string    `json:"ip_address,omitempty"`
+	FirmwareVersion string    `json:"firmware_version,omitempty"`
+	DeviceType      string    `json:"device_type,omitempty"`
+	CreatedAt       int64     `json:"created_at,omitempty"`
+}
+
 // Update status device
 type UpdateStatusDeviceInput struct {
 	// Info req
