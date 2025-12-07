@@ -169,9 +169,13 @@ func toModelCreateDeviceTokenInput(req *pb.CreateDeviceTokenRequest) (model.Crea
 	if err != nil {
 		return model.CreateTokenDeviceInput{}, errors.New("invalid device ID format")
 	}
+	companyUuid, err := uuid.Parse(req.GetCompanyId())
+	if err != nil {
+		return model.CreateTokenDeviceInput{}, errors.New("invalid company ID format")
+	}
 	return model.CreateTokenDeviceInput{
 		DeviceId:  deviceUuid,
-		CompanyId: uuid.Nil,
+		CompanyId: companyUuid,
 	}, nil
 }
 
