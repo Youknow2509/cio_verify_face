@@ -18,6 +18,7 @@ import { SummaryReportPage } from '@/features/reports/SummaryReportPage';
 import { SettingsPage } from '@/features/settings/SettingsPage';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { DeviceAddPage } from '@/features/devices/DeviceAdd';
+import { ProfileUpdateRequestPage } from '@/features/profile-update/ProfileUpdateRequestPage';
 
 export const router = createBrowserRouter([
     {
@@ -111,6 +112,10 @@ export const router = createBrowserRouter([
             {
                 path: 'settings',
                 element: <SettingsPage />,
+            },
+            {
+                path: 'profile-update-requests',
+                element: <ProfileUpdateRequestPage />,
             },
         ],
     },

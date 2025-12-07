@@ -16,6 +16,7 @@ import {
     Schedule,
     Assessment,
     Settings,
+    Face,
 } from '@mui/icons-material';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -31,6 +32,7 @@ const menuItems = [
     { text: 'Thiết bị', icon: <Devices />, path: '/devices' },
     { text: 'Ca làm việc', icon: <Schedule />, path: '/shifts' },
     { text: 'Báo cáo', icon: <Assessment />, path: '/reports/daily' },
+    { text: 'Yêu cầu cập nhật khuôn mặt', icon: <Face />, path: '/profile-update-requests' },
     { text: 'Cài đặt', icon: <Settings />, path: '/settings' },
 ];
 
