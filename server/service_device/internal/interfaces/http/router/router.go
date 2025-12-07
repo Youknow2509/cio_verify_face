@@ -35,5 +35,7 @@ func (r *HttpRouterManager) InitRoutes(group *gin.RouterGroup) {
 	deviceSelf.Use(infraMiddleware.GetAuthDeviceAccessTokenJwtMiddleware().Apply())
 	{
 		deviceSelf.GET("/me", handler.NewHandler().GetInfoDevice)
+		deviceSelf.POST("/token/refresh", handler.NewHandler().RefreshDeviceTokenSelf)
+		deviceSelf.POST("/face/verify", handler.NewHandler().VerifyFace)
 	}
 }

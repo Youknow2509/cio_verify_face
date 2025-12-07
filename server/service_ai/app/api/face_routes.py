@@ -229,7 +229,7 @@ async def enroll_face_upload(
 async def verify_face_upload(
     image: UploadFile = File(..., description="Face image file (JPEG/PNG)"),
     company_id: UUID = Form(..., description="Company ID"),
-    user_id: Optional[UUID] = Form(None, description="User ID for 1:1 verification"),
+    user_id: Optional[str] = Form(None, description="User ID for 1:1 verification"),
     device_id: Optional[str] = Form(None, description="Device ID"),
     search_mode: str = Form("1:N", description="Search mode: 1:1 or 1:N"),
     top_k: int = Form(5, description="Number of top matches"),
@@ -261,6 +261,14 @@ async def verify_face_upload(
         # Validate search mode
         if search_mode not in ["1:1", "1:N"]:
             raise HTTPException(status_code=400, detail="search_mode must be '1:1' or '1:N'")
+
+        # Normalize user_id input: allow empty string to mean None
+        parsed_user_id = None
+        if user_id:
+            try:
+                parsed_user_id = UUID(user_id)
+            except Exception:
+                raise HTTPException(status_code=400, detail="Invalid user_id format")
         
         # Read image file
         image_bytes = await image.read()
@@ -271,7 +279,7 @@ async def verify_face_upload(
         result = await face_service.verify_face(
             image_base64=image_base64,
             company_id=company_id,
-            user_id=user_id,
+            user_id=parsed_user_id,
             device_id=device_id,
             search_mode=search_mode,
             top_k=top_k

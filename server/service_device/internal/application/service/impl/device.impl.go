@@ -10,6 +10,7 @@ import (
 	service "github.com/youknow2509/cio_verify_face/server/service_device/internal/application/service"
 	constants "github.com/youknow2509/cio_verify_face/server/service_device/internal/constants"
 	domainCache "github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/cache"
+	domainFace "github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/face"
 	domainModel "github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/model"
 	domainRepo "github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/repository"
 	domainToken "github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/token"
@@ -175,11 +176,35 @@ func (d *DeviceService) RefreshDeviceToken(ctx context.Context, input *model.Ref
 			}
 		}
 	}
+	return d.refreshDeviceToken(ctx, input.DeviceId, input.CompanyId)
+}
+
+// RefreshDeviceTokenSelf implements service.IDeviceService.
+func (d *DeviceService) RefreshDeviceTokenSelf(ctx context.Context, input *model.RefreshDeviceTokenSelfInput) (*model.RefreshDeviceTokenOutput, *applicationError.Error) {
+	deviceRepo, _ := domainRepo.GetDeviceRepository()
+	exist, err := deviceRepo.DeviceExist(ctx, &domainModel.DeviceExistInput{DeviceId: input.DeviceId})
+	if err != nil {
+		global.Logger.Error("Error when get device by id", "err", err)
+		return nil, &applicationError.Error{
+			ErrorSystem: err,
+			ErrorClient: "System is busy now. Please try again later.",
+		}
+	}
+	if !exist {
+		return nil, &applicationError.Error{
+			ErrorSystem: nil,
+			ErrorClient: "Device not found.",
+		}
+	}
+	return d.refreshDeviceToken(ctx, input.DeviceId, input.CompanyId)
+}
+
+func (d *DeviceService) refreshDeviceToken(ctx context.Context, deviceId uuid.UUID, companyId uuid.UUID) (*model.RefreshDeviceTokenOutput, *applicationError.Error) {
 	// Call to grpc service to refresh token and create new token
 	domainToken := domainToken.GetTokenService()
 	newToken, err := domainToken.CreateDeviceToken(ctx, &domainModel.TokenDeviceJwtInput{
-		DeviceId:  input.DeviceId.String(),
-		CompanyId: input.CompanyId.String(),
+		DeviceId:  deviceId.String(),
+		CompanyId: companyId.String(),
 	})
 	if err != nil {
 		global.Logger.Error("Error when create device token", "err", err)
@@ -196,7 +221,7 @@ func (d *DeviceService) RefreshDeviceToken(ctx context.Context, input *model.Ref
 	}
 	// save new token to cache
 	distributedCacheService, _ := domainCache.GetDistributedCache()
-	key := sharedCache.GetKeyDeviceToken(sharedCrypto.GetHash(input.DeviceId.String()))
+	key := sharedCache.GetKeyDeviceToken(sharedCrypto.GetHash(deviceId.String()))
 	distributedCacheService.SetTTL(
 		ctx,
 		key,
@@ -206,9 +231,9 @@ func (d *DeviceService) RefreshDeviceToken(ctx context.Context, input *model.Ref
 	// Rm cache of device info
 	limit, offset := utils.GetPagination(constants.PageDefault, constants.SizeDefault)
 	keyRm := []string{
-		sharedCache.GetKeyDeviceBase(sharedCrypto.GetHash(input.DeviceId.String())),
+		sharedCache.GetKeyDeviceBase(sharedCrypto.GetHash(deviceId.String())),
 		sharedCache.GetKeyListDeviceInCompany(
-			sharedCrypto.GetHash(input.CompanyId.String()),
+			sharedCrypto.GetHash(companyId.String()),
 			limit,
 			offset,
 		),
@@ -222,7 +247,7 @@ func (d *DeviceService) RefreshDeviceToken(ctx context.Context, input *model.Ref
 		}
 	}()
 	return &model.RefreshDeviceTokenOutput{
-		DeviceId:    input.DeviceId.String(),
+		DeviceId:    deviceId.String(),
 		DeviceToken: newToken,
 	}, nil
 }
@@ -893,6 +918,64 @@ func (d *DeviceService) GetListDevices(ctx context.Context, input *model.ListDev
 // UpdateDeviceById implements service.IDeviceService.
 func (d *DeviceService) UpdateDeviceById(ctx context.Context, input *model.UpdateDeviceInput) (*model.UpdateDeviceOutput, *applicationError.Error) {
 	panic("unimplemented")
+}
+
+// VerifyFace implements service.IDeviceService.
+func (d *DeviceService) VerifyFace(ctx context.Context, input *model.VerifyFaceInput) (*model.VerifyFaceOutput, *applicationError.Error) {
+	if len(input.ImageData) == 0 {
+		return nil, &applicationError.Error{ErrorClient: "image data is required"}
+	}
+	if input.TopK <= 0 {
+		input.TopK = 1
+	}
+	faceService := domainFace.GetFaceVerificationService()
+	if faceService == nil {
+		return nil, &applicationError.Error{ErrorClient: "face verification service unavailable"}
+	}
+	resp, err := faceService.VerifyFace(ctx, &domainModel.FaceVerifyInput{
+		ImageData:  input.ImageData,
+		CompanyId:  input.CompanyId,
+		UserId:     input.UserId,
+		DeviceId:   input.DeviceId,
+		SearchMode: input.SearchMode,
+		TopK:       input.TopK,
+	})
+	if err != nil {
+		global.Logger.Error("Error when calling face verification service", "err", err)
+		return nil, &applicationError.Error{
+			ErrorSystem: err,
+			ErrorClient: "Face verification service is unavailable. Please try again later.",
+		}
+	}
+	matches := make([]model.VerifyFaceMatch, 0, len(resp.Matches))
+	for _, m := range resp.Matches {
+		mCopy := model.VerifyFaceMatch{
+			UserId:     m.UserId,
+			ProfileId:  m.ProfileId,
+			Similarity: m.Similarity,
+			Confidence: m.Confidence,
+			IsPrimary:  m.IsPrimary,
+		}
+		matches = append(matches, mCopy)
+	}
+	var bestMatch *model.VerifyFaceMatch
+	if resp.BestMatch != nil {
+		bestMatch = &model.VerifyFaceMatch{
+			UserId:     resp.BestMatch.UserId,
+			ProfileId:  resp.BestMatch.ProfileId,
+			Similarity: resp.BestMatch.Similarity,
+			Confidence: resp.BestMatch.Confidence,
+			IsPrimary:  resp.BestMatch.IsPrimary,
+		}
+	}
+	return &model.VerifyFaceOutput{
+		Status:        resp.Status,
+		Verified:      resp.Verified,
+		Matches:       matches,
+		BestMatch:     bestMatch,
+		Message:       resp.Message,
+		LivenessScore: resp.LivenessScore,
+	}, nil
 }
 
 // NewDeviceService create new instance and implement IDeviceService

@@ -169,6 +169,58 @@ class FaceService:
             logger.error(f"Image decode error: {e}")
             return None
 
+    def _cosine_similarity(self, a: np.ndarray, b: np.ndarray) -> float:
+        """Cosine similarity for already-normalized or raw vectors."""
+        try:
+            a = np.asarray(a, dtype=np.float32)
+            b = np.asarray(b, dtype=np.float32)
+            if a.ndim != 1 or b.ndim != 1 or a.size != b.size:
+                return 0.0
+            # Normalize defensively
+            a_norm = a / (np.linalg.norm(a) + 1e-8)
+            b_norm = b / (np.linalg.norm(b) + 1e-8)
+            sim = float(np.dot(a_norm, b_norm))
+            return sim
+        except Exception:
+            return 0.0
+
+    def _fallback_user_profiles_similarity(
+        self,
+        db: Session,
+        company_id: UUID,
+        user_id: UUID,
+        query_embedding: np.ndarray,
+    ) -> List[Dict]:
+        """Compute cosine similarity directly against stored profiles when Milvus recall is low."""
+        try:
+            profiles = db.query(FaceProfile).filter(
+                FaceProfile.company_id == company_id,
+                FaceProfile.user_id == user_id,
+                FaceProfile.deleted_at.is_(None),
+            ).all()
+            results: List[Dict] = []
+            for p in profiles:
+                emb = self._to_numpy_embedding(p.embedding)
+                if emb is None:
+                    continue
+                sim = self._cosine_similarity(query_embedding, emb)
+                results.append(
+                    {
+                        "profile_id": str(p.profile_id),
+                        "user_id": str(p.user_id),
+                        "is_primary": bool(p.is_primary),
+                        "similarity": sim,
+                        "distance": sim,
+                    }
+                )
+            if results:
+                # Prefer primary, then higher similarity
+                results = sorted(results, key=lambda m: (not m["is_primary"], -m["similarity"]))
+            return results
+        except Exception as e:
+            logger.warning(f"Fallback similarity failed: {e}")
+            return []
+
     # ---------------- Logging ----------------
     def _log_audit(
         self,
@@ -260,7 +312,9 @@ class FaceService:
                 )
             # Check duplicate enrollment face for another user
             try:
-                matches = self.index_manager.search(str(company_id), embedding, k=5)
+                matches = self.index_manager.search(
+                    str(company_id), embedding, k=5, prioritize_primary=True
+                )
             except (VectorDBUnavailable, Exception) as e:
                 logger.error(f"Vector search unavailable: {e}")
                 return EnrollResponse(status="failed", message="Vector database unavailable, please retry later")
@@ -382,16 +436,67 @@ class FaceService:
                         status="failed", verified=False,
                         message="Liveness check failed", liveness_score=liveness_score
                     )
-            # Get embedding from image
-            embedding = self.embedding_gen.get_embedding(image)
+            # Force 1:1 if caller supplies user_id but forgets to set search_mode
+            if user_id and search_mode != "1:1":
+                logger.info("user_id provided -> forcing search_mode to 1:1")
+                search_mode = "1:1"
+
+            # Get embedding with quality info
+            embedding, quality, best_face = self.embedding_gen.get_embedding_with_quality(image)
             if embedding is None:
                 return VerifyResponse(status="failed", verified=False, message="No face detected")
-            # Search for matches
+
+            # Reject low-quality or too-small faces early to avoid false matches
+            if quality < settings.QUALITY_THRESHOLD:
+                logger.warning(
+                    f"Verification failed: image quality too low (quality={quality:.2f}, threshold={settings.QUALITY_THRESHOLD})"
+                )
+                return VerifyResponse(
+                    status="failed",
+                    verified=False,
+                    message=f"Image quality too low ({quality:.2f})",
+                    liveness_score=liveness_score,
+                )
+
+            if best_face and (
+                best_face.get("face_width", 0) < settings.MIN_FACE_SIZE
+                or best_face.get("face_height", 0) < settings.MIN_FACE_SIZE
+            ):
+                logger.warning(
+                    f"Verification failed: face too small (w={best_face.get('face_width')}, h={best_face.get('face_height')}, min={settings.MIN_FACE_SIZE})"
+                )
+                return VerifyResponse(
+                    status="failed",
+                    verified=False,
+                    message="Face too small in frame",
+                    liveness_score=liveness_score,
+                )
+            # Search for matches (Milvus)
             try:
-                matches = self.index_manager.search(str(company_id), embedding, k=top_k)
+                matches = self.index_manager.search(
+                    str(company_id),
+                    embedding,
+                    k=top_k,
+                    filter_user_id=str(user_id) if search_mode == "1:1" and user_id else None,
+                    prioritize_primary=True,
+                    retry_with_high_nprobe=True,
+                )
             except (VectorDBUnavailable, Exception) as e:
                 logger.error(f"Vector search unavailable: {e}")
                 return VerifyResponse(status="failed", verified=False, message="Vector database unavailable, please retry later")
+
+            # 1:1 fallback: brute-force cosine vs stored embeddings if Milvus recall is low
+            if search_mode == "1:1" and user_id:
+                fallback_matches = self._fallback_user_profiles_similarity(db, company_id, user_id, embedding)
+                if fallback_matches:
+                    best_milvus = matches[0]["similarity"] if matches else -1.0
+                    if fallback_matches[0]["similarity"] > best_milvus:
+                        logger.info(
+                            f"Using DB cosine fallback (sim={fallback_matches[0]['similarity']:.4f}) over Milvus (sim={best_milvus:.4f})"
+                        )
+                        matches = fallback_matches
+
+            # If still no matches
             if not matches:
                 logger.warning(
                     f"No matching face found during verification. "
@@ -404,7 +509,8 @@ class FaceService:
                     status="no_match", verified=False,
                     message="No matching face found", liveness_score=liveness_score
                 )
-            # If 1:1 mode, filter by user_id
+
+            # If 1:1 mode, ensure list contains only target user (after fallback merges)
             if search_mode == "1:1" and user_id:
                 matches = [m for m in matches if m["user_id"] == str(user_id)]
                 if not matches:

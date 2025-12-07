@@ -53,6 +53,14 @@ type RefreshDeviceTokenInput struct {
 	ClientAgent string    `json:"client_agent"`
 	CompanyId   uuid.UUID `json:"company_id"`
 }
+
+// Refresh device token (self)
+type RefreshDeviceTokenSelfInput struct {
+	DeviceId    uuid.UUID `json:"device_id"`
+	CompanyId   uuid.UUID `json:"company_id"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+}
 type RefreshDeviceTokenOutput struct {
 	DeviceId    string `json:"device_id"`
 	DeviceToken string `json:"device_token"`

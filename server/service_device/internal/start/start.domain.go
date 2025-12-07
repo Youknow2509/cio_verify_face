@@ -1,9 +1,11 @@
 package start
 
 import (
+	domainFace "github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/face"
 	domainRepository "github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/repository"
 	domainToken "github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/token"
 	infraConn "github.com/youknow2509/cio_verify_face/server/service_device/internal/infrastructure/conn"
+	infraFace "github.com/youknow2509/cio_verify_face/server/service_device/internal/infrastructure/face"
 	infraRepository "github.com/youknow2509/cio_verify_face/server/service_device/internal/infrastructure/repository"
 	infraToken "github.com/youknow2509/cio_verify_face/server/service_device/internal/infrastructure/token"
 )
@@ -33,7 +35,13 @@ func initDomain() error {
 	}
 	// initialize token service
 	if err := domainToken.SetTokenService(
-		infraToken.NewTokenService(grpcClient),
+		infraToken.NewTokenService(authGrpcClient),
+	); err != nil {
+		return err
+	}
+	// initialize face verification service
+	if err := domainFace.SetFaceVerificationService(
+		infraFace.NewFaceVerificationService(faceGrpcClient),
 	); err != nil {
 		return err
 	}

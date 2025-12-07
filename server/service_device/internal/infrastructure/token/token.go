@@ -3,12 +3,13 @@ package token
 import (
 	"context"
 	"errors"
+	"time"
+
 	"github.com/golang-jwt/jwt/v5"
 	domainErrors "github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/errors"
 	domainModel "github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/model"
 	domainToken "github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/token"
 	pb "github.com/youknow2509/cio_verify_face/server/service_device/proto"
-	"time"
 )
 
 // =======================================================

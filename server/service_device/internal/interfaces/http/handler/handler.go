@@ -1,7 +1,10 @@
 package handler
 
 import (
+	"encoding/base64"
+	"io"
 	"strconv"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -13,7 +16,6 @@ import (
 	"github.com/youknow2509/cio_verify_face/server/service_device/internal/interfaces/dto"
 	"github.com/youknow2509/cio_verify_face/server/service_device/internal/interfaces/response"
 	contextShared "github.com/youknow2509/cio_verify_face/server/service_device/internal/shared/utils/context"
-	utilsContext "github.com/youknow2509/cio_verify_face/server/service_device/internal/shared/utils/context"
 	uuidShared "github.com/youknow2509/cio_verify_face/server/service_device/internal/shared/utils/uuid"
 )
 
@@ -31,8 +33,10 @@ type iHandler interface {
 	UpdateInfoDevice(c *gin.Context)
 	GetDeviceToken(c *gin.Context)
 	RefreshDeviceToken(c *gin.Context)
+	RefreshDeviceTokenSelf(c *gin.Context)
 	UpdateStatusDevice(c *gin.Context)
 	GetInfoDevice(c *gin.Context)
+	VerifyFace(c *gin.Context)
 }
 
 /**
@@ -43,15 +47,15 @@ type Handler struct{}
 // GetInfoDevice implements iHandler.
 // @Summary      Get info device
 // @Description  Get info device
-// @Tags         Core Device
+// @Tags         Device Self
 // @Accept       json
 // @Produce      json
 // @Param		 authorization header string true "Bearer <token>"
 // @Success      200  {object}  dto.ResponseData
 // @Failure      400  {object}  dto.ErrResponseData
-// @Router       /v1/device/me [post]
+// @Router       /v1/device/me [get]
 func (h *Handler) GetInfoDevice(c *gin.Context) {
-	deviceId, companyId, ok := utilsContext.GetDeviceSessionFromContext(c)
+	deviceId, companyId, ok := contextShared.GetDeviceSessionFromContext(c)
 	if !ok {
 		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
 		return
@@ -72,6 +76,149 @@ func (h *Handler) GetInfoDevice(c *gin.Context) {
 	if errReq != nil {
 		response.ErrorResponse(c, 400, errReq.ErrorClient)
 		return
+	}
+	response.SuccessResponse(c, 200, resp)
+}
+
+// VerifyFace implements iHandler.
+// @Summary      Verify face
+// @Description  Verify face via FaceVerification gRPC service
+// @Tags         Device Self
+// @Accept       multipart/form-data
+// @Accept       json
+// @Produce      json
+// @Param       authorization header string true "Bearer <token>"
+// @Param       image formData file true "Binary face image"
+// @Param       user_id formData string false "User id to match"
+// @Param       search_mode formData string false "Search mode"
+// @Param       top_k formData int false "Number of candidates (1-10)"
+// @Success     200  {object}  dto.ResponseData
+// @Failure     400  {object}  dto.ErrResponseData
+// @Router      /v1/device/face/verify [post]
+func (h *Handler) VerifyFace(c *gin.Context) {
+	var req dto.VerifyFaceRequest
+	contentType := c.ContentType()
+
+	validateMiddleware, ok := c.Get(constants.MIDDLEWARE_VALIDATE_SERVICE_NAME)
+	if !ok {
+		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+	validate, ok := validateMiddleware.(*validator.Validate)
+	if !ok {
+		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+
+	var imageData []byte
+	if strings.HasPrefix(contentType, "multipart/form-data") {
+		if err := c.ShouldBind(&req); err != nil {
+			response.ErrorResponse(c, response.ErrorCodeBindRequest, "Invalid form data")
+			return
+		}
+		fileHeader, err := c.FormFile("image")
+		if err != nil {
+			response.ErrorResponse(c, response.ErrorCodeValidateRequest, "image is required")
+			return
+		}
+		file, err := fileHeader.Open()
+		if err != nil {
+			response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Cannot read image")
+			return
+		}
+		defer file.Close()
+		imageData, err = io.ReadAll(file)
+		if err != nil {
+			response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Cannot read image")
+			return
+		}
+	} else {
+		if err := c.ShouldBindJSON(&req); err != nil {
+			response.ErrorResponse(c, response.ErrorCodeBindRequest, "Invalid request body")
+			return
+		}
+		if req.ImageBase64 == "" {
+			response.ErrorResponse(c, response.ErrorCodeValidateRequest, "image_base64 is required")
+			return
+		}
+		decoded, err := base64.StdEncoding.DecodeString(req.ImageBase64)
+		if err != nil {
+			response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid image_base64")
+			return
+		}
+		imageData = decoded
+	}
+
+	if err := validate.Struct(req); err != nil {
+		validationErrors := err.(validator.ValidationErrors)
+		response.ErrorResponse(c, response.ErrorCodeValidateRequest, validationErrors.Error())
+		return
+	}
+	if len(imageData) == 0 {
+		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Image is required")
+		return
+	}
+	deviceId, companyId, ok := contextShared.GetDeviceSessionFromContext(c)
+	if !ok {
+		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+	service := applicationService.GetDeviceService()
+	if service == nil {
+		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Service unavailable")
+		return
+	}
+	// Validate input
+	if len(imageData) == 0 {
+		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Image data is required")
+		return
+	}
+	result, errReq := service.VerifyFace(
+		c,
+		&applicationModel.VerifyFaceInput{
+			ImageData:  imageData,
+			CompanyId:  companyId,
+			DeviceId:   deviceId,
+			UserId:     req.UserId,
+			SearchMode: req.SearchMode,
+			TopK:       req.TopK,
+		},
+	)
+	if errReq != nil {
+		if errReq.ErrorClient == "" {
+			response.ErrorResponse(c, 500, "Internal server error")
+			return
+		}
+		response.ErrorResponse(c, 400, errReq.ErrorClient)
+		return
+	}
+	matches := make([]dto.VerifyFaceMatchResponse, 0, len(result.Matches))
+	for _, m := range result.Matches {
+		matches = append(matches, dto.VerifyFaceMatchResponse{
+			UserId:     m.UserId,
+			ProfileId:  m.ProfileId,
+			Similarity: m.Similarity,
+			Confidence: m.Confidence,
+			IsPrimary:  m.IsPrimary,
+		})
+	}
+	var bestMatch *dto.VerifyFaceMatchResponse
+	if result.BestMatch != nil {
+		bestMatch = &dto.VerifyFaceMatchResponse{
+			UserId:     result.BestMatch.UserId,
+			ProfileId:  result.BestMatch.ProfileId,
+			Similarity: result.BestMatch.Similarity,
+			Confidence: result.BestMatch.Confidence,
+			IsPrimary:  result.BestMatch.IsPrimary,
+		}
+	}
+	resp := dto.VerifyFaceResponse{
+		Status:        result.Status,
+		Verified:      result.Verified,
+		Matches:       matches,
+		BestMatch:     bestMatch,
+		Message:       result.Message,
+		LivenessScore: result.LivenessScore,
 	}
 	response.SuccessResponse(c, 200, resp)
 }
@@ -197,6 +344,48 @@ func (h *Handler) RefreshDeviceToken(c *gin.Context) {
 			ClientAgent: c.Request.UserAgent(),
 			SessionId:   sessionUuid,
 			CompanyId:   companyUuid,
+		},
+	)
+	if errReq != nil {
+		response.ErrorResponse(c, 400, errReq.ErrorClient)
+		return
+	}
+	response.SuccessResponse(c, 200, resp)
+}
+
+// RefreshDeviceTokenSelf implements iHandler.
+// @Summary      Refresh device access token (self)
+// @Description  Device refreshes its own access token
+// @Tags         Device Self
+// @Accept       json
+// @Produce      json
+// @Param		 authorization header string true "Bearer <token>"
+// @Success      200  {object}  dto.ResponseData
+// @Failure      400  {object}  dto.ErrResponseData
+// @Router       /v1/device/token/refresh [post]
+func (h *Handler) RefreshDeviceTokenSelf(c *gin.Context) {
+	deviceIdStr, companyIdStr, ok := contextShared.GetDeviceSessionFromContext(c)
+	if !ok {
+		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+	deviceId, err := uuidShared.ParseUUID(deviceIdStr)
+	if err != nil {
+		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid device ID")
+		return
+	}
+	companyId, err := uuidShared.ParseUUID(companyIdStr)
+	if err != nil {
+		response.ErrorResponse(c, response.ErrorCodeValidateRequest, "Invalid company ID")
+		return
+	}
+	resp, errReq := applicationService.GetDeviceService().RefreshDeviceTokenSelf(
+		c,
+		&applicationModel.RefreshDeviceTokenSelfInput{
+			DeviceId:    deviceId,
+			CompanyId:   companyId,
+			ClientIp:    c.ClientIP(),
+			ClientAgent: c.Request.UserAgent(),
 		},
 	)
 	if errReq != nil {
