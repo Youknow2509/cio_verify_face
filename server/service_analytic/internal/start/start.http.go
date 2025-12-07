@@ -14,7 +14,7 @@ import (
 // initHTTPServer initializes and starts the HTTP server
 func initHTTPServer(serverConfig *domainConfig.ServerConfig) error {
 	// Setup router
-	router := httpRouter.SetupRouter()
+	router := httpRouter.SetupRouter(GetTracerProvider())
 
 	// Create HTTP server
 	server := &http.Server{
@@ -29,7 +29,7 @@ func initHTTPServer(serverConfig *domainConfig.ServerConfig) error {
 	global.WaitGroup.Add(1)
 	go func() {
 		defer global.WaitGroup.Done()
-		
+
 		global.Logger.Info("Starting HTTP server", "port", serverConfig.Port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			global.Logger.Error("HTTP server error", "error", err.Error())
@@ -39,10 +39,10 @@ func initHTTPServer(serverConfig *domainConfig.ServerConfig) error {
 	// Graceful shutdown handler
 	go func() {
 		<-make(chan struct{}) // This would be replaced with actual shutdown signal
-		
+
 		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		
+
 		if err := server.Shutdown(ctx); err != nil {
 			global.Logger.Error("HTTP server shutdown error", "error", err.Error())
 		}

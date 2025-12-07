@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"net"
 
+	"github.com/youknow2509/cio_verify_face/server/pkg/observability"
 	"github.com/youknow2509/cio_verify_face/server/service_analytic/internal/global"
 	"github.com/youknow2509/cio_verify_face/server/service_analytic/internal/infrastructure/middleware"
+
 	// grpcRouter "github.com/youknow2509/cio_verify_face/server/service_analytic/internal/interfaces/grpc/router"
 	// pb "github.com/youknow2509/cio_verify_face/server/service_analytic/proto/pb/proto"
 	"google.golang.org/grpc"
@@ -23,11 +25,10 @@ func initGrpcServer() error {
 		return err
 	}
 
-	// Create gRPC server with session interceptor
-	// For inter-service calls, session info is passed directly in metadata (already authenticated)
-	opts := []grpc.ServerOption{
-		grpc.UnaryInterceptor(middleware.SessionInterceptor()),
-	}
+	// Create gRPC server with interceptors
+	unaryInterceptors := []grpc.UnaryServerInterceptor{middleware.SessionInterceptor()}
+	streamInterceptors := []grpc.StreamServerInterceptor{}
+	var opts []grpc.ServerOption
 
 	if config.TLS.Enabled {
 		creds, err := credentials.NewServerTLSFromFile(config.TLS.CertFile, config.TLS.KeyFile)
@@ -35,6 +36,20 @@ func initGrpcServer() error {
 			return err
 		}
 		opts = append(opts, grpc.Creds(creds))
+	}
+
+	if grpcMetrics := GetGRPCMetrics(); grpcMetrics != nil {
+		unaryInterceptors = append(unaryInterceptors, grpcMetrics.UnaryServerInterceptor())
+		streamInterceptors = append(streamInterceptors, grpcMetrics.StreamServerInterceptor())
+	}
+	if GetTracerProvider() != nil {
+		unaryInterceptors = append(unaryInterceptors, observability.GRPCTracingUnaryServerInterceptor(global.SettingServer.Server.Name))
+		streamInterceptors = append(streamInterceptors, observability.GRPCTracingStreamServerInterceptor(global.SettingServer.Server.Name))
+	}
+
+	opts = append(opts, grpc.ChainUnaryInterceptor(unaryInterceptors...))
+	if len(streamInterceptors) > 0 {
+		opts = append(opts, grpc.ChainStreamInterceptor(streamInterceptors...))
 	}
 
 	grpcServer := grpc.NewServer(opts...)
@@ -59,7 +74,7 @@ func initGrpcServer() error {
 // initAuthGrpcClient initializes the auth service gRPC client
 func initAuthGrpcClient() error {
 	config := global.SettingServer.AuthService
-	
+
 	if !config.Enabled {
 		global.Logger.Info("Auth gRPC client disabled in config")
 		return nil
@@ -67,7 +82,7 @@ func initAuthGrpcClient() error {
 
 	// This will be implemented after proto generation
 	// return infraGrpc.InitAuthClient(config.GrpcAddr)
-	
+
 	global.Logger.Info("Auth gRPC client placeholder", "addr", config.GrpcAddr)
 	return nil
 }

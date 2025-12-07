@@ -13,7 +13,7 @@ import (
 )
 
 // SetupRouter sets up the HTTP router with authentication middleware
-func SetupRouter() *gin.Engine {
+func SetupRouter(tp *observability.TracerProvider) *gin.Engine {
 	// Create gin router
 	router := gin.Default()
 	if global.SettingServer.Server.Mode != "dev" {
@@ -29,6 +29,9 @@ func SetupRouter() *gin.Engine {
 	if global.SettingServer.Observability.Enabled {
 		if metrics := observability.GetHTTPMetrics(); metrics != nil {
 			router.Use(metrics.GinMiddleware())
+		}
+		if tp != nil {
+			router.Use(tp.GinTracingMiddleware())
 		}
 	}
 
