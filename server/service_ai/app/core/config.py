@@ -1,9 +1,20 @@
 """
 Configuration settings for the service
 """
-from pydantic_settings import BaseSettings
-from typing import List, Optional
+import json
 import os
+from typing import List, Optional
+
+from pydantic import field_validator
+from pydantic_settings import BaseSettings
+
+
+def _json_loads_safe(value):
+    """Decode JSON if possible; otherwise return raw value for lenient env parsing."""
+    try:
+        return json.loads(value)
+    except Exception:
+        return value
 
 
 class Settings(BaseSettings):
@@ -85,6 +96,24 @@ class Settings(BaseSettings):
     REDIS_CLUSTER_ADDRS: List[str] = ["127.0.0.1:26379", "127.0.0.1:26380", "127.0.0.1:26381"]
     REDIS_ROUTE_BY_LATENCY: bool = True
     REDIS_ROUTE_RANDOMLY: bool = False
+
+    @field_validator("REDIS_SENTINEL_ADDRS", "REDIS_CLUSTER_ADDRS", mode="before")
+    @classmethod
+    def _parse_redis_addr_list(cls, value):
+        """Allow comma/semicolon lists or JSON arrays for redis addresses"""
+        if value is None:
+            return value
+        if isinstance(value, list):
+            return value
+        if isinstance(value, str):
+            raw = value.strip()
+            if raw.startswith("["):
+                try:
+                    return json.loads(raw)
+                except json.JSONDecodeError:
+                    pass
+            return [item.strip() for item in raw.replace(";", ",").split(",") if item.strip()]
+        return value
     
     # Redis Pool Configuration
     REDIS_POOL_SIZE: int = 10
@@ -141,10 +170,16 @@ class Settings(BaseSettings):
     MILVUS_PASSWORD: Optional[str] = None
     MILVUS_DB: str = "default"
     MILVUS_COLLECTION: str = "face_profiles"
-    MILVUS_INDEX_TYPE: str = "IVF_FLAT"  # Options: FLAT, IVF_FLAT, IVF_SQ8, HNSW, AUTOINDEX
+    MILVUS_INDEX_TYPE: str = "HNSW"  # Common: FLAT (exact), HNSW (high recall), IVF_FLAT/IVF_SQ8 (ANN)
     MILVUS_METRIC_TYPE: str = "IP"   # Options: L2, COSINE, IP (IP=Inner Product for normalized vectors, best for face embeddings)
     MILVUS_NLIST: int = 1024
     MILVUS_NPROBE: int = 16
+    MILVUS_HNSW_M: int = 16
+    MILVUS_HNSW_EF_CONSTRUCTION: int = 200
+    MILVUS_SEARCH_EF: int = 128
+    MILVUS_RETRY_NPROBE_MULT: int = 4
+    MILVUS_RETRY_NPROBE_MIN: int = 64
+    MILVUS_CANDIDATE_MULTIPLIER: int = 3
     
     # Liveness detection
     LIVENESS_ENABLED: bool = True
@@ -181,6 +216,8 @@ class Settings(BaseSettings):
         "case_sensitive": True,
         # If extra env vars are present (e.g. AUTH_SERVICE_URL) ignore them
         "extra": "ignore",
+        # Be lenient when env vars for complex types aren't valid JSON
+        "json_loads": _json_loads_safe,
     }
 
 
