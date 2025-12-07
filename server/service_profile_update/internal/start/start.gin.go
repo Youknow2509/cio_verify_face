@@ -20,6 +20,14 @@ func initGinRouter(cfg *config.ServerSetting) error {
 		gin.SetMode(gin.DebugMode)
 	}
 
+	// Observability middleware (metrics + tracing)
+	if metrics := GetHTTPMetrics(); metrics != nil {
+		router.Use(metrics.GinMiddleware())
+	}
+	if tp := GetTracerProvider(); tp != nil {
+		router.Use(tp.GinTracingMiddleware())
+	}
+
 	// Swagger documentation
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
