@@ -24,6 +24,7 @@ scrape_configs:
             labels:
                 service: 'prometheus'
 
+    # Application services (metrics_port: 9090, metrics_path: /metrics)
     # Auth Service
     - job_name: 'service-auth'
       static_configs:
@@ -122,3 +123,5 @@ scrape_configs:
                 service: 'service-ws-delivery'
                 environment: 'production'
       metrics_path: /metrics
+
+    #
