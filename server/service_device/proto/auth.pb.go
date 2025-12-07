@@ -521,7 +521,6 @@ func (x *ParseServiceTokenResponse) GetServiceId() string {
 type ParseDeviceTokenRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Token         string                 `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
-	DeviceId      string                 `protobuf:"bytes,2,opt,name=device_id,json=deviceId,proto3" json:"device_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -559,13 +558,6 @@ func (*ParseDeviceTokenRequest) Descriptor() ([]byte, []int) {
 func (x *ParseDeviceTokenRequest) GetToken() string {
 	if x != nil {
 		return x.Token
-	}
-	return ""
-}
-
-func (x *ParseDeviceTokenRequest) GetDeviceId() string {
-	if x != nil {
-		return x.DeviceId
 	}
 	return ""
 }
@@ -675,10 +667,9 @@ const file_proto_auth_proto_rawDesc = "" +
 	"service_id\x18\x01 \x01(\tR\tserviceId\":\n" +
 	"\x19ParseServiceTokenResponse\x12\x1d\n" +
 	"\n" +
-	"service_id\x18\x01 \x01(\tR\tserviceId\"L\n" +
+	"service_id\x18\x01 \x01(\tR\tserviceId\"/\n" +
 	"\x17ParseDeviceTokenRequest\x12\x14\n" +
-	"\x05token\x18\x01 \x01(\tR\x05token\x12\x1b\n" +
-	"\tdevice_id\x18\x02 \x01(\tR\bdeviceId\"\x90\x01\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"\x90\x01\n" +
 	"\x18ParseDeviceTokenResponse\x12\x1b\n" +
 	"\tdevice_id\x18\x01 \x01(\tR\bdeviceId\x12\x19\n" +
 	"\btoken_id\x18\x02 \x01(\tR\atokenId\x12\x1d\n" +

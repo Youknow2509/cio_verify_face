@@ -166,6 +166,70 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/device/face/verify": {
+            "post": {
+                "description": "Verify face via FaceVerification gRPC service",
+                "consumes": [
+                    "multipart/form-data",
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Device Self"
+                ],
+                "summary": "Verify face",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer \u003ctoken\u003e",
+                        "name": "authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "file",
+                        "description": "Binary face image",
+                        "name": "image",
+                        "in": "formData",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "User id to match",
+                        "name": "user_id",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Search mode",
+                        "name": "search_mode",
+                        "in": "formData"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Number of candidates (1-10)",
+                        "name": "top_k",
+                        "in": "formData"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ResponseData"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrResponseData"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/device/info": {
             "post": {
                 "description": "Update info device",
@@ -260,7 +324,7 @@ const docTemplate = `{
             }
         },
         "/v1/device/me": {
-            "post": {
+            "get": {
                 "description": "Get info device",
                 "consumes": [
                     "application/json"
@@ -269,7 +333,7 @@ const docTemplate = `{
                     "application/json"
                 ],
                 "tags": [
-                    "Core Device"
+                    "Device Self"
                 ],
                 "summary": "Get info device",
                 "parameters": [
@@ -372,6 +436,44 @@ const docTemplate = `{
                         "schema": {
                             "$ref": "#/definitions/dto.UpdateStatusDeviceRequest"
                         }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ResponseData"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrResponseData"
+                        }
+                    }
+                }
+            }
+        },
+        "/v1/device/token/refresh": {
+            "post": {
+                "description": "Device refreshes its own access token",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Device Self"
+                ],
+                "summary": "Refresh device access token (self)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer \u003ctoken\u003e",
+                        "name": "authorization",
+                        "in": "header",
+                        "required": true
                     }
                 ],
                 "responses": {

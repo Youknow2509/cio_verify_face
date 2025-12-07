@@ -313,6 +313,49 @@ paths:
       summary: Delete device by ID
       tags:
       - Core Device
+  /v1/device/face/verify:
+    post:
+      consumes:
+      - multipart/form-data
+      - application/json
+      description: Verify face via FaceVerification gRPC service
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Binary face image
+        in: formData
+        name: image
+        required: true
+        type: file
+      - description: User id to match
+        in: formData
+        name: user_id
+        type: string
+      - description: Search mode
+        in: formData
+        name: search_mode
+        type: string
+      - description: Number of candidates (1-10)
+        in: formData
+        name: top_k
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Verify face
+      tags:
+      - Device Self
   /v1/device/info:
     post:
       consumes:
@@ -375,7 +418,7 @@ paths:
       tags:
       - Core Device
   /v1/device/me:
-    post:
+    get:
       consumes:
       - application/json
       description: Get info device
@@ -398,7 +441,7 @@ paths:
             $ref: '#/definitions/dto.ErrResponseData'
       summary: Get info device
       tags:
-      - Core Device
+      - Device Self
   /v1/device/name:
     post:
       consumes:
@@ -490,6 +533,31 @@ paths:
       summary: Get device access token
       tags:
       - Core Device
+  /v1/device/token/refresh:
+    post:
+      consumes:
+      - application/json
+      description: Device refreshes its own access token
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Refresh device access token (self)
+      tags:
+      - Device Self
   /v1/device/token/refresh/{device_id}:
     post:
       consumes:
