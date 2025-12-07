@@ -12,6 +12,7 @@ Pillow==11.0.0
 
 # Vector search
 pgvector==0.3.6
+pymilvus==2.6.5
 
 # Database
 asyncpg==0.30.0
@@ -42,9 +43,10 @@ cryptography==44.0.0
 python-multipart==0.0.20
 
 # gRPC
-grpcio==1.68.1
-grpcio-tools==1.68.1
-grpcio-reflection==1.68.1
+# Use 1.67.x to satisfy pymilvus 2.6.x constraint exclusions
+grpcio==1.67.1
+grpcio-tools==1.67.1
+grpcio-reflection==1.67.1
 protobuf==5.29.0
 
 # Utilities

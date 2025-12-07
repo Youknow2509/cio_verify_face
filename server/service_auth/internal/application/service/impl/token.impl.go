@@ -19,7 +19,6 @@ import (
 	"github.com/youknow2509/cio_verify_face/server/service_auth/internal/global"
 	sharedCache "github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/cache"
 	sharedCrypto "github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/crypto"
-	sharedRandom "github.com/youknow2509/cio_verify_face/server/service_auth/internal/shared/utils/random"
 )
 
 /**
@@ -196,7 +195,18 @@ func (t *TokenService) CreateTokenDevice(ctx context.Context, input model.Create
 		return "", errors.New("device not found")
 	}
 	// Generate token
-	token := sharedRandom.RandomString(constants.RandomTokenDeviceLength)
+	tokenService := domainToken.GetTokenService()
+	tokenId := uuid.New()
+	token, err := tokenService.CreateDeviceToken(ctx, &domainModel.TokenDeviceJwtInput{
+		DeviceId:  input.DeviceId.String(),
+		CompanyId: input.CompanyId.String(),
+		TokenId:   tokenId.String(),
+		Expires:   time.Now().Add(constants.TTL_DEVICE_TOKEN_LONG * time.Second),
+	})
+	if err != nil {
+		global.Logger.Error("failed to create device token", "error", err.Error(), "device_id", input.DeviceId)
+		return "", err
+	}
 	// Store token in db
 	if err := db.CreateDeviceToken(
 		ctx,

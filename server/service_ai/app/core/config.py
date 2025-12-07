@@ -119,8 +119,10 @@ class Settings(BaseSettings):
     EMBEDDING_DIMENSION: int = 512
     
     # Thresholds
-    DUPLICATE_THRESHOLD: float = 0.85
-    VERIFY_THRESHOLD: float = 0.50
+    QUALITY_THRESHOLD: float = 0.5       # Image quality threshold for enrollment
+    DUPLICATE_THRESHOLD: float = 0.95     # Threshold to detect face already enrolled to different user (95% = likely same person)
+    DUPLICATE_GAP_THRESHOLD: float = 0.08  # Minimum gap between top 2 matches to confirm duplicate (prevent ambiguous cases)
+    VERIFY_THRESHOLD: float = 0.80        # Threshold to verify match in 1:1 verification (80% = high confidence match)
     MIN_FACE_SIZE: int = 80
     
     # Vector search settings (pgvector)
@@ -128,6 +130,21 @@ class Settings(BaseSettings):
     # No need for manual rebuild intervals like FAISS
     VECTOR_INDEX_REBUILD_INTERVAL: int = 3600  # seconds (for compatibility)
     VECTOR_DB_INDEX_VERSION: int = 1
+
+    # Milvus settings
+    MILVUS_URI: Optional[str] = None  # e.g. https://your-project.api.gcp-milvus.zillizcloud.com
+    MILVUS_TOKEN: Optional[str] = None  # Zilliz/Milvus Cloud token
+    MILVUS_HOST: str = "localhost"
+    MILVUS_PORT: int = 19530
+    MILVUS_SECURE: bool = False
+    MILVUS_USERNAME: Optional[str] = None
+    MILVUS_PASSWORD: Optional[str] = None
+    MILVUS_DB: str = "default"
+    MILVUS_COLLECTION: str = "face_profiles"
+    MILVUS_INDEX_TYPE: str = "IVF_FLAT"  # Options: FLAT, IVF_FLAT, IVF_SQ8, HNSW, AUTOINDEX
+    MILVUS_METRIC_TYPE: str = "IP"   # Options: L2, COSINE, IP (IP=Inner Product for normalized vectors, best for face embeddings)
+    MILVUS_NLIST: int = 1024
+    MILVUS_NPROBE: int = 16
     
     # Liveness detection
     LIVENESS_ENABLED: bool = True
