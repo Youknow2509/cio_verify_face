@@ -2,6 +2,23 @@ package model
 
 import "github.com/google/uuid"
 
+// Get device info by token
+type GetDeviceInfoByTokenInput struct {
+	DeviceToken string `json:"device_token"`
+}
+type GetDeviceInfoByTokenOutput struct {
+	DeviceID        uuid.UUID
+	CompanyID       uuid.UUID
+	Name            string
+	Address         string
+	SerialNumber    string
+	MacAddress      string
+	IpAddress       string
+	FirmwareVersion string
+	DeviceType      string
+	CreatedAt       int64
+}
+
 // UpdateTokenDevice
 type UpdateTokenDeviceInput struct {
 	DeviceId uuid.UUID `json:"device_id"`

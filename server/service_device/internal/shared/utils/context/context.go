@@ -25,6 +25,22 @@ func SaveSessionToContext(c *gin.Context, userId string, sessionId string, userR
 	c.Set(constants.ContextCompanyIdKey, companyId)
 }
 
+// Save device session to the context
+func SaveDeviceSessionToContext(c *gin.Context, deviceId string, companyId string) {
+	c.Set(constants.ContextDeviceIDKey, deviceId)
+	c.Set(constants.ContextCompanyIdKey, companyId)
+}
+
+// Get device session from the context
+func GetDeviceSessionFromContext(c *gin.Context) (string, string, bool) {
+	deviceId, deviceIdExists := c.Get(constants.ContextDeviceIDKey)
+	companyId, companyIdExists := c.Get(constants.ContextCompanyIdKey)
+	if !deviceIdExists || !companyIdExists {
+		return "", "", false
+	}
+	return deviceId.(string), companyId.(string), true
+}
+
 // Get session from the context
 func GetSessionFromContext(c *gin.Context) (string, string, int, string,bool) {
 	userId, userIdExists := c.Get(constants.ContextUserIDKey)

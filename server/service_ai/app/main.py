@@ -90,13 +90,13 @@ async def startup_event():
         logger.error("PostgreSQL database connection failed during startup")
         exit(1)
     app.state.pg_manager = pg_manager
-    # Init PgVectorManager
-    from app.database.pgvector_manager import PgVectorManager
-    pgvector_manager = PgVectorManager()
-    if pgvector_manager.check_connection() is False:
-        logger.error("PgVector database connection failed during startup")
+    # Init MilvusManager
+    from app.database.milvus_manager import MilvusManager
+    milvus_manager = MilvusManager()
+    if milvus_manager.check_connection() is False:
+        logger.error("Milvus database connection failed during startup")
         exit(1)
-    app.state.pgvector_manager = pgvector_manager
+    app.state.milvus_manager = milvus_manager
     # Init ScyllaManager
     from app.database.scylladb_manager import ScyllaDBManager
     scylla_manager = ScyllaDBManager()

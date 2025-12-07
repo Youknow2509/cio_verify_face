@@ -68,11 +68,27 @@ func (t *TokenService) CheckDeviceToken(ctx context.Context, token string) (bool
 	return true, nil
 }
 
+// ParseDeviceToken implements token.ITokenService.
+func (t *TokenService) ParseDeviceToken(ctx context.Context, token string) (*domainModel.TokenDeviceJwtOutput, *domainErrors.TokenValidationError) {
+	tokenInfo, err := t.grpc.ParseDeviceToken(ctx, &pb.ParseDeviceTokenRequest{
+		Token: token,
+	})
+	if err != nil {
+		return nil, handleError(err)
+	}
+	return &domainModel.TokenDeviceJwtOutput{
+		DeviceId:  tokenInfo.DeviceId,
+		CompanyId: tokenInfo.CompanyId,
+		TokenId:   tokenInfo.TokenId,
+		ExpiresAt: time.Unix(tokenInfo.ExpiresAt, 0),
+	}, nil
+}
+
 // CreateDeviceToken implements token.ITokenService.
 func (t *TokenService) CreateDeviceToken(ctx context.Context, input *domainModel.TokenDeviceJwtInput) (string, error) {
 	token, err := t.grpc.CreateDeviceToken(ctx, &pb.CreateDeviceTokenRequest{
 		DeviceId:  input.DeviceId,
-		CompanyId: "",
+		CompanyId: input.CompanyId,
 	})
 	if err != nil {
 		return "", err

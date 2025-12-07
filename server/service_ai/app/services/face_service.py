@@ -16,7 +16,7 @@ from app.core.face_detector import FaceDetector
 from app.core.face_embedding import FaceEmbedding
 from app.core.liveness_detector import LivenessDetector
 # Database managers
-from app.database.pgvector_manager import PgVectorManager, VectorDBUnavailable
+from app.database.milvus_manager import MilvusManager, VectorDBUnavailable
 
 # Silence upstream rcond FutureWarning from insightface transform
 warnings.filterwarnings(
@@ -49,7 +49,7 @@ class FaceService:
         logger.info("Initializing FaceService ...")
         self.detector = FaceDetector()
         self.embedding_gen = FaceEmbedding(self.detector)
-        self.index_manager = PgVectorManager()
+        self.index_manager = MilvusManager()
         self.liveness_detector = LivenessDetector()
         self.batching_service = batching_service
         try:
@@ -251,7 +251,7 @@ class FaceService:
                 logger.warning("Enroll failed: no face detected in image")
                 return EnrollResponse(status="failed", message="No face detected in image")
             # Check quality threshold
-            if quality < settings.VERIFY_THRESHOLD:
+            if quality < settings.QUALITY_THRESHOLD:
                 logger.warning(f"Enroll failed: image quality too low ({quality:.2f})")
                 return EnrollResponse(
                     status="failed",
@@ -267,70 +267,63 @@ class FaceService:
             logger.info(f"Enroll search found {len(matches)} matches for duplicate check.")
             if matches:
                 best = matches[0]
+                # Check if face is already enrolled to different user
+                # DUPLICATE_THRESHOLD = 0.95 means 95% similarity = likely same person
                 if best["similarity"] > settings.DUPLICATE_THRESHOLD and best["user_id"] != str(user_id):
-                    logger.warning(
-                        f"Enroll failed: duplicate face detected "
-                        f"(matched_user={best['user_id']}, similarity={best['similarity']:.4f})"
-                        f" device_id={device_id}, ip_address={ip_address}, user_agent={user_agent}"
-                    )
-                    return EnrollResponse(
-                        status="duplicate",
-                        message="Face already enrolled for another user",
-                        duplicate_profiles=[{
-                            "user_id": best["user_id"],
-                            "similarity": best["similarity"]
-                        }]
-                    )
-            # Create new face profile for add to database
-            profile = FaceProfile(
-                user_id=user_id,
-                company_id=company_id,
-                embedding=embedding.tolist(),
-                embedding_version=settings.FACE_EMBEDDING_MODEL,
-                is_primary=make_primary,
-                quality_score=quality,
-                meta_data=self._sanitize_metadata(metadata),  # <-- Changed this line
-                indexed=False,
-                index_version=self.index_manager.index_version
-            )
-            db.add(profile)
-            db.flush()
-            # Create image path and save to Database object
-            image_path = None
-            if self.minio and settings.IMAGE_STORE_ENROLLMENTS:
-                try:
-                    optimized = ImageOptimizer.optimize_for_storage(image)
-                    image_path = self.minio.upload_face_image(optimized, user_id, profile.profile_id)
-                    if image_path:
-                        profile.enroll_image_path = image_path
-                except Exception as e:
-                    logger.error(f"MinIO enrollment store failed: {e}")
-            # Set face image profile as primary if needed
-            if make_primary:
-                db.query(FaceProfile).filter(
-                    and_(
-                        FaceProfile.user_id == user_id,
-                        FaceProfile.company_id == company_id,
-                        FaceProfile.profile_id != profile.profile_id,
-                        FaceProfile.deleted_at.is_(None)
-                    )
-                ).update({"is_primary": False})
-            # Commit to get profile ID
+                    # Additional check: require sufficient gap from second match to confirm
+                    duplicate_confirmed = True
+                    if len(matches) > 1:
+                        second_best = matches[1]
+                        gap = best["similarity"] - second_best["similarity"]
+                        # If gap is too small, it's ambiguous - don't block enrollment
+                        # E.g., both matches at 0.96 - unclear which is the real match
+                        if gap < settings.DUPLICATE_GAP_THRESHOLD:
+                            duplicate_confirmed = False
+                            logger.info(
+                                f"Duplicate check ambiguous: gap too small "
+                                f"(best={best['similarity']:.4f}, second={second_best['similarity']:.4f}, gap={gap:.4f}, threshold={settings.DUPLICATE_GAP_THRESHOLD})"
+                            )
+                    
+                    if duplicate_confirmed:
+                        logger.warning(
+                            f"Enroll failed: duplicate face detected "
+                            f"(matched_user={best['user_id']}, similarity={best['similarity']:.4f}, gap_threshold={settings.DUPLICATE_GAP_THRESHOLD})"
+                            f" device_id={device_id}, ip_address={ip_address}, user_agent={user_agent}"
+                        )
+                        return EnrollResponse(
+                            status="duplicate",
+                            message="Face already enrolled for another user",
+                            duplicate_profiles=[{
+                                "user_id": best["user_id"],
+                                "similarity": best["similarity"]
+                            }]
+                        )
+            # Create new face profile for Milvus only (skip PostgreSQL)
+            profile_id = str(uuid4())
+            
+            # Add embedding to Milvus
             try:
                 self.index_manager.add_embedding(
-                    str(profile.profile_id),
+                    profile_id,
                     str(company_id),
                     str(user_id),
                     embedding,
                     make_primary
                 )
-                profile.indexed = True
-                db.commit()
                 self.index_manager.save_index()
+                logger.info(f"Added embedding to Milvus for profile {profile_id}")
             except Exception as e:
-                logger.error(f"Index add failed: {e}")
-                db.rollback()
-                return EnrollResponse(status="failed", message="Indexing failed")
+                logger.error(f"Milvus add embedding failed: {e}")
+                return EnrollResponse(status="failed", message="Milvus indexing failed")
+            
+            # Upload image to MinIO if enabled
+            image_path = None
+            if self.minio and settings.IMAGE_STORE_ENROLLMENTS:
+                try:
+                    optimized = ImageOptimizer.optimize_for_storage(image)
+                    image_path = self.minio.upload_face_image(optimized, user_id, profile_id)
+                except Exception as e:
+                    logger.error(f"MinIO enrollment store failed: {e}")
             # Audit log
             try:
                 self.scylladb.add_face_enrollment_log(
@@ -345,10 +338,10 @@ class FaceService:
             except Exception as e:
                 logger.error(f"Audit log failed: {e}")
                 
-            logger.info(f"Face enrollment successful for user {user_id} with profile ID {profile.profile_id}")
+            logger.info(f"Face enrollment successful for user {user_id} with profile ID {profile_id}")
             return EnrollResponse(
                 status="ok",
-                profile_id=profile.profile_id,
+                profile_id=profile_id,
                 message="Face enrolled successfully",
                 quality_score=quality
             )
@@ -430,6 +423,20 @@ class FaceService:
             # Get best match and determine verification result
             best = matches[0]
             verified = best["similarity"] >= settings.VERIFY_THRESHOLD
+            
+            # Additional safety check: require gap between top match and second match
+            # This prevents false positives when top 2 matches are too similar
+            if verified and len(matches) > 1:
+                second_best = matches[1]
+                gap = best["similarity"] - second_best["similarity"]
+                # Use configurable gap threshold instead of hardcoded value
+                if gap < settings.DUPLICATE_GAP_THRESHOLD:
+                    logger.warning(
+                        f"Verification rejected: similarity gap too small "
+                        f"(best={best['similarity']:.4f}, second={second_best['similarity']:.4f}, gap={gap:.4f}, threshold={settings.DUPLICATE_GAP_THRESHOLD})"
+                    )
+                    verified = False
+            
             match_objs = [
                 VerifyMatch(
                     user_id=UUID(m["user_id"]),
@@ -443,11 +450,15 @@ class FaceService:
             status = "match" if verified else "no_match"
             matched_user_id = UUID(best["user_id"]) if verified else None
             matched_profile_id = UUID(best["profile_id"]) if verified else None
+            
+            # Log all matches for diagnostics
+            matches_str = " | ".join([f"user={m['user_id'][:8]}, sim={m['similarity']:.4f}" for m in matches[:3]])
             logger.info(
                 f"Verification result: status={status}, "
                 f"company_id={company_id}, user_id={user_id}, device_id={device_id}, "
                 f"matched_user_id={matched_user_id}, matched_profile_id={matched_profile_id}, "
-                f"similarity={best['similarity']:.4f}, liveness_score={liveness_score}"
+                f"best_similarity={best['similarity']:.4f}, threshold={settings.VERIFY_THRESHOLD}, "
+                f"top_matches=[{matches_str}], liveness_score={liveness_score}"
             )
             
             # Store verification image if needed

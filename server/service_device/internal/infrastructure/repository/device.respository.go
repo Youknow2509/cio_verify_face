@@ -3,7 +3,6 @@ package repository
 import (
 	"context"
 	"errors"
-
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -17,6 +16,35 @@ import (
  */
 type DeviceRepository struct {
 	db *database.Queries
+}
+
+// GetDeviceInfoByToken implements repository.IDeviceRepository.
+func (d *DeviceRepository) GetDeviceInfoByToken(ctx context.Context, input *model.GetDeviceInfoByTokenInput) (*model.GetDeviceInfoByTokenOutput, error) {
+	if input.DeviceToken == "" {
+		return nil, errors.New("invalid device token")
+	}
+	resp, err := d.db.GetDeviceInfoByToken(
+		ctx,
+		input.DeviceToken,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	return &model.GetDeviceInfoByTokenOutput{
+		DeviceID:        resp.DeviceID.Bytes,
+		CompanyID:       resp.CompanyID.Bytes,
+		Name:            resp.Name,
+		Address:         resp.Address.String,
+		SerialNumber:    resp.SerialNumber.String,
+		MacAddress:      resp.MacAddress.String,
+		IpAddress:       resp.IpAddress.String(),
+		FirmwareVersion: resp.FirmwareVersion.String,
+		CreatedAt:       resp.CreatedAt.Time.Unix(),
+	}, nil
 }
 
 // GetDeviceToken implements repository.IDeviceRepository.

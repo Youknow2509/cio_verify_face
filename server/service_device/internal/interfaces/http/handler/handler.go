@@ -9,9 +9,11 @@ import (
 	applicationModel "github.com/youknow2509/cio_verify_face/server/service_device/internal/application/model"
 	applicationService "github.com/youknow2509/cio_verify_face/server/service_device/internal/application/service"
 	"github.com/youknow2509/cio_verify_face/server/service_device/internal/constants"
+	domainModel "github.com/youknow2509/cio_verify_face/server/service_device/internal/domain/model"
 	"github.com/youknow2509/cio_verify_face/server/service_device/internal/interfaces/dto"
 	"github.com/youknow2509/cio_verify_face/server/service_device/internal/interfaces/response"
 	contextShared "github.com/youknow2509/cio_verify_face/server/service_device/internal/shared/utils/context"
+	utilsContext "github.com/youknow2509/cio_verify_face/server/service_device/internal/shared/utils/context"
 	uuidShared "github.com/youknow2509/cio_verify_face/server/service_device/internal/shared/utils/uuid"
 )
 
@@ -30,12 +32,49 @@ type iHandler interface {
 	GetDeviceToken(c *gin.Context)
 	RefreshDeviceToken(c *gin.Context)
 	UpdateStatusDevice(c *gin.Context)
+	GetInfoDevice(c *gin.Context)
 }
 
 /**
  * Handler struct
  */
 type Handler struct{}
+
+// GetInfoDevice implements iHandler.
+// @Summary      Get info device
+// @Description  Get info device
+// @Tags         Core Device
+// @Accept       json
+// @Produce      json
+// @Param		 authorization header string true "Bearer <token>"
+// @Success      200  {object}  dto.ResponseData
+// @Failure      400  {object}  dto.ErrResponseData
+// @Router       /v1/device/me [post]
+func (h *Handler) GetInfoDevice(c *gin.Context) {
+	deviceId, companyId, ok := utilsContext.GetDeviceSessionFromContext(c)
+	if !ok {
+		response.ErrorResponse(c, response.ErrorCodeSystemTemporary, "Internal server error")
+		return
+	}
+	deviceUuid, _ := uuidShared.ParseUUID(deviceId)
+	companyUuid, _ := uuidShared.ParseUUID(companyId)
+	// Call to application handler
+	resp, errReq := applicationService.GetDeviceService().GetDeviceById(
+		c,
+		&applicationModel.GetDeviceByIdInput{
+			DeviceId:    deviceUuid,
+			CompanyId:   companyUuid,
+			Role:        domainModel.RoleAdmin,
+			ClientIp:    c.ClientIP(),
+			ClientAgent: c.Request.UserAgent(),
+		},
+	)
+	if errReq != nil {
+		response.ErrorResponse(c, 400, errReq.ErrorClient)
+		return
+	}
+	response.SuccessResponse(c, 200, resp)
+}
 
 // UpdateStatusDevice implements iHandler.
 // @Summary      Update status device

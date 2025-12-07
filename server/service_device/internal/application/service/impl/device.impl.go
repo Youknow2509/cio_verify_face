@@ -25,6 +25,62 @@ import (
 // =================================================
 type DeviceService struct{}
 
+// GetInfoDeviceWithToken implements service.IDeviceService.
+func (d *DeviceService) GetInfoDeviceWithToken(ctx context.Context, input *model.GetInfoDeviceWithTokenInput) (*model.GetInfoDeviceWithTokenOutput, *applicationError.Error) {
+	// Check token valid in grpc service
+	domainTokenService := domainToken.GetTokenService()
+	ok, errToken := domainTokenService.CheckDeviceToken(
+		ctx,
+		input.DeviceToken,
+	)
+	if errToken != nil {
+		global.Logger.Error("Error when check device token", "err", errToken)
+		return nil, &applicationError.Error{
+			ErrorSystem: nil,
+			ErrorClient: "Invalid device token.",
+		}
+	}
+	if !ok {
+		return nil, &applicationError.Error{
+			ErrorSystem: nil,
+			ErrorClient: "Invalid device token.",
+		}
+	}
+	// Get device info by token
+	deviceRepo, _ := domainRepo.GetDeviceRepository()
+	deviceInfo, err := deviceRepo.GetDeviceInfoByToken(
+		ctx,
+		&domainModel.GetDeviceInfoByTokenInput{
+			DeviceToken: input.DeviceToken,
+		},
+	)
+	if err != nil {
+		global.Logger.Error("Error when get device info by token", "err", err)
+		return nil, &applicationError.Error{
+			ErrorSystem: err,
+			ErrorClient: "System is busy now. Please try again later.",
+		}
+	}
+	if deviceInfo == nil {
+		return nil, &applicationError.Error{
+			ErrorSystem: nil,
+			ErrorClient: "Device not found.",
+		}
+	}
+	return &model.GetInfoDeviceWithTokenOutput{
+		DeviceID:        deviceInfo.DeviceID,
+		CompanyID:       deviceInfo.CompanyID,
+		Name:            deviceInfo.Name,
+		Address:         deviceInfo.Address,
+		SerialNumber:    deviceInfo.SerialNumber,
+		MacAddress:      deviceInfo.MacAddress,
+		IpAddress:       deviceInfo.IpAddress,
+		FirmwareVersion: deviceInfo.FirmwareVersion,
+		DeviceType:      deviceInfo.DeviceType,
+		CreatedAt:       deviceInfo.CreatedAt,
+	}, nil
+}
+
 // UpdateStatusDevice implements service.IDeviceService.
 func (d *DeviceService) UpdateStatusDevice(ctx context.Context, input *model.UpdateStatusDeviceInput) *applicationError.Error {
 	// Check permission
@@ -122,8 +178,8 @@ func (d *DeviceService) RefreshDeviceToken(ctx context.Context, input *model.Ref
 	// Call to grpc service to refresh token and create new token
 	domainToken := domainToken.GetTokenService()
 	newToken, err := domainToken.CreateDeviceToken(ctx, &domainModel.TokenDeviceJwtInput{
-		DeviceId: input.DeviceId.String(),
-		TokenId:  uuid.New().String(),
+		DeviceId:  input.DeviceId.String(),
+		CompanyId: input.CompanyId.String(),
 	})
 	if err != nil {
 		global.Logger.Error("Error when create device token", "err", err)

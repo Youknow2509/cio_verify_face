@@ -196,6 +196,54 @@ func (q *Queries) GetDeviceInfoBase(ctx context.Context, deviceID pgtype.UUID) (
 	return i, err
 }
 
+const getDeviceInfoByToken = `-- name: GetDeviceInfoByToken :one
+SELECT
+    device_id,
+    company_id,
+    name,
+    address,
+    serial_number,
+    mac_address,
+    ip_address,
+    firmware_version,
+    device_type,
+    created_at
+FROM devices
+WHERE token = $1
+LIMIT 1
+`
+
+type GetDeviceInfoByTokenRow struct {
+	DeviceID        pgtype.UUID
+	CompanyID       pgtype.UUID
+	Name            string
+	Address         pgtype.Text
+	SerialNumber    pgtype.Text
+	MacAddress      pgtype.Text
+	IpAddress       *netip.Addr
+	FirmwareVersion pgtype.Text
+	DeviceType      pgtype.Int2
+	CreatedAt       pgtype.Timestamptz
+}
+
+func (q *Queries) GetDeviceInfoByToken(ctx context.Context, token string) (GetDeviceInfoByTokenRow, error) {
+	row := q.db.QueryRow(ctx, getDeviceInfoByToken, token)
+	var i GetDeviceInfoByTokenRow
+	err := row.Scan(
+		&i.DeviceID,
+		&i.CompanyID,
+		&i.Name,
+		&i.Address,
+		&i.SerialNumber,
+		&i.MacAddress,
+		&i.IpAddress,
+		&i.FirmwareVersion,
+		&i.DeviceType,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const getDeviceToken = `-- name: GetDeviceToken :one
 SELECT token
 FROM devices

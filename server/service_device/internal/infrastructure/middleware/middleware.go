@@ -1,6 +1,13 @@
 package middleware
 
 /**
+ * Get auth device access token JWT middleware instance
+ */
+func GetAuthDeviceAccessTokenJwtMiddleware() *AuthDeviceTokenJwtMiddleware {
+	return &AuthDeviceTokenJwtMiddleware{}
+}
+
+/**
  * Get auth admin access token JWT middleware instance
  */
 func GetAuthAdminAccessTokenJwtMiddleware() *AuthAdminAccessTokenJwtMiddleware {

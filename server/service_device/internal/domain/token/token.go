@@ -45,6 +45,8 @@ type ITokenService interface {
 	 */
 	ParseUserRefreshToken(ctx context.Context, token string) (*model.TokenUserRefreshOutput, *domainErrors.TokenValidationError)
 
+	ParseDeviceToken(ctx context.Context, token string) (*model.TokenDeviceJwtOutput, *domainErrors.TokenValidationError)
+
 	/**
 	 * Check device token
 	 * @param ctx context.Context

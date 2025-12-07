@@ -48,11 +48,11 @@ def check_infrastructure():
     if pg_manager.check_connection() is False:
         logger.error("PostgreSQL database connection failed during startup")
         exit(1)
-    # Init PgVectorManager
-    from app.database.pgvector_manager import PgVectorManager
-    pgvector_manager = PgVectorManager()
-    if pgvector_manager.check_connection() is False:
-        logger.error("PgVector database connection failed during startup")
+    # Init MilvusManager
+    from app.database.milvus_manager import MilvusManager
+    milvus_manager = MilvusManager()
+    if milvus_manager.check_connection() is False:
+        logger.error("Milvus database connection failed during startup")
         exit(1)
     # Init ScyllaManager
     from app.database.scylladb_manager import ScyllaDBManager
@@ -88,9 +88,16 @@ async def start_grpc_server():
     # A refactor might be needed to share service instances.
     from app.database.redis_manager import RedisManager
     from app.database.pg_manager import PGManager
+    from app.database.milvus_manager import PgVectorManager
     
     redis_cache = RedisManager()
     pg_manager = PGManager()
+    pgvector_manager = PgVectorManager()
+
+    # Ensure Milvus connectivity before proceeding
+    if pgvector_manager.check_connection() is False:
+        logger.error("Milvus/PgVector database connection failed during gRPC startup")
+        exit(1)
     
     attendance_client = AttendanceClient()
     service_session = build_service_session()
@@ -110,6 +117,8 @@ async def start_grpc_server():
     )
     
     face_service = FaceService(batching_service=attendance_batching_service)
+    # Reuse the verified Milvus manager instance
+    face_service.index_manager = pgvector_manager
     user_service = UserService(redis_client=redis_cache, postgres_client=pg_manager)
 
     await serve(face_service, user_service)
