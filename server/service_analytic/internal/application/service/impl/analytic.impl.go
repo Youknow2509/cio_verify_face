@@ -966,7 +966,7 @@ func (s *AnalyticServiceImpl) ExportReport(ctx context.Context, input *model.Exp
 				}
 			} else if ec.Storage == "local" && ec.LocalPath != "" {
 				if _, statErr := os.Stat(ec.LocalPath); statErr == nil {
-					download := ec.LocalPath
+					download := buildLocalDownloadURL(ec.LocalPath)
 					if input.Email != nil && *input.Email != "" {
 						if nerr := s.publishExportEmail(ctx, *input.Email, download, exportFormat, startDate, endDate, *input.CompanyID); nerr != nil {
 							return nil, applicationErrors.ErrExportFailed.WithDetails("notify email failed: " + nerr.Error())
@@ -1103,9 +1103,9 @@ func (s *AnalyticServiceImpl) ExportReport(ctx context.Context, input *model.Exp
 				}
 			}
 			if download == "" {
+				download = buildLocalDownloadURL(filePath)
 				entryLocal := &exportCacheEntry{JobID: job, Status: "completed", Storage: "local", LocalPath: filePath, Format: exportFmt, Rows: len(summaries)}
 				_ = cacheutil.SetDistributedOnly(bgCtx, exportK, entryLocal, time.Duration(constants.CacheTTLMidSeconds)*time.Second)
-				download = filePath
 			}
 			if emailPtr != nil && *emailPtr != "" {
 				_ = s.publishExportEmail(bgCtx, *emailPtr, download, exportFmt, start, end, compID.String())
@@ -1316,18 +1316,13 @@ func (s *AnalyticServiceImpl) ExportReport(ctx context.Context, input *model.Exp
 		}
 	}
 
-	// Fallback: local file - construct download URL using API endpoint
+	// Fallback: local file served via HTTP endpoint
 	if global.Logger != nil {
 		global.Logger.Warn("ExportReport: Object storage not configured or upload failed, using local storage",
 			"file_path", filePath)
 	}
 
-	// Extract just the filename from the path
-	filename := filepath.Base(filePath)
-
-	// Build download URL through API endpoint
-	// Use localhost and server port from config
-	downloadURL := fmt.Sprintf("http://localhost:%d/api/v1/reports/download/%s", global.SettingServer.Server.Port, filename)
+	downloadURL := buildLocalDownloadURL(filePath)
 
 	entry := &exportCacheEntry{JobID: jobID, Status: "completed", Storage: "local", LocalPath: filePath, Format: exportFormat, Rows: len(summaries)}
 	_ = cacheutil.SetDistributedOnly(ctx, exportKey, entry, time.Duration(constants.CacheTTLMidSeconds)*time.Second)
@@ -1603,6 +1598,16 @@ func roundFloat(val float64, precision int) float64 {
 		ratio *= 10
 	}
 	return float64(int(val*ratio+0.5)) / ratio
+}
+
+// buildLocalDownloadURL converts a local export file path into an HTTP download link
+func buildLocalDownloadURL(filePath string) string {
+	filename := filepath.Base(filePath)
+	port := global.SettingServer.Server.Port
+	if port <= 0 {
+		port = 80
+	}
+	return fmt.Sprintf("http://127.0.0.1:%d/api/v1/reports/download/%s", port, filename)
 }
 
 // writeCSV writes daily summaries to a CSV file

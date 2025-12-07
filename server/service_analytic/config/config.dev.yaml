@@ -121,7 +121,7 @@ object_storage:
 kafka:
     brokers:
         - 127.0.0.1:9092
-    notify_topic: service_notify_email
+    notify_topic: report_attention_notification
     client_id: service-analytic
     sasl_enabled: false
     tls_enabled: false
