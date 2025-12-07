@@ -12,6 +12,20 @@ type IHtmlMailContent interface {
 		new_password string,
 		expired int64,
 	) (string, error)
+	PasswordResetNotification(
+		to string,
+		fullName string,
+		resetURL string,
+		expiresIn int,
+	) (string, error)
+	ReportAttentionNotification(
+		email string,
+		downloadURL string,
+		reportType string,
+		format string,
+		startDate string,
+		endDate string,
+	) (string, error)
 }
 
 /**

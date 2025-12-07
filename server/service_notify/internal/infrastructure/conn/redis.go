@@ -9,6 +9,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"github.com/youknow2509/cio_verify_face/server/service_notify/internal/constants"
 	domainConfig "github.com/youknow2509/cio_verify_face/server/service_notify/internal/domain/config"
+	"github.com/youknow2509/cio_verify_face/server/service_notify/internal/global"
 )
 
 // redisClient variable holds the Redis client instance.
@@ -23,7 +24,19 @@ var (
  */
 func InitRedisClient(redisSetting *domainConfig.RedisSetting) error {
 	if redisSetting == nil {
+		if global.Logger != nil {
+			global.Logger.Error("redis settings are nil")
+		}
 		return errors.New("redis settings are nil")
+	}
+
+	if global.Logger != nil {
+		global.Logger.Info(
+			"initializing redis client",
+			"type", redisSetting.Type,
+			"host", redisSetting.Host,
+			"port", redisSetting.Port,
+		)
 	}
 
 	var client redis.UniversalClient
@@ -80,11 +93,17 @@ func InitRedisClient(redisSetting *domainConfig.RedisSetting) error {
 		client = redis.NewClusterClient(opt)
 
 	default:
+		if global.Logger != nil {
+			global.Logger.Error("unsupported redis type", "type", redisSetting.Type)
+		}
 		return errors.New("unsupported Redis type")
 	}
 
 	ctx := context.Background()
 	if err := client.Ping(ctx).Err(); err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("failed to connect to redis", "error", err)
+		}
 		return errors.New("failed to connect to Redis: " + err.Error())
 	}
 
@@ -100,6 +119,10 @@ func InitRedisClient(redisSetting *domainConfig.RedisSetting) error {
 	vRedisClient.Options().PoolSize = redisSetting.PoolSize
 	vRedisClient.Options().MinIdleConns = redisSetting.MinIdleConns
 	vRedisClient.Options().MaxRetries = redisSetting.MaxRetries
+
+	if global.Logger != nil {
+		global.Logger.Info("redis client initialized")
+	}
 
 	return nil
 }

@@ -15,6 +15,14 @@ type IMailService interface {
 		ctx context.Context,
 		input model.MailForgotPassword,
 	) error
+	SendPasswordResetNotification(
+		ctx context.Context,
+		input model.PasswordResetNotification,
+	) error
+	SendReportAttentionNotification(
+		ctx context.Context,
+		input model.ReportAttentionNotification,
+	) error
 }
 
 /**

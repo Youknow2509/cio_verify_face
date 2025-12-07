@@ -7,24 +7,26 @@ package config
 // ==========================================================
 type (
 	Setting struct {
-		GrpcServer        GrpcSetting          `mapstructure:"grpc"`
-		Server            ServerSetting        `mapstructure:"server"`
-		WsServer          WsSetting            `mapstructure:"ws"`
-		Observability     ObservabilitySetting `mapstructure:"observability"`
-		Cassandra         CassandraSetting     `mapstructure:"cassandra"`
-		Elasticsearch     ElasticsearchSetting `mapstructure:"elasticsearch"`
-		Jaeger            JaegerSetting        `mapstructure:"jaeger"`
-		Kafka             KafkaSetting         `mapstructure:"kafka"`
-		Memcached         MemcachedSetting     `mapstructure:"memcached"`
-		Minio             MinioSetting         `mapstructure:"minio"`
-		Postgres          PostgresSetting      `mapstructure:"postgres"`
-		Redis             RedisSetting         `mapstructure:"redis"`
-		ScyllaDb          ScyllaDbSetting      `mapstructure:"scylladb"`
-		Logstash          LogstashSetting      `mapstructure:"logstash"`
-		SMTP              SMTPSetting          `mapstructure:"smtp"`
-		JWT               JWTSetting           `mapstructure:"jwt"`
-		Logger            LoggerSetting        `mapstructure:"logger"`
-		RateLimitPolicies []RateLimitPolicy    `mapstructure:"policy_rate_limit"`
+		GrpcServer                  GrpcSetting                        `mapstructure:"grpc"`
+		Server                      ServerSetting                      `mapstructure:"server"`
+		WsServer                    WsSetting                          `mapstructure:"ws"`
+		Observability               ObservabilitySetting               `mapstructure:"observability"`
+		Cassandra                   CassandraSetting                   `mapstructure:"cassandra"`
+		Elasticsearch               ElasticsearchSetting               `mapstructure:"elasticsearch"`
+		Jaeger                      JaegerSetting                      `mapstructure:"jaeger"`
+		Kafka                       KafkaSetting                       `mapstructure:"kafka"`
+		Memcached                   MemcachedSetting                   `mapstructure:"memcached"`
+		Minio                       MinioSetting                       `mapstructure:"minio"`
+		Postgres                    PostgresSetting                    `mapstructure:"postgres"`
+		Redis                       RedisSetting                       `mapstructure:"redis"`
+		ScyllaDb                    ScyllaDbSetting                    `mapstructure:"scylladb"`
+		Logstash                    LogstashSetting                    `mapstructure:"logstash"`
+		SMTP                        SMTPSetting                        `mapstructure:"smtp"`
+		JWT                         JWTSetting                         `mapstructure:"jwt"`
+		Logger                      LoggerSetting                      `mapstructure:"logger"`
+		RateLimitPolicies           []RateLimitPolicy                  `mapstructure:"policy_rate_limit"`
+		PasswordResetNotifications  PasswordResetNotificationsSetting  `mapstructure:"password_reset_notifications"`
+		ReportAttentionNotification ReportAttentionNotificationSetting `mapstructure:"report_attention_notification"`
 	}
 )
 
@@ -184,6 +186,7 @@ type KafkaProducer struct {
 type KafkaConsumer struct {
 	GroupID             string `mapstructure:"group_id"`              // ID của consumer group
 	Threads             int    `mapstructure:"threads"`               // Số luồng xử lý message
+	StartOffset         string `mapstructure:"start_offset"`          // latest: bỏ backlog, earliest: đọc từ đầu (default)
 	CommitIntervalMs    int    `mapstructure:"commit_interval_ms"`    // 0 = sync commit, >0 = auto commit theo thời gian (ms)
 	MinBytes            int    `mapstructure:"min_bytes"`             // 10KB: Minimum data per fetch
 	MaxBytes            int    `mapstructure:"max_bytes"`             // 1MB: Maximum fetch size
@@ -326,4 +329,16 @@ type LoggerSetting struct {
 	FileMaxBackups int    `mapstructure:"file_max_backups"` // Maximum number of old log files to keep
 	FileMaxAge     int    `mapstructure:"file_max_age"`     // Maximum age of log files in days
 	Compress       bool   `mapstructure:"compress"`         // Whether to compress old log files
+}
+
+// password_reset_notifications
+type PasswordResetNotificationsSetting struct {
+	Topic   string `mapstructure:"topic"`   // Kafka topic name for password reset notifications
+	Workers int    `mapstructure:"workers"` // Number of worker threads to process messages
+}
+
+// report_attention_notification
+type ReportAttentionNotificationSetting struct {
+	Topic   string `mapstructure:"topic"`   // Kafka topic name for report attention notifications
+	Workers int    `mapstructure:"workers"` // Number of worker threads to process messages
 }

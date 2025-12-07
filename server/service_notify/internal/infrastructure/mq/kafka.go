@@ -3,6 +3,7 @@ package impl
 import (
 	"context"
 	"crypto/tls"
+	"strings"
 	"time"
 
 	"github.com/segmentio/kafka-go"
@@ -296,6 +297,13 @@ func (k *KafkaWriterService) getProducerAllAckRequired() *kafka.Writer {
 }
 
 func (k *KafkaReaderService) getConsumer(topic string) *kafka.Reader {
+	startOffset := kafka.FirstOffset
+	switch strings.ToLower(k.kafkaSetting.Consumer.StartOffset) {
+	case "latest":
+		startOffset = kafka.LastOffset
+	case "earliest", "first", "oldest", "" /* default */ :
+		startOffset = kafka.FirstOffset
+	}
 	return kafka.NewReader(
 		kafka.ReaderConfig{
 			Brokers: k.kafkaSetting.Brokers,
@@ -306,6 +314,7 @@ func (k *KafkaReaderService) getConsumer(topic string) *kafka.Reader {
 				SASLMechanism: k.kafkaSasl,
 			},
 			CommitInterval:    0, // Disable auto-commit
+			StartOffset:       startOffset,
 			MinBytes:          k.kafkaSetting.Consumer.MinBytes,
 			MaxBytes:          k.kafkaSetting.Consumer.MaxBytes,
 			MaxWait:           time.Duration(k.kafkaSetting.Consumer.MaxWaitMs) * time.Millisecond,
@@ -322,6 +331,13 @@ func (k *KafkaReaderService) getConsumer(topic string) *kafka.Reader {
 }
 
 func (k *KafkaReaderService) getConsumerAutoCommit(topic string) *kafka.Reader {
+	startOffset := kafka.FirstOffset
+	switch strings.ToLower(k.kafkaSetting.Consumer.StartOffset) {
+	case "latest":
+		startOffset = kafka.LastOffset
+	case "earliest", "first", "oldest", "" /* default */ :
+		startOffset = kafka.FirstOffset
+	}
 	return kafka.NewReader(
 		kafka.ReaderConfig{
 			Brokers: k.kafkaSetting.Brokers,
@@ -332,6 +348,7 @@ func (k *KafkaReaderService) getConsumerAutoCommit(topic string) *kafka.Reader {
 				SASLMechanism: k.kafkaSasl,
 			},
 			CommitInterval:    time.Duration(k.kafkaSetting.Consumer.CommitIntervalMs) * time.Millisecond, // Enable auto-commit
+			StartOffset:       startOffset,
 			MinBytes:          k.kafkaSetting.Consumer.MinBytes,
 			MaxBytes:          k.kafkaSetting.Consumer.MaxBytes,
 			MaxWait:           time.Duration(k.kafkaSetting.Consumer.MaxWaitMs) * time.Millisecond,

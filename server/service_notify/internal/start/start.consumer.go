@@ -8,6 +8,7 @@ import (
 
 // init consumer
 func initConsumerKafka() error {
+	// Existing notification topic listener
 	mq := interfacemq.NewKafkaListenerData(
 		constants.KAFKA_TOPIC_NOTIFICATION,
 		global.SettingServer.Kafka.Consumer.Threads,
@@ -15,5 +16,24 @@ func initConsumerKafka() error {
 	if err := mq.Listener(global.ContextSystem); err != nil {
 		return err
 	}
+
+	// Password reset notifications listener - using separate config
+	passwordResetListener := interfacemq.NewPasswordResetKafkaListener(
+		global.SettingServer.PasswordResetNotifications.Topic,
+		global.SettingServer.PasswordResetNotifications.Workers,
+	)
+	if err := passwordResetListener.Listener(global.ContextSystem); err != nil {
+		return err
+	}
+
+	// Report attention notifications listener - using separate config
+	reportAttentionListener := interfacemq.NewReportAttentionKafkaListener(
+		global.SettingServer.ReportAttentionNotification.Topic,
+		global.SettingServer.ReportAttentionNotification.Workers,
+	)
+	if err := reportAttentionListener.Listener(global.ContextSystem); err != nil {
+		return err
+	}
+
 	return nil
 }

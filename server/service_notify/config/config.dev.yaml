@@ -61,6 +61,7 @@ kafka:
     consumers:
         group_id: 'cio_verify_face-consumer-group' # ID của consumer group
         threads: 3 # Số luồng xử lý message
+        start_offset: 'latest' # earliest|latest; latest để bỏ backlog cũ khi group mới
         # COMMIT
         commit_interval_ms: 1000 # 0 = sync commit, >0 = auto commit theo thời gian (ms)
         # BATCH FETCH
@@ -149,5 +150,13 @@ logger:
     folder_store: './logs'
     file_max_size: 500
     file_max_backups: 3
-    filfile_max_agee_max_age: 30
+    file_max_age: 30
     compress: true
+
+password_reset_notifications:
+    topic: 'password_reset_notifications'
+    workers: 3
+
+report_attention_notification:
+    topic: 'report_attention_notification'
+    workers: 3

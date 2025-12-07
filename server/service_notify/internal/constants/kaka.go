@@ -12,13 +12,17 @@ const (
 
 // Topic name
 const (
-	KAFKA_TOPIC_NOTIFICATION             = "notification_requests"	
+	KAFKA_TOPIC_NOTIFICATION                = "notification_requests"
+	KAFKA_TOPIC_PASSWORD_RESET_NOTIFICATION = "password_reset_notifications"
+	KAFKA_TOPIC_REPORT_ATTENTION            = "report_attention_notification"
 	// v.v
 )
 
 // type event notification
 const (
 	KAFKA_EVENT_TYPE_SEND_TOKEN_RESET_PASSWORD = iota
+	KAFKA_EVENT_TYPE_PASSWORD_RESET_NOTIFICATION
+	KAFKA_EVENT_TYPE_REPORT_ATTENTION_NOTIFICATION
 )
 
 // SASL Mechanism

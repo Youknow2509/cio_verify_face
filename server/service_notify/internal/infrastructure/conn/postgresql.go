@@ -13,6 +13,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/youknow2509/cio_verify_face/server/service_notify/internal/constants"
 	domainConfig "github.com/youknow2509/cio_verify_face/server/service_notify/internal/domain/config"
+	"github.com/youknow2509/cio_verify_face/server/service_notify/internal/global"
 )
 
 // Global pool variable
@@ -27,7 +28,18 @@ var (
  */
 func InitPostgresqlClient(postgresSetting *domainConfig.PostgresSetting) error {
 	if postgresSetting == nil {
+		if global.Logger != nil {
+			global.Logger.Error("postgres settings are nil")
+		}
 		return errors.New("PostgreSQL settings are nil")
+	}
+
+	if global.Logger != nil {
+		global.Logger.Info(
+			"initializing postgresql client",
+			"address", strings.Join(postgresSetting.Address, ","),
+			"database", postgresSetting.Database,
+		)
 	}
 
 	address := strings.Join(postgresSetting.Address, ",")
@@ -41,6 +53,9 @@ func InitPostgresqlClient(postgresSetting *domainConfig.PostgresSetting) error {
 	)
 	connConfig, err := pgxpool.ParseConfig(connString)
 	if err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("failed to parse postgresql connection string", "error", err)
+		}
 		return errors.New("failed to parse PostgreSQL connection string")
 	}
 
@@ -77,6 +92,9 @@ func InitPostgresqlClient(postgresSetting *domainConfig.PostgresSetting) error {
 				postgresSetting.SSLRootCertPath,
 			)
 			if tlsErr != nil {
+				if global.Logger != nil {
+					global.Logger.Error("cannot load postgresql client certificate", "error", tlsErr)
+				}
 				return fmt.Errorf("cannot load client certificate: %v", tlsErr)
 			}
 			connConfig.ConnConfig.TLSConfig = tlsConfig
@@ -89,6 +107,9 @@ func InitPostgresqlClient(postgresSetting *domainConfig.PostgresSetting) error {
 			postgresSetting.SSLRootCertPath,
 		)
 		if tlsErr != nil {
+			if global.Logger != nil {
+				global.Logger.Error("cannot load postgresql certificates", "error", tlsErr)
+			}
 			return fmt.Errorf("cannot load certificates/CA: %v", tlsErr)
 		}
 		if postgresSetting.SSLMode == constants.POSTGRESQL_SSL_MODE_VERIFY_FULL {
@@ -99,6 +120,9 @@ func InitPostgresqlClient(postgresSetting *domainConfig.PostgresSetting) error {
 		}
 		connConfig.ConnConfig.TLSConfig = tlsConfig
 	default:
+		if global.Logger != nil {
+			global.Logger.Error("unsupported postgresql ssl mode", "mode", postgresSetting.SSLMode)
+		}
 		return fmt.Errorf("unsupported SSL mode: %s", postgresSetting.SSLMode)
 	}
 
@@ -107,13 +131,22 @@ func InitPostgresqlClient(postgresSetting *domainConfig.PostgresSetting) error {
 
 	pool, err := pgxpool.NewWithConfig(ctx, connConfig)
 	if err != nil {
+		if global.Logger != nil {
+			global.Logger.Error("failed to create pgxpool", "error", err)
+		}
 		return fmt.Errorf("failed to create pgxpool: %v", err)
 	}
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()
+		if global.Logger != nil {
+			global.Logger.Error("failed to ping database", "error", err)
+		}
 		return fmt.Errorf("failed to ping database: %v", err)
 	}
 	vPostgresqlClient = pool
+	if global.Logger != nil {
+		global.Logger.Info("postgresql client initialized")
+	}
 	return nil
 }
 
