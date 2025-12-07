@@ -274,12 +274,15 @@ export const EmployeeDetailPage: React.FC = () => {
         setResettingPassword(true);
         try {
             const response = await apiClient.post(
-                `/api/v1/users/${id}/reset-password`
+                `/api/v1/password/reset`,
+                {
+                    "employee_id": id,
+                }
             );
             if (response.data?.success) {
                 setSnackbar({
                     open: true,
-                    message: 'Đã gửi mật khẩu mới đến email nhân viên',
+                    message: 'Đã gửi xác thực mật khẩu mới đến email nhân viên',
                     severity: 'success',
                 });
                 setResetPasswordDialogOpen(false);
