@@ -3,6 +3,7 @@ package repository
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -21,6 +22,84 @@ type ShiftUserRepository struct {
 	db   *database.Queries
 	pool *pgxpool.Pool
 }
+
+// GetListShiftForEmployee returns paginated shift assignments for a single employee.
+func (s *ShiftUserRepository) GetListShiftForEmployee(ctx context.Context, input *model.GetListShiftForEmployeeInput) (*model.GetListShiftForEmployeeOutput, error) {
+	if input == nil {
+		return nil, errors.New("input cannot be nil")
+	}
+
+	// Build base query with optional company filter to ensure tenant isolation.
+	baseQuery := "FROM employee_shifts es JOIN work_shifts ws ON ws.shift_id = es.shift_id WHERE es.employee_id = $1"
+	args := []interface{}{input.EmployeeID}
+	nextArg := 2
+	if input.CompanyID != uuid.Nil {
+		baseQuery = fmt.Sprintf("%s AND ws.company_id = $%d", baseQuery, nextArg)
+		args = append(args, input.CompanyID)
+		nextArg++
+	}
+
+	// Count total rows for pagination.
+	countQuery := "SELECT COUNT(1) " + baseQuery
+	var total int64
+	if err := s.pool.QueryRow(ctx, countQuery, args...).Scan(&total); err != nil {
+		return nil, err
+	}
+
+	// Fetch current page.
+	listQuery := fmt.Sprintf(`SELECT es.shift_id, ws.name, ws.start_time::text, ws.end_time::text, es.effective_from, es.effective_to, es.is_active %s ORDER BY es.effective_from DESC LIMIT $%d OFFSET $%d`, baseQuery, nextArg, nextArg+1)
+	argsWithPaging := append(args, input.Limit, input.Offset)
+	rows, err := s.pool.Query(ctx, listQuery, argsWithPaging...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	shifts := make([]*model.ShiftInfoForEmployee, 0)
+	for rows.Next() {
+		var (
+			shiftID  pgtype.UUID
+			name     string
+			startStr string
+			endStr   string
+			effFrom  pgtype.Date
+			effTo    pgtype.Date
+			isActive pgtype.Bool
+		)
+		if scanErr := rows.Scan(&shiftID, &name, &startStr, &endStr, &effFrom, &effTo, &isActive); scanErr != nil {
+			return nil, scanErr
+		}
+		shifts = append(shifts, &model.ShiftInfoForEmployee{
+			ShiftID:        shiftID.Bytes,
+			ShiftName:      name,
+			ShiftStartTime: startStr,
+			ShiftEndTime:   endStr,
+			EffectiveFrom:  fromPgDate(effFrom),
+			EffectiveTo:    fromPgDate(effTo),
+			IsActive:       fromPgBoolValue(isActive),
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return &model.GetListShiftForEmployeeOutput{
+		Shifts:   shifts,
+		Total:    int32(total),
+		PageSize: input.Limit,
+	}, nil
+}
+
+const queryGetShiftEmployeeAll = `
+SELECT 
+	shift_id,
+	effective_from,
+	effective_to,
+	is_active
+FROM employee_shifts
+WHERE employee_id = $1
+ORDER BY effective_from DESC
+LIMIT $2 OFFSET $3`
 
 // DeleteListEmployeeShift implements repository.IShiftUserRepository.
 func (s *ShiftUserRepository) DeleteListEmployeeShift(ctx context.Context, input *model.DeleteListEmployeeShiftInput) (string, error) {
@@ -272,6 +351,41 @@ func (s *ShiftUserRepository) GetShiftEmployeeWithEffectiveDate(ctx context.Cont
 			EffectiveTo:   fromPgDate(r.EffectiveTo),
 			IsActive:      fromPgBoolValue(r.IsActive),
 		})
+	}
+	return out, nil
+}
+
+// GetShiftEmployeeAll returns all shift assignments for an employee with pagination (no date filter).
+func (s *ShiftUserRepository) GetShiftEmployeeAll(ctx context.Context, input *model.GetShiftEmployeeAllInput) ([]*model.EmployeeShiftRow, error) {
+	if input == nil {
+		return nil, errors.New("input cannot be nil")
+	}
+	rows, err := s.pool.Query(ctx, queryGetShiftEmployeeAll, input.EmployeeID, input.Limit, input.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	out := make([]*model.EmployeeShiftRow, 0)
+	for rows.Next() {
+		var (
+			shiftID pgtype.UUID
+			effFrom pgtype.Date
+			effTo   pgtype.Date
+			isAct   pgtype.Bool
+		)
+		if scanErr := rows.Scan(&shiftID, &effFrom, &effTo, &isAct); scanErr != nil {
+			return nil, scanErr
+		}
+		out = append(out, &model.EmployeeShiftRow{
+			EmployeeID:    input.EmployeeID,
+			ShiftID:       shiftID.Bytes,
+			EffectiveFrom: fromPgDate(effFrom),
+			EffectiveTo:   fromPgDate(effTo),
+			IsActive:      fromPgBoolValue(isAct),
+		})
+	}
+	if rowsErr := rows.Err(); rowsErr != nil {
+		return nil, rowsErr
 	}
 	return out, nil
 }

@@ -4,6 +4,7 @@ import (
 	// "context"
 	"context"
 	"errors"
+
 	applicationError "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/application/error"
 	model "github.com/youknow2509/cio_verify_face/server/service_workforce/internal/application/model"
 )
@@ -14,6 +15,7 @@ import (
 type IShiftEmployeeService interface {
 	GetListEmployeeDonotInShift(ctx context.Context, input *model.GetListEmployeeShiftInput) (*model.GetListEmployeeShiftOutput, *applicationError.Error)
 	GetListEmployeeInShift(ctx context.Context, input *model.GetListEmployeeShiftInput) (*model.GetListEmployeeShiftOutput, *applicationError.Error)
+	GetListShiftForEmployee(ctx context.Context, input *model.GetListShiftForEmployeeInput) (*model.GetListShiftForEmployeeOutput, *applicationError.Error)
 	AddShiftEmployee(ctx context.Context, input *model.AddShiftEmployeeInput) *applicationError.Error
 	DeleteListShiftUser(ctx context.Context, input *model.DeleteShiftUserInput) *applicationError.Error
 	DisableShiftUser(ctx context.Context, input *model.DisableShiftUserInput) *applicationError.Error

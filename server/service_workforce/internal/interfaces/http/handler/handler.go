@@ -27,6 +27,7 @@ type iHandler interface {
 	DeleteShift(*gin.Context)
 	GetListShift(*gin.Context)
 	ChangeStatusShift(*gin.Context)
+	GetListShiftEmployee(*gin.Context)
 	// For shift employee
 	GetShiftUserWithEffectiveDate(*gin.Context)
 	EditShiftUserWithEffectiveDate(*gin.Context)
@@ -43,6 +44,66 @@ type iHandler interface {
  * Handler struct
  */
 type Handler struct{}
+
+// GetListShiftEmployee implements iHandler.
+// @Summary      Get employee shift list
+// @Description  Employees fetch their own shift assignments
+// @Tags         Shift
+// @Accept       json
+// @Produce      json
+// @Param        authorization header string true "Bearer <token>"
+// @Param        page query int false "Page number"
+// @Param        size query int false "Page size"
+// @Success      200  {object}  dto.ResponseData
+// @Failure      400  {object}  dto.ErrResponseData
+// @Router       /v1/shift/employee [get]
+func (h *Handler) GetListShiftEmployee(g *gin.Context) {
+	// Paging params
+	pageStr := g.DefaultQuery("page", constants.DEFAULT_PAGE_STRING)
+	sizeStr := g.DefaultQuery("size", strconv.Itoa(constants.DEFAULT_PAGE_SIZE))
+	page, err := strconv.Atoi(pageStr)
+	if err != nil || page <= 0 {
+		response.ErrorResponse(g, 400, "Invalid page number")
+		return
+	}
+	size, err := strconv.Atoi(sizeStr)
+	if err != nil || size <= 0 {
+		response.ErrorResponse(g, 400, "Invalid page size")
+		return
+	}
+	// Get auth info from context
+	userId, _, _, companyId, ok := contextShared.GetSessionFromContext(g)
+	if !ok {
+		response.ErrorResponse(g, response.ErrorCodeAuthSessionInvalid, "Invalid auth session")
+		return
+	}
+	var companyUuid uuid.UUID
+	if companyId != "" {
+		companyUuid, _ = uuidShared.ParseUUID(companyId)
+	}
+	userUuid, _ := uuidShared.ParseUUID(userId)
+	// Call service to fetch shifts for current employee
+	resp, errResp := applicationService.GetShiftEmployeeService().GetListShiftForEmployee(
+		g,
+		&applicationModel.GetListShiftForEmployeeInput{
+			EmployeeID:  userUuid,
+			CompanyID:   companyUuid,
+			Page:        page,
+			Size:        size,
+			ClientIp:    g.ClientIP(),
+			ClientAgent: g.Request.UserAgent(),
+		},
+	)
+	if errResp != nil {
+		if errResp.ErrorSystem != nil {
+			response.ErrorResponse(g, response.ErrorCodeSystemTemporary, "Internal server error")
+			return
+		}
+		response.ErrorResponse(g, 400, errResp.ErrorClient)
+		return
+	}
+	response.SuccessResponse(g, 200, resp)
+}
 
 // GetInfoEmployeeDonotInShift implements iHandler.
 // @Summary      Get info employee donot in shift

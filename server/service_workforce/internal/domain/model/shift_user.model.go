@@ -10,6 +10,30 @@ import (
 	"github.com/google/uuid"
 )
 
+// For get list shifts for an employee
+type GetListShiftForEmployeeInput struct {
+	EmployeeID uuid.UUID
+	CompanyID  uuid.UUID
+	Limit      int32
+	Offset     int32
+}
+
+type GetListShiftForEmployeeOutput struct {
+	Shifts    []*ShiftInfoForEmployee
+	Total     int32
+	PageSize  int32
+}
+
+type ShiftInfoForEmployee struct {
+	ShiftID        uuid.UUID
+	ShiftName      string
+	ShiftStartTime string
+	ShiftEndTime   string
+	EffectiveFrom  time.Time
+	EffectiveTo    time.Time
+	IsActive       bool
+}
+
 // For get list employees in a shift
 type GetListEmployyeShiftInput struct {
 	ShiftID   uuid.UUID
@@ -94,6 +118,13 @@ type GetShiftEmployeeWithEffectiveDateInput struct {
 	EffectiveFrom time.Time
 	Limit         int32
 	Offset        int32
+}
+
+// For querying all shift assignments of an employee (no date filter)
+type GetShiftEmployeeAllInput struct {
+	EmployeeID uuid.UUID
+	Limit      int32
+	Offset     int32
 }
 
 // Update effective window for an employee shift

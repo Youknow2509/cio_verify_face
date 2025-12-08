@@ -45,6 +45,33 @@ type GetListEmployeeShiftOutput struct {
 	Employees []*EmployeeInfoInShiftBase `json:"employees"`
 }
 
+// For GetListShiftForEmployee (self-serve listing)
+type GetListShiftForEmployeeInput struct {
+	EmployeeID  uuid.UUID `json:"employee_id"`
+	CompanyID   uuid.UUID `json:"company_id"`
+	Page        int       `json:"page"`
+	Size        int       `json:"size"`
+	ClientIp    string    `json:"client_ip"`
+	ClientAgent string    `json:"client_agent"`
+}
+
+type ShiftInfoForEmployee struct {
+	ShiftId       uuid.UUID `json:"shift_id"`
+	ShiftName     string    `json:"shift_name"`
+	ShiftStart    string    `json:"shift_start"`
+	ShiftEnd      string    `json:"shift_end"`
+	EffectiveFrom time.Time `json:"effective_from"`
+	EffectiveTo   time.Time `json:"effective_to"`
+	IsActive      bool      `json:"is_active"`
+}
+
+type GetListShiftForEmployeeOutput struct {
+	Total  int                     `json:"total"`
+	Page   int                     `json:"page"`
+	Size   int                     `json:"size"`
+	Shifts []*ShiftInfoForEmployee `json:"shifts"`
+}
+
 type EmployeeInfoInShiftBase struct {
 	EmployeeId          uuid.UUID `json:"employee_id"`
 	EmployeeName        string    `json:"employee_name"`
@@ -177,4 +204,17 @@ type GetShiftForUserWithEffectiveDateInput struct {
 	Page          int       `json:"page"`
 	Size          int       `json:"size"`
 }
-type GetShiftForUserWithEffectiveDateOutput struct{}
+
+type ShiftOfUserItem struct {
+	ShiftId       uuid.UUID `json:"shift_id"`
+	EffectiveFrom time.Time `json:"effective_from"`
+	EffectiveTo   time.Time `json:"effective_to"`
+	IsActive      bool      `json:"is_active"`
+}
+
+type GetShiftForUserWithEffectiveDateOutput struct {
+	Total  int                `json:"total"`
+	Page   int                `json:"page"`
+	Size   int                `json:"size"`
+	Shifts []*ShiftOfUserItem `json:"shifts"`
+}

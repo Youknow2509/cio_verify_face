@@ -536,6 +536,56 @@ const docTemplate = `{
                 }
             }
         },
+        "/v1/shift/employee": {
+            "get": {
+                "description": "Employees fetch their own shift assignments",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Shift"
+                ],
+                "summary": "Get employee shift list",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer \u003ctoken\u003e",
+                        "name": "authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page number",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ResponseData"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/dto.ErrResponseData"
+                        }
+                    }
+                }
+            }
+        },
         "/v1/shift/status": {
             "post": {
                 "description": "Change status shift information for company",
@@ -792,18 +842,16 @@ const docTemplate = `{
         "dto.CreateShiftReq": {
             "type": "object",
             "required": [
-                "break_duration_minutes",
                 "company_id",
-                "early_departure_minutes",
                 "end_time",
-                "grace_period_minutes",
                 "name",
                 "start_time",
                 "work_days"
             ],
             "properties": {
                 "break_duration_minutes": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "company_id": {
                     "type": "string"
@@ -812,13 +860,15 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "early_departure_minutes": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "end_time": {
                     "type": "integer"
                 },
                 "grace_period_minutes": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "name": {
                     "type": "string"
@@ -871,11 +921,8 @@ const docTemplate = `{
         "dto.EditShiftReq": {
             "type": "object",
             "required": [
-                "break_duration_minutes",
                 "company_id",
-                "early_departure_minutes",
                 "end_time",
-                "grace_period_minutes",
                 "name",
                 "shift_id",
                 "start_time",
@@ -883,7 +930,8 @@ const docTemplate = `{
             ],
             "properties": {
                 "break_duration_minutes": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "company_id": {
                     "type": "string"
@@ -892,13 +940,15 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "early_departure_minutes": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "end_time": {
                     "type": "integer"
                 },
                 "grace_period_minutes": {
-                    "type": "integer"
+                    "type": "integer",
+                    "minimum": 0
                 },
                 "name": {
                     "type": "string"

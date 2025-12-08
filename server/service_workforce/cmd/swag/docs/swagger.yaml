@@ -56,16 +56,19 @@ definitions:
   dto.CreateShiftReq:
     properties:
       break_duration_minutes:
+        minimum: 0
         type: integer
       company_id:
         type: string
       description:
         type: string
       early_departure_minutes:
+        minimum: 0
         type: integer
       end_time:
         type: integer
       grace_period_minutes:
+        minimum: 0
         type: integer
       name:
         type: string
@@ -76,11 +79,8 @@ definitions:
           type: integer
         type: array
     required:
-    - break_duration_minutes
     - company_id
-    - early_departure_minutes
     - end_time
-    - grace_period_minutes
     - name
     - start_time
     - work_days
@@ -111,16 +111,19 @@ definitions:
   dto.EditShiftReq:
     properties:
       break_duration_minutes:
+        minimum: 0
         type: integer
       company_id:
         type: string
       description:
         type: string
       early_departure_minutes:
+        minimum: 0
         type: integer
       end_time:
         type: integer
       grace_period_minutes:
+        minimum: 0
         type: integer
       name:
         type: string
@@ -133,11 +136,8 @@ definitions:
           type: integer
         type: array
     required:
-    - break_duration_minutes
     - company_id
-    - early_departure_minutes
     - end_time
-    - grace_period_minutes
     - name
     - shift_id
     - start_time
@@ -635,6 +635,39 @@ paths:
           schema:
             $ref: '#/definitions/dto.ErrResponseData'
       summary: Edit shift information
+      tags:
+      - Shift
+  /v1/shift/employee:
+    get:
+      consumes:
+      - application/json
+      description: Employees fetch their own shift assignments
+      parameters:
+      - description: Bearer <token>
+        in: header
+        name: authorization
+        required: true
+        type: string
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Page size
+        in: query
+        name: size
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/dto.ResponseData'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/dto.ErrResponseData'
+      summary: Get employee shift list
       tags:
       - Shift
   /v1/shift/status:

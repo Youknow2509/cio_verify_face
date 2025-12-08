@@ -284,6 +284,58 @@ func (s *ShiftEmployeeService) GetListEmployeeInShift(ctx context.Context, input
 	return &output, nil
 }
 
+// GetListShiftForEmployee returns all shifts assigned to the current employee with pagination.
+func (s *ShiftEmployeeService) GetListShiftForEmployee(ctx context.Context, input *applicationModel.GetListShiftForEmployeeInput) (*applicationModel.GetListShiftForEmployeeOutput, *applicationError.Error) {
+	if input == nil {
+		return nil, &applicationError.Error{ErrorClient: "Invalid input data"}
+	}
+
+	// Normalize pagination values.
+	page := input.Page
+	if page <= 0 {
+		page = 1
+	}
+	size := input.Size
+	if size <= 0 {
+		size = constants.DEFAULT_PAGE_SIZE
+	}
+
+	// Prepare repository request.
+	repoInput := &domainModel.GetListShiftForEmployeeInput{
+		EmployeeID: input.EmployeeID,
+		CompanyID:  input.CompanyID,
+		Limit:      int32(size),
+		Offset:     int32((page - 1) * size),
+	}
+
+	resp, err := s.shiftUserRepo.GetListShiftForEmployee(ctx, repoInput)
+	if err != nil {
+		s.logger.Error("GetListShiftForEmployee - Failed to fetch shifts", "error", err, "employee_id", input.EmployeeID)
+		return nil, &applicationError.Error{ErrorSystem: err, ErrorClient: "Failed to fetch shift list"}
+	}
+
+	out := &applicationModel.GetListShiftForEmployeeOutput{
+		Total:  int(resp.Total),
+		Page:   page,
+		Size:   size,
+		Shifts: make([]*applicationModel.ShiftInfoForEmployee, 0, len(resp.Shifts)),
+	}
+
+	for _, sh := range resp.Shifts {
+		out.Shifts = append(out.Shifts, &applicationModel.ShiftInfoForEmployee{
+			ShiftId:       sh.ShiftID,
+			ShiftName:     sh.ShiftName,
+			ShiftStart:    sh.ShiftStartTime,
+			ShiftEnd:      sh.ShiftEndTime,
+			EffectiveFrom: sh.EffectiveFrom,
+			EffectiveTo:   sh.EffectiveTo,
+			IsActive:      sh.IsActive,
+		})
+	}
+
+	return out, nil
+}
+
 // RemoveListShiftEmployee implements service.IShiftEmployeeService.
 func (s *ShiftEmployeeService) RemoveListShiftEmployee(ctx context.Context, input *applicationModel.RemoveShiftEmployeeListInput) *applicationError.Error {
 	// Validate input
@@ -840,38 +892,48 @@ func (s *ShiftEmployeeService) GetShiftForUserWithEffectiveDate(ctx context.Cont
 	}
 	s.logger.Info("GetShiftForUserWithEffectiveDate - Start", "user_id", input.UserId, "page", input.Page, "size", input.Size)
 
-	// Create cache key based on user and date range
+	// Create cache key based on user and date range; when no range provided, use "all"
+	effFromKey := fmt.Sprintf("%d", input.EffectiveFrom.Unix())
+	effToKey := fmt.Sprintf("%d", input.EffectiveTo.Unix())
+	noDateFilter := input.EffectiveFrom.IsZero() && input.EffectiveTo.IsZero()
+	useCache := !noDateFilter // avoid stale cache when requesting all
+	if noDateFilter {
+		effFromKey = "all"
+		effToKey = "all"
+	}
 	cacheKey := utilsCache.GetKeyShiftEmployeeWithEffectiveDate(
 		utilsCrypto.GetHash(input.UserId.String()),
-		fmt.Sprintf("%d", input.EffectiveFrom.Unix()),
-		fmt.Sprintf("%d", input.EffectiveTo.Unix()),
+		effFromKey,
+		effToKey,
 		input.Page,
 		input.Size,
 	)
 	shiftEmployeeCacheTTL := int64(constants.TTL_Shift_Employee_Cache)
-	// Try to get from local cache first
-	if cachedData, err := s.localCache.Get(ctx, cacheKey); err == nil && cachedData != "" {
-		s.logger.Info("GetShiftForUserWithEffectiveDate - Cache hit (local)", "user_id", input.UserId)
-		var output applicationModel.GetShiftForUserWithEffectiveDateOutput
-		if unmarshalErr := json.Unmarshal([]byte(cachedData), &output); unmarshalErr == nil {
-			return &output, nil
-		} else {
-			s.logger.Warn("GetShiftForUserWithEffectiveDate - Failed to unmarshal local cache", "error", unmarshalErr)
-		}
-	}
-
-	// Try to get from distributed cache
-	if cachedData, err := s.distributedCache.Get(ctx, cacheKey); err == nil && cachedData != "" {
-		s.logger.Info("GetShiftForUserWithEffectiveDate - Cache hit (distributed)", "user_id", input.UserId)
-		var output applicationModel.GetShiftForUserWithEffectiveDateOutput
-		if unmarshalErr := json.Unmarshal([]byte(cachedData), &output); unmarshalErr == nil {
-			// Store in local cache for faster access next time
-			if jsonData, _ := json.Marshal(output); len(jsonData) > 0 {
-				_ = s.localCache.SetTTL(ctx, cacheKey, string(jsonData), shiftEmployeeCacheTTL)
+	if useCache {
+		// Try to get from local cache first
+		if cachedData, err := s.localCache.Get(ctx, cacheKey); err == nil && cachedData != "" {
+			s.logger.Info("GetShiftForUserWithEffectiveDate - Cache hit (local)", "user_id", input.UserId)
+			var output applicationModel.GetShiftForUserWithEffectiveDateOutput
+			if unmarshalErr := json.Unmarshal([]byte(cachedData), &output); unmarshalErr == nil {
+				return &output, nil
+			} else {
+				s.logger.Warn("GetShiftForUserWithEffectiveDate - Failed to unmarshal local cache", "error", unmarshalErr)
 			}
-			return &output, nil
-		} else {
-			s.logger.Warn("GetShiftForUserWithEffectiveDate - Failed to unmarshal distributed cache", "error", unmarshalErr)
+		}
+
+		// Try to get from distributed cache
+		if cachedData, err := s.distributedCache.Get(ctx, cacheKey); err == nil && cachedData != "" {
+			s.logger.Info("GetShiftForUserWithEffectiveDate - Cache hit (distributed)", "user_id", input.UserId)
+			var output applicationModel.GetShiftForUserWithEffectiveDateOutput
+			if unmarshalErr := json.Unmarshal([]byte(cachedData), &output); unmarshalErr == nil {
+				// Store in local cache for faster access next time
+				if jsonData, _ := json.Marshal(output); len(jsonData) > 0 {
+					_ = s.localCache.SetTTL(ctx, cacheKey, string(jsonData), shiftEmployeeCacheTTL)
+				}
+				return &output, nil
+			} else {
+				s.logger.Warn("GetShiftForUserWithEffectiveDate - Failed to unmarshal distributed cache", "error", unmarshalErr)
+			}
 		}
 	}
 
@@ -881,37 +943,72 @@ func (s *ShiftEmployeeService) GetShiftForUserWithEffectiveDate(ctx context.Cont
 	offset := int32((input.Page - 1) * input.Size)
 	limit := int32(input.Size)
 
-	// Create domain input
-	domainInput := &domainModel.GetShiftEmployeeWithEffectiveDateInput{
-		EmployeeID:    input.UserId, // Using UserId as EmployeeID
-		EffectiveFrom: input.EffectiveFrom,
-		Limit:         limit,
-		Offset:        offset,
-	}
-
-	// Call repository
-	shifts, err := s.shiftUserRepo.GetShiftEmployeeWithEffectiveDate(ctx, domainInput)
-	if err != nil {
-		s.logger.Error("GetShiftForUserWithEffectiveDate - Failed to get shifts for employee", "error", err)
-		return nil, &applicationError.Error{
-			ErrorSystem: err,
-			ErrorClient: "Failed to get shifts for employee",
+	var (
+		shifts []*domainModel.EmployeeShiftRow
+		err    error
+	)
+	if noDateFilter {
+		// Fetch all assignments without date filtering
+		domainInput := &domainModel.GetShiftEmployeeAllInput{
+			EmployeeID: input.UserId,
+			Limit:      limit,
+			Offset:     offset,
+		}
+		shifts, err = s.shiftUserRepo.GetShiftEmployeeAll(ctx, domainInput)
+		if err != nil {
+			s.logger.Error("GetShiftForUserWithEffectiveDate - Failed to get all shifts for employee", "error", err)
+			return nil, &applicationError.Error{
+				ErrorSystem: err,
+				ErrorClient: "Failed to get shifts for employee",
+			}
+		}
+	} else {
+		// Create domain input with date filtering
+		domainInput := &domainModel.GetShiftEmployeeWithEffectiveDateInput{
+			EmployeeID:    input.UserId, // Using UserId as EmployeeID
+			EffectiveFrom: input.EffectiveFrom,
+			Limit:         limit,
+			Offset:        offset,
+		}
+		// Call repository
+		shifts, err = s.shiftUserRepo.GetShiftEmployeeWithEffectiveDate(ctx, domainInput)
+		if err != nil {
+			s.logger.Error("GetShiftForUserWithEffectiveDate - Failed to get shifts for employee", "error", err)
+			return nil, &applicationError.Error{
+				ErrorSystem: err,
+				ErrorClient: "Failed to get shifts for employee",
+			}
 		}
 	}
 
 	s.logger.Info("GetShiftForUserWithEffectiveDate - Found shifts", "count", len(shifts))
 
-	output := &applicationModel.GetShiftForUserWithEffectiveDateOutput{}
+	output := &applicationModel.GetShiftForUserWithEffectiveDateOutput{
+		Page:   input.Page,
+		Size:   input.Size,
+		Total:  len(shifts), // limited to current page; could extend with count if needed
+		Shifts: make([]*applicationModel.ShiftOfUserItem, 0, len(shifts)),
+	}
+	for _, sh := range shifts {
+		output.Shifts = append(output.Shifts, &applicationModel.ShiftOfUserItem{
+			ShiftId:       sh.ShiftID,
+			EffectiveFrom: sh.EffectiveFrom,
+			EffectiveTo:   sh.EffectiveTo,
+			IsActive:      sh.IsActive,
+		})
+	}
 
-	// Cache the result
-	if jsonData, jsonErr := json.Marshal(output); jsonErr == nil {
-		// Store in distributed cache
-		if setErr := s.distributedCache.SetTTL(ctx, cacheKey, string(jsonData), shiftEmployeeCacheTTL); setErr != nil {
-			s.logger.Warn("GetShiftForUserWithEffectiveDate - Failed to set distributed cache", "error", setErr)
-		}
-		// Store in local cache
-		if setErr := s.localCache.SetTTL(ctx, cacheKey, string(jsonData), shiftEmployeeCacheTTL); setErr != nil {
-			s.logger.Warn("GetShiftForUserWithEffectiveDate - Failed to set local cache", "error", setErr)
+	// Cache the result (only when caching is enabled)
+	if useCache {
+		if jsonData, jsonErr := json.Marshal(output); jsonErr == nil {
+			// Store in distributed cache
+			if setErr := s.distributedCache.SetTTL(ctx, cacheKey, string(jsonData), shiftEmployeeCacheTTL); setErr != nil {
+				s.logger.Warn("GetShiftForUserWithEffectiveDate - Failed to set distributed cache", "error", setErr)
+			}
+			// Store in local cache
+			if setErr := s.localCache.SetTTL(ctx, cacheKey, string(jsonData), shiftEmployeeCacheTTL); setErr != nil {
+				s.logger.Warn("GetShiftForUserWithEffectiveDate - Failed to set local cache", "error", setErr)
+			}
 		}
 	}
 
