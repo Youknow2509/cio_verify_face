@@ -10,7 +10,6 @@ import {
     Typography,
 } from '@mui/material';
 import {
-    Dashboard,
     People,
     Devices,
     Schedule,
@@ -27,12 +26,15 @@ interface SidebarProps {
 }
 
 const menuItems = [
-    { text: 'Dashboard', icon: <Dashboard />, path: '/dashboard' },
+    { text: 'Báo cáo', icon: <Assessment />, path: '/reports/daily' },
     { text: 'Nhân viên', icon: <People />, path: '/employees' },
     { text: 'Thiết bị', icon: <Devices />, path: '/devices' },
     { text: 'Ca làm việc', icon: <Schedule />, path: '/shifts' },
-    { text: 'Báo cáo', icon: <Assessment />, path: '/reports/daily' },
-    { text: 'Yêu cầu cập nhật khuôn mặt', icon: <Face />, path: '/profile-update-requests' },
+    {
+        text: 'Yêu cầu cập nhật khuôn mặt',
+        icon: <Face />,
+        path: '/profile-update-requests',
+    },
     { text: 'Cài đặt', icon: <Settings />, path: '/settings' },
 ];
 

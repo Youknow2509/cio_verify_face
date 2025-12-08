@@ -2,7 +2,6 @@ import { createBrowserRouter, Navigate } from 'react-router-dom';
 import { MainLayout } from '@/components/layouts/MainLayout';
 import { AuthLayout } from '@/components/layouts/AuthLayout';
 import { LoginPage } from '@/features/auth/LoginPage';
-import { DashboardPage } from '@/features/dashboard/DashboardPage';
 import { EmployeeListPage } from '@/features/employees/EmployeeListPage';
 import { EmployeeFormPage } from '@/features/employees/EmployeeFormPage';
 import { EmployeeFaceDataPage } from '@/features/employees/EmployeeFaceDataPage';
@@ -23,7 +22,7 @@ import { ProfileUpdateRequestPage } from '@/features/profile-update/ProfileUpdat
 export const router = createBrowserRouter([
     {
         path: '/',
-        element: <Navigate to="/dashboard" replace />,
+        element: <Navigate to="/reports/daily" replace />,
     },
     {
         path: '/login',
@@ -41,10 +40,6 @@ export const router = createBrowserRouter([
             </ProtectedRoute>
         ),
         children: [
-            {
-                path: 'dashboard',
-                element: <DashboardPage />,
-            },
             {
                 path: 'employees',
                 element: <EmployeeListPage />,

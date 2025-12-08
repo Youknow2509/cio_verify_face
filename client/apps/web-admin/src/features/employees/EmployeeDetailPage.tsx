@@ -68,14 +68,20 @@ interface DailySummary {
 }
 
 interface AttendanceRecord {
-    record_id: string;
-    employee_id: string;
-    employee_name: string;
-    check_in_time: string;
-    check_out_time: string;
-    device_id: string;
-    location: string;
-    status: string;
+    record_id?: string;
+    employee_id?: string;
+    employee_name?: string;
+    check_in_time?: string;
+    check_out_time?: string;
+    device_id?: string;
+    location?: string;
+    status?: string;
+    // Fields from raw API (RecordTime/RecordType...)
+    RecordTime?: string;
+    RecordType?: number; // 0 check-in, 1 check-out
+    VerificationMethod?: string;
+    VerificationScore?: { Float?: number };
+    DeviceID?: string;
 }
 
 export const EmployeeDetailPage: React.FC = () => {
@@ -167,9 +173,12 @@ export const EmployeeDetailPage: React.FC = () => {
                 }
             );
 
-            if (summariesResponse.data?.success) {
-                setDailySummaries(summariesResponse.data.data || []);
-            }
+            const apiSummaries =
+                summariesResponse.data?.success &&
+                Array.isArray(summariesResponse.data.data)
+                    ? summariesResponse.data.data
+                    : [];
+            setDailySummaries(apiSummaries);
 
             // Fetch attendance records
             const recordsResponse = await apiClient.get(
@@ -183,8 +192,17 @@ export const EmployeeDetailPage: React.FC = () => {
                 }
             );
 
-            if (recordsResponse.data?.success) {
-                setAttendanceRecords(recordsResponse.data.data || []);
+            const apiRecords =
+                recordsResponse.data?.success &&
+                Array.isArray(recordsResponse.data.data)
+                    ? recordsResponse.data.data
+                    : [];
+            setAttendanceRecords(apiRecords);
+
+            // Fallback: if no daily summaries returned but we have raw records, build summaries from records
+            if (apiSummaries.length === 0 && apiRecords.length > 0) {
+                const derived = buildSummariesFromRecords(apiRecords);
+                setDailySummaries(derived);
             }
         } catch (err: any) {
             console.error('Failed to fetch attendance data:', err);
@@ -260,8 +278,7 @@ export const EmployeeDetailPage: React.FC = () => {
             console.error('Failed to update field:', err);
             setSnackbar({
                 open: true,
-                message:
-                    err.response?.data?.message || 'Cập nhật thất bại',
+                message: err.response?.data?.message || 'Cập nhật thất bại',
                 severity: 'error',
             });
         } finally {
@@ -273,12 +290,9 @@ export const EmployeeDetailPage: React.FC = () => {
         if (!id) return;
         setResettingPassword(true);
         try {
-            const response = await apiClient.post(
-                `/api/v1/password/reset`,
-                {
-                    "employee_id": id,
-                }
-            );
+            const response = await apiClient.post(`/api/v1/password/reset`, {
+                employee_id: id,
+            });
             if (response.data?.success) {
                 setSnackbar({
                     open: true,
@@ -378,6 +392,151 @@ export const EmployeeDetailPage: React.FC = () => {
         }
     };
 
+    const formatDateTime = (value?: string) => {
+        if (!value) return 'N/A';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return 'N/A';
+        return date.toLocaleString('vi-VN', {
+            hour12: false,
+            year: 'numeric',
+            month: '2-digit',
+            day: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit',
+        });
+    };
+
+    const formatRecordType = (type?: number) => {
+        if (type === 0) return 'Giờ vào';
+        if (type === 1) return 'Giờ ra';
+        return '-';
+    };
+
+    const getRecordTime = (record: any) =>
+        record?.RecordTime || record?.check_in_time || record?.check_out_time;
+
+    const buildSummariesFromRecords = (records: AttendanceRecord[]) => {
+        const byDate: Record<
+            string,
+            {
+                checkIn?: Date;
+                checkOut?: Date;
+                rawCheckIn?: AttendanceRecord;
+                rawCheckOut?: AttendanceRecord;
+            }
+        > = {};
+
+        records.forEach((rec) => {
+            const timeStr = getRecordTime(rec);
+            if (!timeStr) return;
+            const time = new Date(timeStr);
+            if (Number.isNaN(time.getTime())) return;
+            const dateKey = time.toISOString().split('T')[0];
+            if (!byDate[dateKey]) byDate[dateKey] = {};
+            const isCheckIn = rec.RecordType === 0 || rec.status === 'check_in';
+            const isCheckOut =
+                rec.RecordType === 1 || rec.status === 'check_out';
+
+            if (isCheckIn) {
+                if (
+                    !byDate[dateKey].checkIn ||
+                    time < byDate[dateKey].checkIn!
+                ) {
+                    byDate[dateKey].checkIn = time;
+                    byDate[dateKey].rawCheckIn = rec;
+                }
+            } else if (isCheckOut) {
+                if (
+                    !byDate[dateKey].checkOut ||
+                    time > byDate[dateKey].checkOut!
+                ) {
+                    byDate[dateKey].checkOut = time;
+                    byDate[dateKey].rawCheckOut = rec;
+                }
+            } else {
+                // Fallback: if unknown, treat earliest as check-in, latest as check-out
+                if (
+                    !byDate[dateKey].checkIn ||
+                    time < byDate[dateKey].checkIn!
+                ) {
+                    byDate[dateKey].checkIn = time;
+                    byDate[dateKey].rawCheckIn = rec;
+                }
+                if (
+                    !byDate[dateKey].checkOut ||
+                    time > byDate[dateKey].checkOut!
+                ) {
+                    byDate[dateKey].checkOut = time;
+                    byDate[dateKey].rawCheckOut = rec;
+                }
+            }
+        });
+
+        const summaries: DailySummary[] = Object.entries(byDate)
+            .map(([dateKey, value]) => {
+                const { checkIn, checkOut } = value;
+                let totalHours = 0;
+                if (checkIn && checkOut) {
+                    totalHours =
+                        (checkOut.getTime() - checkIn.getTime()) /
+                        (1000 * 60 * 60);
+                }
+
+                // Simple late/early calculation assuming 08:00-17:00
+                let lateMinutes = 0;
+                let earlyLeaveMinutes = 0;
+                if (checkIn) {
+                    const start = new Date(checkIn);
+                    start.setHours(8, 0, 0, 0);
+                    if (checkIn > start) {
+                        lateMinutes = Math.round(
+                            (checkIn.getTime() - start.getTime()) / (1000 * 60)
+                        );
+                    }
+                }
+                if (checkOut) {
+                    const end = new Date(checkOut);
+                    end.setHours(17, 0, 0, 0);
+                    if (checkOut < end) {
+                        earlyLeaveMinutes = Math.round(
+                            (end.getTime() - checkOut.getTime()) / (1000 * 60)
+                        );
+                    }
+                }
+
+                const status =
+                    !checkIn && !checkOut
+                        ? 'absent'
+                        : lateMinutes > 0
+                        ? 'late'
+                        : 'present';
+
+                const toTimeString = (d?: Date) =>
+                    d
+                        ? d.toLocaleTimeString('vi-VN', {
+                              hour: '2-digit',
+                              minute: '2-digit',
+                              second: '2-digit',
+                          })
+                        : '';
+
+                return {
+                    employee_id: id || '',
+                    employee_name: '',
+                    date: dateKey,
+                    total_hours: totalHours,
+                    check_in: toTimeString(checkIn),
+                    check_out: toTimeString(checkOut),
+                    late_minutes: lateMinutes,
+                    early_leave_minutes: earlyLeaveMinutes,
+                    status,
+                };
+            })
+            .sort((a, b) => (a.date < b.date ? 1 : -1));
+
+        return summaries;
+    };
+
     if (loading) {
         return (
             <Box
@@ -437,7 +596,10 @@ export const EmployeeDetailPage: React.FC = () => {
                                 <Typography variant="h5" fontWeight="bold">
                                     {employee.full_name}
                                 </Typography>
-                                <Typography variant="body2" color="text.secondary">
+                                <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                >
                                     {employee.employee_code}
                                 </Typography>
                                 <Chip
@@ -465,7 +627,10 @@ export const EmployeeDetailPage: React.FC = () => {
                                     alignItems="center"
                                     mb={2}
                                 >
-                                    <Typography variant="body2" color="text.secondary">
+                                    <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                    >
                                         Họ và tên
                                     </Typography>
                                     {editField === 'full_name' ? (
@@ -493,8 +658,14 @@ export const EmployeeDetailPage: React.FC = () => {
                                             </IconButton>
                                         </Box>
                                     ) : (
-                                        <Box display="flex" gap={1} alignItems="center">
-                                            <Typography>{employee.full_name}</Typography>
+                                        <Box
+                                            display="flex"
+                                            gap={1}
+                                            alignItems="center"
+                                        >
+                                            <Typography>
+                                                {employee.full_name}
+                                            </Typography>
                                             <IconButton
                                                 size="small"
                                                 onClick={() =>
@@ -518,7 +689,10 @@ export const EmployeeDetailPage: React.FC = () => {
                                     alignItems="center"
                                     mb={2}
                                 >
-                                    <Typography variant="body2" color="text.secondary">
+                                    <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                    >
                                         Email
                                     </Typography>
                                     <Typography>{employee.email}</Typography>
@@ -532,7 +706,10 @@ export const EmployeeDetailPage: React.FC = () => {
                                     alignItems="center"
                                     mb={2}
                                 >
-                                    <Typography variant="body2" color="text.secondary">
+                                    <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                    >
                                         Số điện thoại
                                     </Typography>
                                     {editField === 'phone' ? (
@@ -560,8 +737,14 @@ export const EmployeeDetailPage: React.FC = () => {
                                             </IconButton>
                                         </Box>
                                     ) : (
-                                        <Box display="flex" gap={1} alignItems="center">
-                                            <Typography>{employee.phone || 'N/A'}</Typography>
+                                        <Box
+                                            display="flex"
+                                            gap={1}
+                                            alignItems="center"
+                                        >
+                                            <Typography>
+                                                {employee.phone || 'N/A'}
+                                            </Typography>
                                             <IconButton
                                                 size="small"
                                                 onClick={() =>
@@ -585,7 +768,10 @@ export const EmployeeDetailPage: React.FC = () => {
                                     alignItems="center"
                                     mb={2}
                                 >
-                                    <Typography variant="body2" color="text.secondary">
+                                    <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                    >
                                         Phòng ban
                                     </Typography>
                                     {editField === 'department' ? (
@@ -613,7 +799,11 @@ export const EmployeeDetailPage: React.FC = () => {
                                             </IconButton>
                                         </Box>
                                     ) : (
-                                        <Box display="flex" gap={1} alignItems="center">
+                                        <Box
+                                            display="flex"
+                                            gap={1}
+                                            alignItems="center"
+                                        >
                                             <Typography>
                                                 {employee.department || 'N/A'}
                                             </Typography>
@@ -622,7 +812,8 @@ export const EmployeeDetailPage: React.FC = () => {
                                                 onClick={() =>
                                                     handleEditField(
                                                         'department',
-                                                        employee.department || ''
+                                                        employee.department ||
+                                                            ''
                                                     )
                                                 }
                                             >
@@ -640,7 +831,10 @@ export const EmployeeDetailPage: React.FC = () => {
                                     alignItems="center"
                                     mb={2}
                                 >
-                                    <Typography variant="body2" color="text.secondary">
+                                    <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                    >
                                         Chức vụ
                                     </Typography>
                                     {editField === 'position' ? (
@@ -668,7 +862,11 @@ export const EmployeeDetailPage: React.FC = () => {
                                             </IconButton>
                                         </Box>
                                     ) : (
-                                        <Box display="flex" gap={1} alignItems="center">
+                                        <Box
+                                            display="flex"
+                                            gap={1}
+                                            alignItems="center"
+                                        >
                                             <Typography>
                                                 {employee.position || 'N/A'}
                                             </Typography>
@@ -695,7 +893,10 @@ export const EmployeeDetailPage: React.FC = () => {
                                     alignItems="center"
                                     mb={2}
                                 >
-                                    <Typography variant="body2" color="text.secondary">
+                                    <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                    >
                                         Ngày vào làm
                                     </Typography>
                                     <Typography>
@@ -712,7 +913,9 @@ export const EmployeeDetailPage: React.FC = () => {
                                 <Button
                                     variant="outlined"
                                     startIcon={<LockReset />}
-                                    onClick={() => setResetPasswordDialogOpen(true)}
+                                    onClick={() =>
+                                        setResetPasswordDialogOpen(true)
+                                    }
                                     sx={{ mt: 2 }}
                                 >
                                     Reset mật khẩu
@@ -739,7 +942,9 @@ export const EmployeeDetailPage: React.FC = () => {
                                     type="month"
                                     label="Tháng"
                                     value={selectedMonth}
-                                    onChange={(e) => setSelectedMonth(e.target.value)}
+                                    onChange={(e) =>
+                                        setSelectedMonth(e.target.value)
+                                    }
                                     InputLabelProps={{ shrink: true }}
                                     size="small"
                                 />
@@ -763,65 +968,220 @@ export const EmployeeDetailPage: React.FC = () => {
                             >
                                 <CircularProgress />
                             </Box>
-                        ) : dailySummaries.length === 0 ? (
-                            <Alert severity="info">
-                                Không có dữ liệu chấm công cho tháng này
-                            </Alert>
                         ) : (
-                            <TableContainer component={Paper}>
-                                <Table>
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell>Ngày</TableCell>
-                                            <TableCell>Giờ vào</TableCell>
-                                            <TableCell>Giờ ra</TableCell>
-                                            <TableCell>Tổng giờ</TableCell>
-                                            <TableCell>Phút muộn</TableCell>
-                                            <TableCell>Phút về sớm</TableCell>
-                                            <TableCell>Trạng thái</TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {dailySummaries.map((summary) => (
-                                            <TableRow key={summary.date}>
+                            <>
+                                {dailySummaries.length === 0 ? (
+                                    <Alert severity="info" sx={{ mb: 2 }}>
+                                        Không có dữ liệu chấm công tổng hợp cho
+                                        tháng này
+                                    </Alert>
+                                ) : (
+                                    <TableContainer
+                                        component={Paper}
+                                        sx={{ mb: 3, maxHeight: 420 }}
+                                    >
+                                        <Table stickyHeader>
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell>Ngày</TableCell>
+                                                    <TableCell>
+                                                        Giờ vào
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        Giờ ra
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        Tổng giờ
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        Phút muộn
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        Phút về sớm
+                                                    </TableCell>
+                                                    <TableCell>
+                                                        Trạng thái
+                                                    </TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {dailySummaries.map(
+                                                    (summary) => (
+                                                        <TableRow
+                                                            key={summary.date}
+                                                        >
+                                                            <TableCell>
+                                                                {new Date(
+                                                                    summary.date
+                                                                ).toLocaleDateString(
+                                                                    'vi-VN'
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {summary.check_in ||
+                                                                    'N/A'}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {summary.check_out ||
+                                                                    'N/A'}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {summary.total_hours.toFixed(
+                                                                    2
+                                                                )}
+                                                                h
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {
+                                                                    summary.late_minutes
+                                                                }{' '}
+                                                                phút
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {
+                                                                    summary.early_leave_minutes
+                                                                }{' '}
+                                                                phút
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                <Chip
+                                                                    label={getStatusText(
+                                                                        summary.status
+                                                                    )}
+                                                                    color={
+                                                                        getStatusColor(
+                                                                            summary.status
+                                                                        ) as any
+                                                                    }
+                                                                    size="small"
+                                                                />
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    )
+                                                )}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                )}
+
+                                {/* Raw attendance records */}
+                                <Typography
+                                    variant="subtitle1"
+                                    fontWeight="bold"
+                                    mb={1}
+                                >
+                                    Bản ghi chấm công
+                                </Typography>
+                                <TableContainer
+                                    component={Paper}
+                                    sx={{ maxHeight: 480 }}
+                                >
+                                    <Table size="small" stickyHeader>
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell>Thời gian</TableCell>
+                                                <TableCell>Loại</TableCell>
+                                                <TableCell>Thiết bị</TableCell>
                                                 <TableCell>
-                                                    {new Date(
-                                                        summary.date
-                                                    ).toLocaleDateString('vi-VN')}
+                                                    Phương thức
                                                 </TableCell>
-                                                <TableCell>
-                                                    {summary.check_in || 'N/A'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {summary.check_out || 'N/A'}
-                                                </TableCell>
-                                                <TableCell>
-                                                    {summary.total_hours.toFixed(2)}h
-                                                </TableCell>
-                                                <TableCell>
-                                                    {summary.late_minutes} phút
-                                                </TableCell>
-                                                <TableCell>
-                                                    {summary.early_leave_minutes} phút
-                                                </TableCell>
-                                                <TableCell>
-                                                    <Chip
-                                                        label={getStatusText(
-                                                            summary.status
-                                                        )}
-                                                        color={
-                                                            getStatusColor(
-                                                                summary.status
-                                                            ) as any
-                                                        }
-                                                        size="small"
-                                                    />
+                                                <TableCell align="right">
+                                                    Điểm
                                                 </TableCell>
                                             </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
+                                        </TableHead>
+                                        <TableBody>
+                                            {attendanceRecords.length === 0 ? (
+                                                <TableRow>
+                                                    <TableCell
+                                                        colSpan={5}
+                                                        align="center"
+                                                    >
+                                                        <Typography
+                                                            color="text.secondary"
+                                                            py={2}
+                                                        >
+                                                            Không có bản ghi
+                                                            trong tháng này
+                                                        </Typography>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ) : (
+                                                attendanceRecords
+                                                    .slice()
+                                                    .sort(
+                                                        (a, b) =>
+                                                            new Date(
+                                                                getRecordTime(
+                                                                    b
+                                                                ) || 0
+                                                            ).getTime() -
+                                                            new Date(
+                                                                getRecordTime(
+                                                                    a
+                                                                ) || 0
+                                                            ).getTime()
+                                                    )
+                                                    .map((record, idx) => (
+                                                        <TableRow
+                                                            key={
+                                                                record.record_id ||
+                                                                `${
+                                                                    record.EmployeeID ||
+                                                                    'emp'
+                                                                }-${idx}`
+                                                            }
+                                                        >
+                                                            <TableCell>
+                                                                {formatDateTime(
+                                                                    getRecordTime(
+                                                                        record
+                                                                    )
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {formatRecordType(
+                                                                    record.RecordType ??
+                                                                        (record.status ===
+                                                                        'check_in'
+                                                                            ? 0
+                                                                            : record.status ===
+                                                                              'check_out'
+                                                                            ? 1
+                                                                            : undefined)
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {record.DeviceID ||
+                                                                    record.device_id ||
+                                                                    '-'}
+                                                            </TableCell>
+                                                            <TableCell>
+                                                                {record.VerificationMethod ||
+                                                                    record.status ||
+                                                                    '-'}
+                                                            </TableCell>
+                                                            <TableCell align="right">
+                                                                {record
+                                                                    .VerificationScore
+                                                                    ?.Float !==
+                                                                undefined
+                                                                    ? Number(
+                                                                          record
+                                                                              .VerificationScore
+                                                                              .Float
+                                                                      ).toFixed(
+                                                                          2
+                                                                      )
+                                                                    : '-'}
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    ))
+                                            )}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            </>
                         )}
                     </CardContent>
                 </Card>
@@ -875,4 +1235,3 @@ export const EmployeeDetailPage: React.FC = () => {
         </>
     );
 };
-
