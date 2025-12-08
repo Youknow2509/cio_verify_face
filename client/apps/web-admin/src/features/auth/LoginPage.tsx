@@ -36,7 +36,7 @@ export const LoginPage: React.FC = () => {
             );
             const { access_token, refresh_token } = response.data.data;
             setAuth(null as any, access_token, refresh_token);
-            navigate('/dashboard');
+            navigate('/');
         } catch (err: any) {
             setError(
                 err.response?.data?.message ||
