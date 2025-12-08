@@ -1,10 +1,11 @@
+# Example configuration for service-analytic chart. Copy to config.yaml and adjust for your cluster.
 server:
     name: 'cio_verify_face_analytic'
     id: 'service-analytic-node-0'
     region: 'us-west-1'
     shardId: 'shard-1'
     port: 8080
-    mode: 'prod' # default: dev, options: dev, prod
+    mode: 'dev'
     degraded_threshold: 85.0
     out_of_service_threshold: 95.0
 
@@ -23,7 +24,7 @@ grpc:
 
 service_auth:
     enabled: true
-    grpc_addr: 'service-auth:50051'
+    grpc_addr: 'service-auth.cio-verify-face-dev.svc.cluster.local:50051'
     keepalive_time_ms: 120000
     keepalive_timeout_ms: 20000
     keepalive_permit_without_calls: true
@@ -38,9 +39,9 @@ service_auth:
 scylladb:
     authentication:
         username: cassandra
-        password: root1234
+        password: change-me
     address:
-        - scylladb:9042
+        - env-cql-database.cio-verify-face-dev.svc.cluster.local:9042
     keyspace: cio_verify_face
     ssl:
         enabled: false
@@ -54,10 +55,10 @@ scylladb:
 
 postgres:
     address:
-        - postgres:5432
+        - env-main-database.cio-verify-face-dev.svc.cluster.local:5432
     database: cio_verify_face
     username: postgres
-    password: root1234
+    password: change-me
     sslmode: disable
     sslcert: ''
     sslkey: ''
@@ -74,23 +75,19 @@ postgres:
     healthCheckPeriod: 30
 
 redis:
-    type: 1 # 1: standalone, 2: sentinel, 3: cluster
+    type: 1
     use_tls: false
     cert_path: ''
     key_path: ''
-    password: 'root1234'
+    password: 'change-me'
     db: 0
-    host: redis
+    host: env-distributed-cache-master.cio-verify-face-dev.svc.cluster.local
     port: 6379
     master_name: mymaster
     sentinel_addrs:
-        - 127.0.0.1:26379
-        - 127.0.0.1:26380
-        - 127.0.0.1:26381
+        - env-distributed-cache-master.cio-verify-face-dev.svc.cluster.local:26379
     address:
-        - 127.0.0.1:26379
-        - 127.0.0.1:26380
-        - 127.0.0.1:26381
+        - env-distributed-cache-master.cio-verify-face-dev.svc.cluster.local:6379
     route_by_latency: true
     route_randomly: false
     pool_size: 10
@@ -110,9 +107,9 @@ export:
     job_timeout_minutes: 30
 
 object_storage:
-    endpoint: 'minio:9000'
+    endpoint: 'env-object-storage.cio-verify-face-dev.svc.cluster.local:9000'
     access_key: 'minio'
-    secret_key: 'root1234'
+    secret_key: 'change-me'
     bucket: 'reports'
     use_ssl: false
     region: 'us-east-1'
@@ -120,8 +117,8 @@ object_storage:
 
 kafka:
     brokers:
-        - kafka:9094
-    notify_topic: service_notify_email
+        - env-message-queue.cio-verify-face-dev.svc.cluster.local:9094
+    notify_topic: report_attention_notification
     client_id: service-analytic
     sasl_enabled: false
     tls_enabled: false
@@ -131,4 +128,4 @@ observability:
     metrics_path: '/metrics'
     metrics_port: 9090
     tracing_enabled: true
-    otlp_endpoint: 'http://jaeger:4318/v1/traces'
+    otlp_endpoint: 'http://jaeger.cio-verify-face-dev.svc.cluster.local:4318/v1/traces'

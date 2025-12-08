@@ -1,16 +1,18 @@
+# Example configuration for service-profile-update chart. Copy to config.yaml and adjust for your cluster.
 server:
     name: 'cio_verify_face'
     id: 'service-profile-update-node-0'
     region: 'us-west-1'
     shardId: 'shard-1'
     port: 8080
-    mode: 'dev' # default: dev, options: dev, prod
+    mode: 'dev'
+    domain: 'https://your-domain.com'
     degraded_threshold: 85.0
     out_of_service_threshold: 95.0
 
 service_auth:
     enabled: true
-    grpc_addr: 'service-auth.cio-verify-face-dev.svc.cluster.local:50051'
+    grpc_addr: 'service-auth:50051'
     keepalive_time_ms: 120000
     keepalive_timeout_ms: 20000
     keepalive_permit_without_calls: true
@@ -22,12 +24,19 @@ service_auth:
         cert_file: ''
         key_file: ''
 
-observability:
-    enabled: false
-    metrics_path: '/metrics'
-    metrics_port: 9090
-    tracing_enabled: true
-    otlp_endpoint: 'http://jaeger:4318/v1/traces'
+service_face:
+    enabled: true
+    grpc_addr: 'service-ai:50051'
+    keepalive_time_ms: 120000
+    keepalive_timeout_ms: 20000
+    keepalive_permit_without_calls: true
+    http2_max_pings_without_data: 1
+    http2_min_time_between_pings_ms: 60000
+    http2_min_ping_interval_without_data_ms: 60000
+    tls:
+        enabled: false
+        cert_file: ''
+        key_file: ''
 
 grpc:
     network: 'tcp'
@@ -51,10 +60,10 @@ policy_rate_limit:
 
 postgres:
     address:
-        - env-main-database.cio-verify-face-dev.svc.cluster.local:5432
+        - postgres:5432
     database: cio_verify_face
     username: postgres
-    password: J6cSjtown5yt9XC6
+    password: change-me
     sslmode: disable
     sslcert: ''
     sslkey: ''
@@ -71,26 +80,23 @@ postgres:
     healthCheckPeriod: 30
 
 redis:
-    type: 1 # 1: standalone, 2: sentinel, 3: cluster
+    type: 1
     use_tls: false
     cert_path: ''
     key_path: ''
-    password: 'J6cSjtown5yt9XC6'
+    password: 'change-me'
     db: 0
-    # For standalone type
-    host: env-distributed-cache-master.cio-verify-face-dev.svc.cluster.local
+    host: redis
     port: 6379
-    # For sentinel type
     master_name: mymaster
     sentinel_addrs:
-        - 127.0.0.1:26379
-        - 127.0.0.1:26380
-        - 127.0.0.1:26381
-    # For cluster type
+        - redis-sentinel-0:26379
+        - redis-sentinel-1:26379
+        - redis-sentinel-2:26379
     address:
-        - 127.0.0.1:26379
-        - 127.0.0.1:26380
-        - 127.0.0.1:26381
+        - redis-cluster-0:26379
+        - redis-cluster-1:26379
+        - redis-cluster-2:26379
     route_by_latency: true
     route_randomly: false
     pool_size: 10
@@ -99,7 +105,7 @@ redis:
 
 kafka:
     brokers:
-        - env-message-queue.cio-verify-face-dev.svc.cluster.local:9092
+        - kafka:9094
     sasl:
         enabled: false
         mechanism: 0
@@ -146,3 +152,9 @@ logger:
     file_max_age: 30
     compress: true
 
+observability:
+    enabled: true
+    metrics_path: '/metrics'
+    metrics_port: 9090
+    tracing_enabled: true
+    otlp_endpoint: 'http://otel-collector:4318/v1/traces'
