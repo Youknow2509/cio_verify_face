@@ -1,16 +1,14 @@
-import { ThemeProvider, createTheme } from '@mui/material/styles';
-import { CssBaseline, Box, Typography } from '@mui/material';
-
-const theme = createTheme();
+import { ThemeProvider } from '@mui/material/styles';
+import { CssBaseline } from '@mui/material';
+import { RouterProvider } from 'react-router-dom';
+import { theme } from '@/theme';
+import { router } from '@/routes';
 
 function App() {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Box sx={{ p: 4 }}>
-        <Typography variant="h4">Employee Portal - Coming Soon</Typography>
-        <Typography variant="body1">Cổng thông tin nhân viên</Typography>
-      </Box>
+      <RouterProvider router={router} />
     </ThemeProvider>
   );
 }
