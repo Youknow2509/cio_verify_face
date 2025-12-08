@@ -73,7 +73,7 @@ ENV SERVICE_HOST=0.0.0.0 \
     GRPC_PORT=50051 \
     COMPUTE_MODE=cpu \
     STORAGE_PATH=/app/data \
-    MODEL_PATH=/app/models \
+    MODEL_PATH=/app/data/models \
     INDEX_PATH=/app/data/indexes
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=5 \

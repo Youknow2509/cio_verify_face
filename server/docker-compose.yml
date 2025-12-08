@@ -71,6 +71,7 @@ services:
             - nw-dev-0
         ports:
           - '50051:50051'
+          - '18080:8080'
         volumes:
           - ./config/config_service_auth.yaml:/prod/config/config.yaml:ro
 
