@@ -5,7 +5,7 @@
 -   **Mail**: *lytranvinh.work@gmail.com*
 -   **Github**: *https://github.com/Youknow2509*
 
-# (Demo)[https://youtu.be/y7Uxjtw-5sA]
+[![Demo Video](https://img.youtube.com/vi/y7Uxjtw-5sA/0.jpg)](https://youtu.be/y7Uxjtw-5sA)
 
 ## System Overview
 
