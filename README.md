@@ -16,7 +16,7 @@
 
 ## Tech Stack
 -   Backend: Go (Gin, ..), Python (FastAPI, OpenCV, dlib, face_recognition, ...), Node JS (Express, ...)
--   Envaironment: PostgreSQL, Redis, NGINX, Kafka, MinIO, Scylladb, Mivills, Grafana, Prometheus, Jaeger
+-   Environment: PostgreSQL, Redis, NGINX, Kafka, MinIO, Scylladb, Mivills, Grafana, Prometheus, Jaeger
 -   Client: React, TypeScript, Redux, TailwindCSS, Electron
 -   DevOps: Docker, Docker Compose, GitHub Actions, Helm, Kubernetes
 -   Observability: Prometheus, Grafana, Jaeger
